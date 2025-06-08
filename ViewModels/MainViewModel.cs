@@ -1,0 +1,1054 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Threading;
+using System.Text;
+using FileSpace.Services;
+
+namespace FileSpace.ViewModels
+{
+    public partial class MainViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        private string _currentPath = string.Empty;
+
+        [ObservableProperty]
+        private ObservableCollection<DirectoryItemViewModel> _directoryTree = new();
+
+        [ObservableProperty]
+        private ObservableCollection<FileItemViewModel> _files = new();
+
+        [ObservableProperty]
+        private FileItemViewModel? _selectedFile;
+
+        [ObservableProperty]
+        private string _statusText = "就绪";
+
+        [ObservableProperty]
+        private object? _previewContent;
+
+        [ObservableProperty]
+        private bool _isPreviewLoading;
+
+        [ObservableProperty]
+        private string _previewStatus = string.Empty;
+
+        [ObservableProperty]
+        private bool _isSizeCalculating;
+
+        [ObservableProperty]
+        private string _sizeCalculationProgress = string.Empty;
+
+        private CancellationTokenSource? _previewCancellationTokenSource;
+        private readonly SemaphoreSlim _previewSemaphore = new(1, 1);
+        
+        // Add tracking for current preview folder
+        private string _currentPreviewFolderPath = string.Empty;
+
+        private readonly Stack<string> _backHistory = new();
+        private readonly Stack<string> _forwardHistory = new();
+
+        public MainViewModel()
+        {
+            LoadInitialData();
+            
+            // Subscribe to background size calculation events
+            BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted += OnSizeCalculationCompleted;
+            BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress += OnSizeCalculationProgress;
+        }
+
+        partial void OnCurrentPathChanged(string value)
+        {
+            LoadFiles();
+        }
+
+        partial void OnSelectedFileChanged(FileItemViewModel? value)
+        {
+            // Clear progress when switching files
+            if (value?.IsDirectory != true || value.FullPath != _currentPreviewFolderPath)
+            {
+                SizeCalculationProgress = "";
+                _currentPreviewFolderPath = string.Empty;
+            }
+            
+            _ = ShowPreviewAsync();
+        }
+
+        private async void LoadInitialData()
+        {
+            try
+            {
+                StatusText = "正在加载驱动器...";
+                
+                // Load drives asynchronously
+                var drives = await Task.Run(() =>
+                {
+                    var driveList = new List<string>();
+                    foreach (var drive in DriveInfo.GetDrives())
+                    {
+                        if (drive.IsReady && drive.DriveType != DriveType.CDRom)
+                        {
+                            try
+                            {
+                                // Test access to the drive
+                                Directory.GetDirectories(drive.RootDirectory.FullName).Take(1).ToList();
+                                driveList.Add(drive.RootDirectory.FullName);
+                            }
+                            catch (UnauthorizedAccessException)
+                            {
+                                // Skip drives we don't have access to
+                                continue;
+                            }
+                            catch (Exception ex)
+                            {
+                                StatusText = $"驱动器加载警告: {ex.Message}";
+                            }
+                        }
+                    }
+                    return driveList.OrderBy(d => d).ToList();
+                });
+
+                // Add drives to the tree on UI thread
+                DirectoryTree.Clear();
+                foreach (var drive in drives)
+                {
+                    DirectoryTree.Add(new DirectoryItemViewModel(drive));
+                }
+
+                // Set initial path
+                var initialPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                if (Directory.Exists(initialPath))
+                {
+                    CurrentPath = initialPath;
+                }
+                else
+                {
+                    CurrentPath = drives.FirstOrDefault() ?? @"C:\";
+                }
+                
+                StatusText = $"已加载 {drives.Count} 个驱动器";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"初始化错误: {ex.Message}";
+            }
+        }
+
+        private void LoadFiles()
+        {
+            try
+            {
+                Files.Clear();
+                
+                if (!Directory.Exists(CurrentPath))
+                {
+                    StatusText = "路径不存在";
+                    return;
+                }
+
+                // Add directories
+                try
+                {
+                    foreach (var dir in Directory.GetDirectories(CurrentPath))
+                    {
+                        try
+                        {
+                            var dirInfo = new DirectoryInfo(dir);
+                            Files.Add(new FileItemViewModel
+                            {
+                                Name = dirInfo.Name,
+                                FullPath = dirInfo.FullName,
+                                IsDirectory = true,
+                                Icon = Wpf.Ui.Controls.SymbolRegular.Folder24,
+                                Type = "文件夹",
+                                ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                            });
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // Skip directories we don't have access to
+                            continue;
+                        }
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    StatusText = "访问被拒绝";
+                    return;
+                }
+
+                // Add files
+                try
+                {
+                    foreach (var file in Directory.GetFiles(CurrentPath))
+                    {
+                        try
+                        {
+                            var fileInfo = new FileInfo(file);
+                            Files.Add(new FileItemViewModel
+                            {
+                                Name = fileInfo.Name,
+                                FullPath = fileInfo.FullName,
+                                IsDirectory = false,
+                                Size = fileInfo.Length,
+                                Icon = GetFileIcon(fileInfo.Extension),
+                                Type = GetFileType(fileInfo.Extension),
+                                ModifiedTime = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                            });
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // Skip files we don't have access to
+                            continue;
+                        }
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    StatusText = "访问被拒绝";
+                    return;
+                }
+
+                StatusText = $"{Files.Count} 个项目";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                StatusText = "访问被拒绝: 没有权限访问此目录";
+            }
+            catch (DirectoryNotFoundException)
+            {
+                StatusText = "目录不存在";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"错误: {ex.Message}";
+            }
+        }
+
+        private async Task ShowPreviewAsync()
+        {
+            // Cancel any ongoing preview operation
+            _previewCancellationTokenSource?.Cancel();
+            _previewCancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _previewCancellationTokenSource.Token;
+
+            // Wait for any ongoing preview to complete
+            await _previewSemaphore.WaitAsync(cancellationToken);
+
+            try
+            {
+                if (SelectedFile == null)
+                {
+                    PreviewContent = null;
+                    PreviewStatus = "";
+                    IsPreviewLoading = false;
+                    return;
+                }
+
+                if (SelectedFile.IsDirectory)
+                {
+                    await ShowDirectoryPreviewAsync(cancellationToken);
+                    return;
+                }
+
+                IsPreviewLoading = true;
+                PreviewStatus = "正在加载预览...";
+                PreviewContent = CreateLoadingIndicator();
+
+                string extension = Path.GetExtension(SelectedFile.FullPath).ToLower();
+                long fileSize = SelectedFile.Size;
+
+                // Check file size limits for different types
+                if (IsTextFile(extension) && fileSize > 10 * 1024 * 1024) // 10MB limit for text
+                {
+                    PreviewContent = CreateInfoPanel("文件过大", "文本文件超过10MB，无法预览");
+                    PreviewStatus = "文件过大";
+                    IsPreviewLoading = false;
+                    return;
+                }
+
+                if (IsImageFile(extension) && fileSize > 50 * 1024 * 1024) // 50MB limit for images
+                {
+                    PreviewContent = CreateInfoPanel("文件过大", "图片文件超过50MB，无法预览");
+                    PreviewStatus = "文件过大";
+                    IsPreviewLoading = false;
+                    return;
+                }
+
+                // Load preview based on file type
+                switch (extension)
+                {
+                    case ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".md" or ".yaml" or ".yml":
+                        await ShowTextPreviewAsync(cancellationToken);
+                        break;
+                    case ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico":
+                        await ShowImagePreviewAsync(cancellationToken);
+                        break;
+                    case ".pdf":
+                        await ShowPdfPreviewAsync(cancellationToken);
+                        break;
+                    case ".html" or ".htm":
+                        await ShowHtmlPreviewAsync(cancellationToken);
+                        break;
+                    case ".csv":
+                        await ShowCsvPreviewAsync(cancellationToken);
+                        break;
+                    default:
+                        await ShowFileInfoAsync(cancellationToken);
+                        break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                PreviewContent = null;
+                PreviewStatus = "预览已取消";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("预览错误", ex.Message);
+                PreviewStatus = $"预览失败: {ex.Message}";
+                IsPreviewLoading = false;
+            }
+            finally
+            {
+                _previewSemaphore.Release();
+            }
+        }
+
+        private async Task ShowDirectoryPreviewAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var dirInfo = new DirectoryInfo(SelectedFile!.FullPath);
+                
+                // Set current preview folder path
+                _currentPreviewFolderPath = dirInfo.FullName;
+                
+                var panel = new System.Windows.Controls.StackPanel();
+                panel.Children.Add(CreateInfoTextBlock($"文件夹: {dirInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {dirInfo.FullName}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {dirInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {dirInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+
+                // Quick directory count (without recursion)
+                var quickSummary = await Task.Run(() =>
+                {
+                    int fileCount = 0;
+                    int dirCount = 0;
+
+                    try
+                    {
+                        foreach (var file in dirInfo.EnumerateFiles())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            fileCount++;
+                            if (fileCount > 1000) break; // Quick preview only
+                        }
+
+                        foreach (var dir in dirInfo.EnumerateDirectories())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            dirCount++;
+                            if (dirCount > 1000) break; // Quick preview only
+                        }
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Access denied, return partial info
+                    }
+
+                    return new { FileCount = fileCount, DirCount = dirCount };
+                }, cancellationToken);
+
+                panel.Children.Add(CreateInfoTextBlock($"直接包含文件: {quickSummary.FileCount}{(quickSummary.FileCount >= 1000 ? "+" : "")} 个"));
+                panel.Children.Add(CreateInfoTextBlock($"直接包含文件夹: {quickSummary.DirCount}{(quickSummary.DirCount >= 1000 ? "+" : "")} 个"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+
+                // Size calculation section
+                var sizeHeaderBlock = CreateInfoTextBlock("总大小计算:");
+                sizeHeaderBlock.FontWeight = System.Windows.FontWeights.Bold;
+                panel.Children.Add(sizeHeaderBlock);
+
+                // Check if we have cached result or active calculation
+                var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
+                var cachedSize = backgroundCalculator.GetCachedSize(dirInfo.FullName);
+                var isActiveCalculation = backgroundCalculator.IsCalculationActive(dirInfo.FullName);
+
+                var sizeStatusBlock = CreateInfoTextBlock("");
+                var progressBlock = CreateInfoTextBlock("");
+                var sizeResultBlock = CreateInfoTextBlock("");
+                
+                if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
+                {
+                    sizeStatusBlock.Text = $"计算失败: {cachedSize.Error}";
+                    IsSizeCalculating = false;
+                    SizeCalculationProgress = "";
+                }
+                else if (cachedSize != null && cachedSize.IsCalculationComplete)
+                {
+                    sizeStatusBlock.Text = $"总大小: {cachedSize.FormattedSize}";
+                    sizeResultBlock.Text = $"包含 {cachedSize.FileCount:N0} 个文件，{cachedSize.DirectoryCount:N0} 个文件夹";
+                    if (cachedSize.InaccessibleItems > 0)
+                    {
+                        progressBlock.Text = $"无法访问 {cachedSize.InaccessibleItems} 个项目";
+                    }
+                    IsSizeCalculating = false;
+                    SizeCalculationProgress = "";
+                }
+                else if (isActiveCalculation)
+                {
+                    sizeStatusBlock.Text = "正在后台计算...";
+                    IsSizeCalculating = true;
+                    SizeCalculationProgress = "正在计算中...";
+                }
+                else
+                {
+                    sizeStatusBlock.Text = "准备计算...";
+                    // Queue the calculation in background
+                    backgroundCalculator.QueueFolderSizeCalculation(dirInfo.FullName, 
+                        new { PreviewPanel = panel, StatusBlock = sizeStatusBlock, ProgressBlock = progressBlock, ResultBlock = sizeResultBlock });
+                    IsSizeCalculating = true;
+                    SizeCalculationProgress = "正在排队计算...";
+                }
+                
+                panel.Children.Add(sizeStatusBlock);
+                panel.Children.Add(progressBlock);
+                panel.Children.Add(sizeResultBlock);
+
+                PreviewContent = panel;
+                PreviewStatus = "文件夹信息";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("文件夹预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+                IsSizeCalculating = false;
+                SizeCalculationProgress = "";
+                _currentPreviewFolderPath = string.Empty;
+            }
+        }
+
+        private void OnSizeCalculationCompleted(object? sender, FolderSizeCompletedEventArgs e)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // Update any active directory preview if it matches
+                if (SelectedFile?.IsDirectory == true && SelectedFile.FullPath == e.FolderPath)
+                {
+                    UpdateDirectoryPreviewWithSize(e.SizeInfo);
+                }
+                
+                // Update directory tree item if exists
+                UpdateDirectoryTreeItemSize(e.FolderPath, e.SizeInfo);
+                
+                IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.ActiveCalculationsCount > 0;
+                
+                // Clear progress if this was the current preview folder
+                if (_currentPreviewFolderPath == e.FolderPath)
+                {
+                    SizeCalculationProgress = "";
+                }
+            });
+        }
+
+        private void OnSizeCalculationProgress(object? sender, FolderSizeProgressEventArgs e)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // Only show progress for the currently selected folder
+                if (SelectedFile?.IsDirectory == true && 
+                    SelectedFile.FullPath == e.FolderPath && 
+                    _currentPreviewFolderPath == e.FolderPath)
+                {
+                    var currentPath = e.Progress.CurrentPath;
+                    if (!string.IsNullOrEmpty(currentPath) && currentPath.Length > 60)
+                    {
+                        currentPath = $"...{currentPath.Substring(currentPath.Length - 50)}";
+                    }
+                    SizeCalculationProgress = $"正在扫描: {Path.GetFileName(currentPath)} ({e.Progress.ProcessedFiles} 文件)";
+                }
+            });
+        }
+
+        private void UpdateDirectoryPreviewWithSize(FolderSizeInfo sizeInfo)
+        {
+            if (PreviewContent is System.Windows.Controls.StackPanel panel)
+            {
+                // Find and update the size status blocks
+                foreach (var child in panel.Children.OfType<System.Windows.Controls.TextBlock>())
+                {
+                    if (child.Text.StartsWith("总大小:") || child.Text.StartsWith("正在后台计算") || child.Text.StartsWith("准备计算"))
+                    {
+                        if (!string.IsNullOrEmpty(sizeInfo.Error))
+                        {
+                            child.Text = $"计算失败: {sizeInfo.Error}";
+                        }
+                        else
+                        {
+                            child.Text = $"总大小: {sizeInfo.FormattedSize}";
+                            
+                            // Update result block
+                            var resultBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
+                                .FirstOrDefault(tb => tb.Text.StartsWith("包含") || string.IsNullOrEmpty(tb.Text));
+                            if (resultBlock != null)
+                            {
+                                resultBlock.Text = $"包含 {sizeInfo.FileCount:N0} 个文件，{sizeInfo.DirectoryCount:N0} 个文件夹";
+                            }
+                            
+                            // Update progress block for inaccessible items
+                            if (sizeInfo.InaccessibleItems > 0)
+                            {
+                                var progressBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
+                                    .LastOrDefault();
+                                if (progressBlock != null && !progressBlock.Text.StartsWith("包含"))
+                                {
+                                    progressBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void UpdateDirectoryTreeItemSize(string folderPath, FolderSizeInfo sizeInfo)
+        {
+            // Update directory tree items recursively
+            UpdateDirectoryTreeItemSizeRecursive(DirectoryTree, folderPath, sizeInfo);
+        }
+
+        private void UpdateDirectoryTreeItemSizeRecursive(ObservableCollection<DirectoryItemViewModel> items, string folderPath, FolderSizeInfo sizeInfo)
+        {
+            foreach (var item in items)
+            {
+                if (item.FullPath == folderPath)
+                {
+                    item.SizeInfo = sizeInfo;
+                    if (!string.IsNullOrEmpty(sizeInfo.Error))
+                    {
+                        item.SizeText = "计算失败";
+                    }
+                    else
+                    {
+                        item.SizeText = sizeInfo.FormattedSize;
+                    }
+                    item.IsSizeCalculating = false;
+                    return;
+                }
+                
+                if (item.SubDirectories.Any())
+                {
+                    UpdateDirectoryTreeItemSizeRecursive(item.SubDirectories, folderPath, sizeInfo);
+                }
+            }
+        }
+
+        private async Task ShowTextPreviewAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var content = await File.ReadAllTextAsync(SelectedFile!.FullPath, cancellationToken);
+                
+                // Detect encoding and reload if necessary
+                var encoding = DetectEncoding(SelectedFile.FullPath);
+                if (encoding != Encoding.UTF8)
+                {
+                    content = await File.ReadAllTextAsync(SelectedFile.FullPath, encoding, cancellationToken);
+                }
+
+                // Limit preview length
+                if (content.Length > 100000) // 100K characters limit
+                {
+                    content = content.Substring(0, 100000) + "\n\n... (文件已截断，仅显示前100,000个字符)";
+                }
+
+                var textBox = new System.Windows.Controls.TextBox
+                {
+                    Text = content,
+                    IsReadOnly = true,
+                    TextWrapping = System.Windows.TextWrapping.Wrap,
+                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    BorderThickness = new System.Windows.Thickness(0),
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New")
+                };
+
+                PreviewContent = textBox;
+                PreviewStatus = $"文本预览 ({content.Length:N0} 字符)";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("文本预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+            }
+        }
+
+        private async Task ShowImagePreviewAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var image = await Task.Run(() =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    return Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.UriSource = new Uri(SelectedFile!.FullPath);
+                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                        bitmap.DecodePixelWidth = 800; // Limit size for performance
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+
+                        return new System.Windows.Controls.Image
+                        {
+                            Source = bitmap,
+                            Stretch = System.Windows.Media.Stretch.Uniform,
+                            StretchDirection = System.Windows.Controls.StretchDirection.DownOnly
+                        };
+                    });
+                }, cancellationToken);
+
+                var panel = new System.Windows.Controls.StackPanel();
+                panel.Children.Add(image);
+                
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                panel.Children.Add(CreateInfoTextBlock($"尺寸: {image.Source.Width} × {image.Source.Height}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+
+                PreviewContent = panel;
+                PreviewStatus = "图片预览";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("图片预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+            }
+        }
+
+        private async Task ShowPdfPreviewAsync(CancellationToken cancellationToken)
+        {
+            await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
+            
+            var panel = new System.Windows.Controls.StackPanel();
+            panel.Children.Add(CreateInfoTextBlock("PDF 文档"));
+            panel.Children.Add(CreateInfoTextBlock(""));
+            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件"));
+            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
+            
+            var fileInfo = new FileInfo(SelectedFile!.FullPath);
+            panel.Children.Add(CreateInfoTextBlock(""));
+            panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+            panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+
+            PreviewContent = panel;
+            PreviewStatus = "PDF 文档信息";
+            IsPreviewLoading = false;
+        }
+
+        private async Task ShowHtmlPreviewAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var content = await File.ReadAllTextAsync(SelectedFile!.FullPath, cancellationToken);
+                
+                // For security, show as text instead of rendering HTML
+                var textBox = new System.Windows.Controls.TextBox
+                {
+                    Text = content.Length > 50000 ? content.Substring(0, 50000) + "\n\n... (已截断)" : content,
+                    IsReadOnly = true,
+                    TextWrapping = System.Windows.TextWrapping.Wrap,
+                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                    BorderThickness = new System.Windows.Thickness(0),
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New")
+                };
+
+                PreviewContent = textBox;
+                PreviewStatus = "HTML 源代码";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("HTML预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+            }
+        }
+
+        private async Task ShowCsvPreviewAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var lines = await File.ReadAllLinesAsync(SelectedFile!.FullPath, cancellationToken);
+                var previewLines = lines.Take(100).ToArray(); // Show first 100 lines
+
+                var panel = new System.Windows.Controls.StackPanel();
+                panel.Children.Add(CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行，共 {lines.Length} 行)"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+
+                foreach (var line in previewLines)
+                {
+                    if (cancellationToken.IsCancellationRequested) break;
+                    panel.Children.Add(CreateInfoTextBlock(line));
+                }
+
+                if (lines.Length > 100)
+                {
+                    panel.Children.Add(CreateInfoTextBlock(""));
+                    panel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
+                }
+
+                PreviewContent = new System.Windows.Controls.ScrollViewer
+                {
+                    Content = panel,
+                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
+                };
+                PreviewStatus = $"CSV 预览 ({lines.Length} 行)";
+                IsPreviewLoading = false;
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel("CSV预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+            }
+        }
+
+        private async Task ShowFileInfoAsync(CancellationToken cancellationToken)
+        {
+            await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
+            
+            var fileInfo = new FileInfo(SelectedFile!.FullPath);
+            var panel = new System.Windows.Controls.StackPanel();
+            
+            panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+            panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+            panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+            panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
+            panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
+
+            PreviewContent = panel;
+            PreviewStatus = "文件信息";
+            IsPreviewLoading = false;
+        }
+
+        private System.Windows.Controls.StackPanel CreateLoadingIndicator()
+        {
+            var panel = new System.Windows.Controls.StackPanel
+            {
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment = System.Windows.VerticalAlignment.Center
+            };
+
+            var progressBar = new System.Windows.Controls.ProgressBar
+            {
+                IsIndeterminate = true,
+                Width = 200,
+                Height = 20,
+                Margin = new System.Windows.Thickness(0, 10, 0, 10)
+            };
+
+            panel.Children.Add(CreateInfoTextBlock("正在加载预览..."));
+            panel.Children.Add(progressBar);
+
+            return panel;
+        }
+
+        private System.Windows.Controls.StackPanel CreateErrorPanel(string title, string message)
+        {
+            var panel = new System.Windows.Controls.StackPanel();
+            panel.Children.Add(new System.Windows.Controls.TextBlock 
+            { 
+                Text = title, 
+                FontWeight = System.Windows.FontWeights.Bold,
+                Foreground = System.Windows.Media.Brushes.Red,
+                Margin = new System.Windows.Thickness(0, 0, 0, 10)
+            });
+            panel.Children.Add(CreateInfoTextBlock(message));
+            return panel;
+        }
+
+        private System.Windows.Controls.StackPanel CreateInfoPanel(string title, string message)
+        {
+            var panel = new System.Windows.Controls.StackPanel();
+            panel.Children.Add(new System.Windows.Controls.TextBlock 
+            { 
+                Text = title, 
+                FontWeight = System.Windows.FontWeights.Bold,
+                Margin = new System.Windows.Thickness(0, 0, 0, 10)
+            });
+            panel.Children.Add(CreateInfoTextBlock(message));
+            return panel;
+        }
+
+        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
+        {
+            return new System.Windows.Controls.TextBlock 
+            { 
+                Text = text, 
+                Margin = new System.Windows.Thickness(0, 2, 0, 2),
+                TextWrapping = System.Windows.TextWrapping.Wrap
+            };
+        }
+
+        private static bool IsTextFile(string extension)
+        {
+            return extension switch
+            {
+                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" 
+                or ".md" or ".yaml" or ".yml" or ".html" or ".htm" or ".css" or ".js"
+                or ".py" or ".java" or ".cpp" or ".h" or ".sql" => true,
+                _ => false
+            };
+        }
+
+        private static bool IsImageFile(string extension)
+        {
+            return extension switch
+            {
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => true,
+                _ => false
+            };
+        }
+
+        private static Encoding DetectEncoding(string filePath)
+        {
+            try
+            {
+                using var reader = new StreamReader(filePath, Encoding.Default, true);
+                reader.Read();
+                return reader.CurrentEncoding;
+            }
+            catch
+            {
+                return Encoding.UTF8;
+            }
+        }
+
+        private static string FormatFileSize(long bytes)
+        {
+            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
+            int counter = 0;
+            decimal number = bytes;
+            while (Math.Round(number / 1024) >= 1)
+            {
+                number /= 1024;
+                counter++;
+            }
+            return $"{number:n1} {suffixes[counter]}";
+        }
+
+        private static Wpf.Ui.Controls.SymbolRegular GetFileIcon(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".txt" or ".log" => Wpf.Ui.Controls.SymbolRegular.Document24,
+                ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".html" or ".htm" or ".css" or ".js" => Wpf.Ui.Controls.SymbolRegular.Code24,
+                ".md" or ".yaml" or ".yml" => Wpf.Ui.Controls.SymbolRegular.DocumentText24,
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => Wpf.Ui.Controls.SymbolRegular.Image24,
+                ".pdf" => Wpf.Ui.Controls.SymbolRegular.DocumentPdf24,
+                ".csv" => Wpf.Ui.Controls.SymbolRegular.Table24,
+                ".exe" or ".msi" => Wpf.Ui.Controls.SymbolRegular.Apps24,
+                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => Wpf.Ui.Controls.SymbolRegular.FolderZip24,
+                ".mp3" or ".wav" or ".flac" or ".aac" => Wpf.Ui.Controls.SymbolRegular.MusicNote124,
+                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" => Wpf.Ui.Controls.SymbolRegular.Video24,
+                _ => Wpf.Ui.Controls.SymbolRegular.Document24
+            };
+        }
+
+        private static string GetFileType(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".txt" => "文本文件",
+                ".log" => "日志文件",
+                ".cs" => "C# 源代码",
+                ".xml" => "XML 文件",
+                ".json" => "JSON 文件",
+                ".config" => "配置文件",
+                ".ini" => "配置文件",
+                ".md" => "Markdown 文件",
+                ".yaml" or ".yml" => "YAML 文件",
+                ".html" or ".htm" => "HTML 文件",
+                ".css" => "CSS 样式表",
+                ".js" => "JavaScript 文件",
+                ".jpg" or ".jpeg" => "JPEG 图片",
+                ".png" => "PNG 图片",
+                ".gif" => "GIF 图片",
+                ".bmp" => "位图文件",
+                ".webp" => "WebP 图片",
+                ".tiff" => "TIFF 图片",
+                ".ico" => "图标文件",
+                ".pdf" => "PDF 文档",
+                ".csv" => "CSV 表格",
+                ".exe" => "可执行文件",
+                ".msi" => "安装程序",
+                ".zip" => "ZIP 压缩包",
+                ".rar" => "RAR 压缩包",
+                ".7z" => "7Z 压缩包",
+                ".tar" => "TAR 归档",
+                ".gz" => "GZ 压缩包",
+                ".mp3" => "MP3 音频",
+                ".wav" => "WAV 音频",
+                ".flac" => "FLAC 音频",
+                ".aac" => "AAC 音频",
+                ".mp4" => "MP4 视频",
+                ".avi" => "AVI 视频",
+                ".mkv" => "MKV 视频",
+                ".mov" => "QuickTime 视频",
+                ".wmv" => "WMV 视频",
+                "" => "文件",
+                _ => $"{extension.ToUpper()} 文件"
+            };
+        }
+
+        [RelayCommand]
+        private void NavigateToPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            
+            try
+            {
+                // Check if we have access to the directory before navigating
+                if (!Directory.Exists(path))
+                {
+                    StatusText = "路径不存在";
+                    return;
+                }
+
+                // Try to enumerate the directory to check access
+                Directory.GetDirectories(path).Take(1).ToList();
+                
+                if (!string.IsNullOrEmpty(CurrentPath))
+                {
+                    _backHistory.Push(CurrentPath);
+                    _forwardHistory.Clear();
+                }
+                CurrentPath = path;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                StatusText = "访问被拒绝: 没有权限访问此目录";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"导航错误: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private void Back()
+        {
+            if (_backHistory.Count > 0)
+            {
+                _forwardHistory.Push(CurrentPath);
+                CurrentPath = _backHistory.Pop();
+            }
+        }
+
+        [RelayCommand]
+        private void Forward()
+        {
+            if (_forwardHistory.Count > 0)
+            {
+                _backHistory.Push(CurrentPath);
+                CurrentPath = _forwardHistory.Pop();
+            }
+        }
+
+        [RelayCommand]
+        private void Up()
+        {
+            var parent = Directory.GetParent(CurrentPath);
+            if (parent != null)
+            {
+                NavigateToPath(parent.FullName);
+            }
+        }
+
+        [RelayCommand]
+        private async void Refresh()
+        {
+            StatusText = "正在刷新...";
+            LoadFiles();
+            
+            // Refresh the directory tree
+            try
+            {
+                var refreshTasks = DirectoryTree.Select(rootItem => rootItem.RefreshAsync()).ToArray();
+                await Task.WhenAll(refreshTasks);
+                StatusText = "刷新完成";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"刷新错误: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private void DirectorySelected(DirectoryItemViewModel? directory)
+        {
+            if (directory != null && Directory.Exists(directory.FullPath))
+            {
+                NavigateToPath(directory.FullPath);
+            }
+        }
+
+        [RelayCommand]
+        private void AddressBarEnter(string? path)
+        {
+            if (!string.IsNullOrEmpty(path))
+            {
+                NavigateToPath(path);
+            }
+        }
+
+        [RelayCommand]
+        private void FileDoubleClick(FileItemViewModel? file)
+        {
+            if (file == null) return;
+
+            try
+            {
+                if (file.IsDirectory)
+                {
+                    // Navigate into the directory
+                    NavigateToPath(file.FullPath);
+                }
+                else
+                {
+                    // Open the file with the default application
+                    var startInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = file.FullPath,
+                        UseShellExecute = true
+                    };
+                    System.Diagnostics.Process.Start(startInfo);
+                    StatusText = $"已打开文件: {file.Name}";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"打开失败: {ex.Message}";
+            }
+        }
+    }
+}

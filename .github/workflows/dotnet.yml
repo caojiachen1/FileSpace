@@ -1,0 +1,180 @@
+# .NET Build and Release Workflow
+# 
+# This workflow automatically builds, tests, and creates releases with version tagging.
+# 
+# VERSION TAGGING USAGE:
+# =====================
+# 
+# 1. MAJOR VERSION UPDATE (v0.5 → v1.0)
+#    Include [major] or "BREAKING CHANGE" in commit message:
+#    git commit -m "Refactor entire file management system [major]"
+#    git commit -m "BREAKING CHANGE: Complete rewrite of API interfaces"
+# 
+# 2. FEATURE VERSION UPDATE (v0.5 → v0.15)
+#    Include [minor] or [feature] in commit message:
+#    git commit -m "Add file preview functionality [feature]"
+#    git commit -m "Add batch operations feature [minor]"
+# 
+# 3. REGULAR UPDATE (v0.5 → v0.6)
+#    Normal commit message without special tags:
+#    git commit -m "Fix file sorting bug"
+# 
+# VERSION EXAMPLES:
+# - Initial: v0.1
+# - Regular: v0.1 → v0.2 → v0.3
+# - Feature: v0.3 → v0.13 (jumps +10)
+# - Major:   v0.13 → v1.0 (resets minor to 0)
+# - Continue: v1.0 → v1.1 → v1.2
+
+name: .NET WPF
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for tag detection
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+      
+    - name: Test
+      run: dotnet test --no-build --verbosity normal --configuration Release
+
+    - name: Get latest tag and generate new version
+      id: version
+      run: |
+        # Get the latest tag that starts with 'v'
+        $latestTag = git tag -l "v*" | Sort-Object {
+          try {
+            [Version]($_ -replace '^v', '')
+          } catch {
+            [Version]"0.0"
+          }
+        } | Select-Object -Last 1
+        
+        # Check commit message for version bump indicators
+        $commitMessage = "${{ github.event.head_commit.message }}"
+        $isMajorBump = $commitMessage -match "\[major\]" -or $commitMessage -match "BREAKING CHANGE"
+        $isMinorBump = $commitMessage -match "\[minor\]" -or $commitMessage -match "\[feature\]"
+        
+        # Clean commit message by removing version tags
+        $cleanCommitMessage = $commitMessage -replace "\s*\[(major|minor|feature)\]\s*", "" -replace "BREAKING CHANGE:\s*", ""
+        
+        if ($latestTag) {
+          # Extract version number
+          $version = $latestTag -replace '^v', ''
+          $versionParts = $version.Split('.')
+          $major = [int]$versionParts[0]
+          $minor = if ($versionParts.Length -gt 1) { [int]$versionParts[1] } else { 0 }
+          
+          if ($isMajorBump) {
+            # Major version bump (e.g., v0.5 -> v1.0)
+            $major++
+            $minor = 0
+            $newVersion = "v$major.$minor"
+            echo "major_update=true" >> $env:GITHUB_OUTPUT
+          } elseif ($isMinorBump) {
+            # Minor version bump with jump (e.g., v0.5 -> v0.15)
+            $minor = $minor + 10
+            $newVersion = "v$major.$minor"
+            echo "minor_update=true" >> $env:GITHUB_OUTPUT
+          } else {
+            # Regular increment (e.g., v0.5 -> v0.6)
+            $minor++
+            $newVersion = "v$major.$minor"
+            echo "patch_update=true" >> $env:GITHUB_OUTPUT
+          }
+        } else {
+          # No previous tags, start with v0.1
+          $newVersion = "v0.1"
+          echo "initial_release=true" >> $env:GITHUB_OUTPUT
+        }
+        
+        echo "new_version=$newVersion" >> $env:GITHUB_OUTPUT
+        echo "previous_tag=$latestTag" >> $env:GITHUB_OUTPUT
+        echo "clean_commit_message=$cleanCommitMessage" >> $env:GITHUB_OUTPUT
+        echo "New version will be: $newVersion"
+        if ($isMajorBump) { echo "This is a MAJOR version update!" }
+        elseif ($isMinorBump) { echo "This is a MINOR version update!" }
+        else { echo "This is a regular patch update." }
+
+    - name: Publish WPF application
+      run: |
+        $version = "${{ steps.version.outputs.new_version }}" -replace '^v', ''
+        
+        # Publish as self-contained WPF application for Windows x64
+        dotnet publish -c Release --runtime win-x64 -o ./publish/
+
+    - name: Create portable ZIP package
+      run: |
+        $zipName = "FileSpace-${{ steps.version.outputs.new_version }}-portable.zip"
+        
+        # Ensure publish directory exists and has content
+        if (!(Test-Path "./publish/") -or (Get-ChildItem "./publish/" | Measure-Object).Count -eq 0) {
+          throw "Publish directory is empty or doesn't exist"
+        }
+        
+        Compress-Archive -Path "./publish/*" -DestinationPath $zipName -Force
+        echo "ZIP package created: $zipName"
+        echo "ZIP_PATH=$zipName" >> $env:GITHUB_ENV
+        
+        # Show package contents and size for verification
+        echo "Package contents:"
+        Get-ChildItem ./publish/ | ForEach-Object { echo "  $($_.Name)" }
+        echo "ZIP file size: $((Get-Item $zipName).Length / 1MB) MB"
+
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.new_version }}
+        release_name: ${{ steps.version.outputs.new_version }}
+        body: |
+          ## Changes in this release
+          ${{ steps.version.outputs.clean_commit_message }}
+          
+          ${{ fromJSON('{"true": "🚀 **MAJOR UPDATE** - This release includes breaking changes!", "false": ""}')[steps.version.outputs.major_update] }}
+          ${{ fromJSON('{"true": "✨ **FEATURE UPDATE** - This release includes new features!", "false": ""}')[steps.version.outputs.minor_update] }}
+          ${{ fromJSON('{"true": "🔧 **PATCH UPDATE** - This release includes bug fixes and improvements!", "false": ""}')[steps.version.outputs.patch_update] }}
+          ${{ fromJSON('{"true": "🎉 **INITIAL RELEASE** - Welcome to FileSpace!", "false": ""}')[steps.version.outputs.initial_release] }}
+
+          ${{ steps.version.outputs.previous_tag && format('**Full Changelog**: https://github.com/{0}/compare/{1}..{2}', github.repository, steps.version.outputs.previous_tag, steps.version.outputs.new_version) || '' }}
+        draft: false
+        prerelease: ${{ steps.version.outputs.major_update == 'true' }}
+
+    - name: Upload ZIP Package
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ env.ZIP_PATH }}
+        asset_name: FileSpace-${{ steps.version.outputs.new_version }}-portable.zip
+        asset_content_type: application/zip
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: portable-package-${{ steps.version.outputs.new_version }}
+        path: ${{ env.ZIP_PATH }}

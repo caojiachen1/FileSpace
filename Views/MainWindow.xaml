@@ -1,0 +1,344 @@
+<ui:FluentWindow x:Class="FileSpace.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:FileSpace.Views"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="FileSpace - 文件管理器" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica">
+    
+    <ui:FluentWindow.Resources>
+        <!-- Add missing converters -->
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        
+        <!-- Custom expand/collapse toggle style with down arrow -->
+        <Style x:Key="ExpandCollapseToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Width="16" Height="16" Background="Transparent">
+                            <ui:SymbolIcon x:Name="ExpandIcon" 
+                                           Symbol="ChevronDown24" 
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5">
+                                <ui:SymbolIcon.RenderTransform>
+                                    <RotateTransform x:Name="ExpandIconTransform" Angle="-90"/>
+                                </ui:SymbolIcon.RenderTransform>
+                            </ui:SymbolIcon>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ExpandIconTransform"
+                                                           Storyboard.TargetProperty="Angle"
+                                                           To="0"
+                                                           Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ExpandIconTransform"
+                                                           Storyboard.TargetProperty="Angle"
+                                                           To="-90"
+                                                           Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ExpandIcon" Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- TreeView Item Style for dark mode -->
+        <Style x:Key="DirectoryTreeViewItemStyle" TargetType="TreeViewItem">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TreeViewItem">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition MinWidth="19" Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Expansion toggle button with down arrow -->
+                            <ToggleButton x:Name="Expander" Grid.Column="0"
+                                          ClickMode="Press"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Visibility="{Binding HasSubDirectories, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                          Style="{StaticResource ExpandCollapseToggleStyle}"/>
+                            
+                            <!-- Content area -->
+                            <Border x:Name="ContentBorder" Grid.Column="1" 
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="3">
+                                <ContentPresenter x:Name="PART_Header" 
+                                                  ContentSource="Header"
+                                                  HorizontalAlignment="Left"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            
+                            <!-- Child items -->
+                            <ItemsPresenter x:Name="ItemsHost" Grid.Column="1" Grid.Row="1"
+                                            Margin="12,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="False">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding HasSubDirectories}" Value="False">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="FileListViewItemStyle" TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="Border" 
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <GridViewRowPresenter Content="{TemplateBinding Content}"
+                                                Columns="{TemplateBinding GridView.ColumnCollection}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#FF404040"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#FF606060"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title Bar -->
+        <ui:TitleBar Grid.Row="0" Title="FileSpace" ShowMinimize="True" ShowMaximize="True" ShowClose="True"/>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel - Directory Tree -->
+            <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
+                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
+                    BorderThickness="1" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Text="文件夹" FontWeight="Bold" Margin="10" 
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    
+                    <TreeView Grid.Row="1" x:Name="DirectoryTreeView" 
+                              Background="Transparent" BorderThickness="0"
+                              ItemsSource="{Binding DirectoryTree}"
+                              SelectedItemChanged="DirectoryTreeView_SelectedItemChanged"
+                              ItemContainerStyle="{StaticResource DirectoryTreeViewItemStyle}">
+                        <TreeView.Resources>
+                            <!-- Add BooleanToVisibilityConverter -->
+                            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+                        </TreeView.Resources>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding SubDirectories}">
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Folder icon -->
+                                    <ui:SymbolIcon Symbol="Folder24" Margin="0,0,5,0" 
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    
+                                    <!-- Directory name -->
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    
+                                    <!-- Loading indicator -->
+                                    <ui:ProgressRing Width="14" Height="14" Margin="5,0,0,0"
+                                                     IsIndeterminate="True"
+                                                     Visibility="{Binding IsLoadingChildren, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    
+                                    <!-- Error indicator -->
+                                    <ui:SymbolIcon Symbol="ErrorCircle24" Margin="5,0,0,0" 
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}" 
+                                                   Width="14" Height="14"
+                                                   Visibility="{Binding HasLoadError, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                   ToolTip="{Binding LoadErrorMessage}"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" 
+                          Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"/>
+
+            <!-- Center Panel - File List -->
+            <Border Grid.Column="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
+                    BorderThickness="1" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Address Bar -->
+                    <ui:TextBox Grid.Row="0" x:Name="AddressBar" Margin="10" 
+                                PlaceholderText="输入路径..." 
+                                Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}"
+                                KeyDown="AddressBar_KeyDown"/>
+
+                    <!-- Toolbar -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,10,10">
+                        <ui:Button Content="返回" Icon="ArrowLeft24" Click="BackButton_Click" Margin="0,0,5,0"/>
+                        <ui:Button Content="前进" Icon="ArrowRight24" Click="ForwardButton_Click" Margin="0,0,5,0"/>
+                        <ui:Button Content="上级" Icon="ArrowUp24" Click="UpButton_Click" Margin="0,0,5,0"/>
+                        <ui:Button Content="刷新" Icon="ArrowClockwise24" Click="RefreshButton_Click"/>
+                    </StackPanel>
+
+                    <!-- File List -->
+                    <ListView Grid.Row="2" x:Name="FileListView" 
+                              ItemsSource="{Binding Files}"
+                              SelectedItem="{Binding SelectedFile}"
+                              Background="Transparent" BorderThickness="0"
+                              MouseDoubleClick="FileListView_MouseDoubleClick"
+                              ItemContainerStyle="{StaticResource FileListViewItemStyle}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="名称" Width="200">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0"/>
+                                                <TextBlock Text="{Binding Name}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeString}"/>
+                                <GridViewColumn Header="类型" Width="100" DisplayMemberBinding="{Binding Type}"/>
+                                <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding ModifiedTime}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" 
+                          Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"/>
+
+            <!-- Right Panel - File Preview -->
+            <Border Grid.Column="4" Background="{DynamicResource ApplicationBackgroundBrush}" 
+                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
+                    BorderThickness="1" CornerRadius="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Text="预览" FontWeight="Bold" Margin="10" 
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    
+                    <!-- Size Calculation Progress -->
+                    <StackPanel Grid.Row="1" Margin="10,0,10,5" 
+                                Visibility="{Binding IsSizeCalculating, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,0,5"/>
+                        <TextBlock Text="{Binding SizeCalculationProgress}" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    
+                    <ScrollViewer Grid.Row="2" x:Name="PreviewScrollViewer" Margin="10">
+                        <!-- Loading Overlay -->
+                        <Grid>
+                            <ContentPresenter Content="{Binding PreviewContent}"/>
+                            
+                            <!-- Loading Indicator -->
+                            <Border Background="#80000000" 
+                                    Visibility="{Binding IsPreviewLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <ui:ProgressRing IsIndeterminate="True" Width="40" Height="40" Margin="0,0,0,10"/>
+                                    <TextBlock Text="正在加载预览..." Foreground="White" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+                BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
+                BorderThickness="0,1,0,0" Height="30">
+            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Margin="10,0" 
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
