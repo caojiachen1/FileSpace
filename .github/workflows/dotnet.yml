@@ -62,9 +62,13 @@ jobs:
         # Get the latest tag that starts with 'v'
         $latestTag = git tag -l "v*" | Sort-Object {
           try {
-            [Version]($_ -replace '^v', '')
+            $versionStr = $_ -replace '^v', ''
+            $parts = $versionStr.Split('.')
+            $major = [int]$parts[0]
+            $minor = if ($parts.Length -gt 1) { [int]($parts[1] * 10) } else { 0 }
+            return $major * 1000 + $minor
           } catch {
-            [Version]"0.0"
+            return 0
           }
         } | Select-Object -Last 1
         
@@ -81,17 +85,17 @@ jobs:
           $version = $latestTag -replace '^v', ''
           $versionParts = $version.Split('.')
           $major = [int]$versionParts[0]
-          $minor = if ($versionParts.Length -gt 1) { [decimal]$versionParts[1] } else { 0 }
+          $minor = if ($versionParts.Length -gt 1) { [int]$versionParts[1] } else { 0 }
           
           if ($isMajorBump) {
-            # Major version bump (e.g., v0.5 -> v1.0)
+            # Major version bump (e.g., v0.3 -> v1.0)
             $major++
             $minor = 0
             $newVersion = "v$major.$minor"
             echo "major_update=true" >> $env:GITHUB_OUTPUT
           } else {
-            # Regular increment by 0.1 (e.g., v0.1 -> v0.2, v0.5 -> v0.6, v1.0 -> v1.1)
-            $minor = $minor + 0.1
+            # Regular increment by 1 in minor version (e.g., v0.1 -> v0.2, v0.3 -> v0.4)
+            $minor++
             $newVersion = "v$major.$minor"
             if ($isMinorBump) {
               echo "minor_update=true" >> $env:GITHUB_OUTPUT
@@ -169,11 +173,6 @@ jobs:
         body: |
           ## Changes in this release
           ${{ steps.version.outputs.clean_commit_message }}
-          
-          ${{ fromJSON('{"true": "🚀 **MAJOR UPDATE** - This release includes breaking changes!", "false": ""}')[steps.version.outputs.major_update] }}
-          ${{ fromJSON('{"true": "✨ **FEATURE UPDATE** - This release includes new features!", "false": ""}')[steps.version.outputs.minor_update] }}
-          ${{ fromJSON('{"true": "🔧 **PATCH UPDATE** - This release includes bug fixes and improvements!", "false": ""}')[steps.version.outputs.patch_update] }}
-          ${{ fromJSON('{"true": "🎉 **INITIAL RELEASE** - Welcome to FileSpace!", "false": ""}')[steps.version.outputs.initial_release] }}
 
           ## Download Options
           - `FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
