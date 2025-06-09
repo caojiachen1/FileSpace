@@ -27,8 +27,9 @@ A modern file manager built with WPF, featuring an intuitive interface and power
 ### 🎨 Modern Interface
 - **Fluent Design**: Modern design based on WPF-UI
 - **Dark theme**: Default dark theme for comfortable viewing
+- **Colorful icons**: Rich, colorful file type icons for better visual distinction
 - **Responsive layout**: Supports window resizing
-- **Icon system**: Rich file type icons
+- **Color-coded navigation**: Intuitive color scheme for different UI elements
 
 ## 🚀 Installation
 

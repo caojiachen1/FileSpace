@@ -21,6 +21,9 @@ namespace FileSpace.ViewModels
         private SymbolRegular _icon;
 
         [ObservableProperty]
+        private string _iconColor = "#FF607D8B"; // Default color
+
+        [ObservableProperty]
         private string _type = string.Empty;
 
         [ObservableProperty]

@@ -162,6 +162,7 @@ namespace FileSpace.ViewModels
                                 FullPath = dirInfo.FullName,
                                 IsDirectory = true,
                                 Icon = Wpf.Ui.Controls.SymbolRegular.Folder24,
+                                IconColor = "#FFE6A23C", // Golden yellow for folders
                                 Type = "文件夹",
                                 ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                             });
@@ -194,6 +195,7 @@ namespace FileSpace.ViewModels
                                 IsDirectory = false,
                                 Size = fileInfo.Length,
                                 Icon = GetFileIcon(fileInfo.Extension),
+                                IconColor = GetFileIconColor(fileInfo.Extension),
                                 Type = GetFileType(fileInfo.Extension),
                                 ModifiedTime = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                             });
@@ -871,6 +873,30 @@ namespace FileSpace.ViewModels
                 ".mp3" or ".wav" or ".flac" or ".aac" => Wpf.Ui.Controls.SymbolRegular.MusicNote124,
                 ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" => Wpf.Ui.Controls.SymbolRegular.Video24,
                 _ => Wpf.Ui.Controls.SymbolRegular.Document24
+            };
+        }
+
+        private static string GetFileIconColor(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".txt" or ".log" => "#FF909399", // Gray for text files
+                ".cs" => "#FF67C23A", // Green for C# files
+                ".xml" or ".config" => "#FFFF9500", // Orange for config files
+                ".json" => "#FFE6A23C", // Yellow for JSON
+                ".ini" => "#FF909399", // Gray for ini files
+                ".html" or ".htm" => "#FFFF6B6B", // Red for HTML
+                ".css" => "#FF4ECDC4", // Teal for CSS
+                ".js" => "#FFFFEB3B", // Yellow for JavaScript
+                ".md" or ".yaml" or ".yml" => "#FF9C27B0", // Purple for markup
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => "#FF2196F3", // Blue for images
+                ".pdf" => "#FFF44336", // Red for PDF
+                ".csv" => "#FF4CAF50", // Green for CSV
+                ".exe" or ".msi" => "#FF795548", // Brown for executables
+                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "#FFFF5722", // Deep orange for archives
+                ".mp3" or ".wav" or ".flac" or ".aac" => "#FFE91E63", // Pink for audio
+                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" => "#FF9C27B0", // Purple for video
+                _ => "#FF607D8B" // Blue gray for unknown files
             };
         }
 
