@@ -122,6 +122,9 @@ jobs:
         # Publish as self-contained WPF application for Windows x64
         dotnet publish -c Release --runtime win-x64 -o ./publish/
 
+        # Publish as framework-dependent standalone executable (requires .NET runtime)
+        dotnet publish -c Release --runtime win-x64 --self-contained false -p:PublishSingleFile=true -o ./publish-standalone/
+
     - name: Create portable ZIP package
       run: |
         $zipName = "FileSpace-${{ steps.version.outputs.new_version }}-portable.zip"
@@ -139,6 +142,22 @@ jobs:
         echo "Package contents:"
         Get-ChildItem ./publish/ | ForEach-Object { echo "  $($_.Name)" }
         echo "ZIP file size: $((Get-Item $zipName).Length / 1MB) MB"
+
+    - name: Create framework-dependent standalone executable
+      run: |
+        $exeName = "FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe"
+        
+        # Find the main executable in the framework-dependent standalone publish folder
+        $sourceExe = Get-ChildItem "./publish-standalone/" -Filter "*.exe" | Where-Object { $_.Name -notlike "*host*" } | Select-Object -First 1
+        
+        if ($sourceExe) {
+          Copy-Item $sourceExe.FullName -Destination $exeName
+          echo "Framework-dependent standalone executable created: $exeName"
+          echo "FRAMEWORK_EXE_PATH=$exeName" >> $env:GITHUB_ENV
+          echo "Framework-dependent EXE file size: $((Get-Item $exeName).Length / 1MB) MB"
+        } else {
+          throw "Could not find the main executable in framework-dependent standalone publish folder"
+        }
 
     - name: Create Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -158,6 +177,10 @@ jobs:
           ${{ fromJSON('{"true": "🔧 **PATCH UPDATE** - This release includes bug fixes and improvements!", "false": ""}')[steps.version.outputs.patch_update] }}
           ${{ fromJSON('{"true": "🎉 **INITIAL RELEASE** - Welcome to FileSpace!", "false": ""}')[steps.version.outputs.initial_release] }}
 
+          ## Download Options
+          - `FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
+          - `FileSpace-${{ steps.version.outputs.new_version }}-portable.zip` - Extract and run
+
           ${{ steps.version.outputs.previous_tag && format('**Full Changelog**: https://github.com/{0}/compare/{1}..{2}', github.repository, steps.version.outputs.previous_tag, steps.version.outputs.new_version) || '' }}
         draft: false
         prerelease: ${{ steps.version.outputs.major_update == 'true' }}
@@ -173,8 +196,25 @@ jobs:
         asset_name: FileSpace-${{ steps.version.outputs.new_version }}-portable.zip
         asset_content_type: application/zip
 
+    - name: Upload Framework-Dependent Standalone Executable
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ env.FRAMEWORK_EXE_PATH }}
+        asset_name: FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe
+        asset_content_type: application/octet-stream
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: portable-package-${{ steps.version.outputs.new_version }}
         path: ${{ env.ZIP_PATH }}
+
+    - name: Upload framework-dependent standalone artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: framework-dependent-executable-${{ steps.version.outputs.new_version }}
+        path: ${{ env.FRAMEWORK_EXE_PATH }}
