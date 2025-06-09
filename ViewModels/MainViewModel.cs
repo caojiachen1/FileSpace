@@ -556,7 +556,8 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                var content = await File.ReadAllTextAsync(SelectedFile!.FullPath, cancellationToken);
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
                 
                 // Detect encoding and reload if necessary
                 var encoding = DetectEncoding(SelectedFile.FullPath);
@@ -566,24 +567,44 @@ namespace FileSpace.ViewModels
                 }
 
                 // Limit preview length
+                bool isTruncated = false;
                 if (content.Length > 100000) // 100K characters limit
                 {
-                    content = content.Substring(0, 100000) + "\n\n... (文件已截断，仅显示前100,000个字符)";
+                    content = content.Substring(0, 100000);
+                    isTruncated = true;
                 }
+
+                var panel = new System.Windows.Controls.StackPanel();
+                
+                // Add file information
+                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+                
+                var previewHeader = CreateInfoTextBlock("文件预览:");
+                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+                panel.Children.Add(previewHeader);
 
                 var textBox = new System.Windows.Controls.TextBox
                 {
-                    Text = content,
+                    Text = content + (isTruncated ? "\n\n... (文件已截断，仅显示前100,000个字符)" : ""),
                     IsReadOnly = true,
                     TextWrapping = System.Windows.TextWrapping.Wrap,
                     VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
                     Background = System.Windows.Media.Brushes.Transparent,
                     BorderThickness = new System.Windows.Thickness(0),
-                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New")
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
+                    MinHeight = 200
                 };
 
-                PreviewContent = textBox;
+                panel.Children.Add(textBox);
+                PreviewContent = panel;
                 PreviewStatus = $"文本预览 ({content.Length:N0} 字符)";
                 IsPreviewLoading = false;
             }
@@ -599,6 +620,8 @@ namespace FileSpace.ViewModels
         {
             try
             {
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                
                 var image = await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -617,17 +640,29 @@ namespace FileSpace.ViewModels
                         {
                             Source = bitmap,
                             Stretch = System.Windows.Media.Stretch.Uniform,
-                            StretchDirection = System.Windows.Controls.StretchDirection.DownOnly
+                            StretchDirection = System.Windows.Controls.StretchDirection.DownOnly,
+                            MaxHeight = 400
                         };
                     });
                 }, cancellationToken);
 
                 var panel = new System.Windows.Controls.StackPanel();
-                panel.Children.Add(image);
                 
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                panel.Children.Add(CreateInfoTextBlock($"尺寸: {image.Source.Width} × {image.Source.Height}"));
+                // Add file information
+                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
                 panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {image.Source.Width} × {image.Source.Height} 像素"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+                
+                var previewHeader = CreateInfoTextBlock("图片预览:");
+                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+                panel.Children.Add(previewHeader);
+                
+                panel.Children.Add(image);
 
                 PreviewContent = panel;
                 PreviewStatus = "图片预览";
@@ -645,16 +680,24 @@ namespace FileSpace.ViewModels
         {
             await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
             
-            var panel = new System.Windows.Controls.StackPanel();
-            panel.Children.Add(CreateInfoTextBlock("PDF 文档"));
-            panel.Children.Add(CreateInfoTextBlock(""));
-            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件"));
-            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
-            
             var fileInfo = new FileInfo(SelectedFile!.FullPath);
-            panel.Children.Add(CreateInfoTextBlock(""));
+            var panel = new System.Windows.Controls.StackPanel();
+            
+            // Add file information
+            panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+            panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
             panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+            panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
+            panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(CreateInfoTextBlock(""));
+            
+            var previewHeader = CreateInfoTextBlock("PDF 预览信息:");
+            previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+            panel.Children.Add(previewHeader);
+            
+            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
+            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
 
             PreviewContent = panel;
             PreviewStatus = "PDF 文档信息";
@@ -665,21 +708,45 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                var content = await File.ReadAllTextAsync(SelectedFile!.FullPath, cancellationToken);
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
                 
-                // For security, show as text instead of rendering HTML
+                bool isTruncated = false;
+                if (content.Length > 50000)
+                {
+                    content = content.Substring(0, 50000);
+                    isTruncated = true;
+                }
+
+                var panel = new System.Windows.Controls.StackPanel();
+                
+                // Add file information
+                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock(""));
+                
+                var previewHeader = CreateInfoTextBlock("HTML 源代码预览:");
+                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+                panel.Children.Add(previewHeader);
+                
                 var textBox = new System.Windows.Controls.TextBox
                 {
-                    Text = content.Length > 50000 ? content.Substring(0, 50000) + "\n\n... (已截断)" : content,
+                    Text = content + (isTruncated ? "\n\n... (已截断)" : ""),
                     IsReadOnly = true,
                     TextWrapping = System.Windows.TextWrapping.Wrap,
                     VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
                     Background = System.Windows.Media.Brushes.Transparent,
                     BorderThickness = new System.Windows.Thickness(0),
-                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New")
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
+                    MinHeight = 200
                 };
 
-                PreviewContent = textBox;
+                panel.Children.Add(textBox);
+                PreviewContent = panel;
                 PreviewStatus = "HTML 源代码";
                 IsPreviewLoading = false;
             }
@@ -695,31 +762,49 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                var lines = await File.ReadAllLinesAsync(SelectedFile!.FullPath, cancellationToken);
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                var lines = await File.ReadAllLinesAsync(SelectedFile.FullPath, cancellationToken);
                 var previewLines = lines.Take(100).ToArray(); // Show first 100 lines
 
                 var panel = new System.Windows.Controls.StackPanel();
-                panel.Children.Add(CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行，共 {lines.Length} 行)"));
+                
+                // Add file information
+                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
                 panel.Children.Add(CreateInfoTextBlock(""));
+                
+                var previewHeader = CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行):");
+                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+                panel.Children.Add(previewHeader);
 
+                var contentPanel = new System.Windows.Controls.StackPanel();
                 foreach (var line in previewLines)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
-                    panel.Children.Add(CreateInfoTextBlock(line));
+                    contentPanel.Children.Add(CreateInfoTextBlock(line));
                 }
 
                 if (lines.Length > 100)
                 {
-                    panel.Children.Add(CreateInfoTextBlock(""));
-                    panel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
+                    contentPanel.Children.Add(CreateInfoTextBlock(""));
+                    contentPanel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
                 }
 
-                PreviewContent = new System.Windows.Controls.ScrollViewer
+                var scrollViewer = new System.Windows.Controls.ScrollViewer
                 {
-                    Content = panel,
+                    Content = contentPanel,
                     VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto
+                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                    MaxHeight = 300
                 };
+
+                panel.Children.Add(scrollViewer);
+                PreviewContent = panel;
                 PreviewStatus = $"CSV 预览 ({lines.Length} 行)";
                 IsPreviewLoading = false;
             }

@@ -177,8 +177,6 @@ jobs:
           ## Download Options
           - `FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
           - `FileSpace-${{ steps.version.outputs.new_version }}-portable.zip` - Extract and run
-
-          ${{ steps.version.outputs.previous_tag && format('**Full Changelog**: https://github.com/{0}/compare/{1}..{2}', github.repository, steps.version.outputs.previous_tag, steps.version.outputs.new_version) || '' }}
         draft: false
 
     - name: Upload ZIP Package
