@@ -180,7 +180,6 @@ jobs:
 
           ${{ steps.version.outputs.previous_tag && format('**Full Changelog**: https://github.com/{0}/compare/{1}..{2}', github.repository, steps.version.outputs.previous_tag, steps.version.outputs.new_version) || '' }}
         draft: false
-        prerelease: ${{ steps.version.outputs.major_update == 'true' }}
 
     - name: Upload ZIP Package
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
