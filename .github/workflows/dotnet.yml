@@ -22,7 +22,7 @@
 # VERSION EXAMPLES:
 # - Initial: v0.1
 # - Regular: v0.1 → v0.2 → v0.3
-# - Major:   v0.13 → v1.0 (resets minor to 0)
+# - Major:   v0.3 → v1.0 (resets minor to 0)
 # - Continue: v1.0 → v1.1 → v1.2
 
 name: .NET WPF
