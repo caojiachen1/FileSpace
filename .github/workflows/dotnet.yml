@@ -22,7 +22,6 @@
 # VERSION EXAMPLES:
 # - Initial: v0.1
 # - Regular: v0.1 → v0.2 → v0.3
-# - Feature: v0.3 → v0.13 (jumps +10)
 # - Major:   v0.13 → v1.0 (resets minor to 0)
 # - Continue: v1.0 → v1.1 → v1.2
 
@@ -82,7 +81,7 @@ jobs:
           $version = $latestTag -replace '^v', ''
           $versionParts = $version.Split('.')
           $major = [int]$versionParts[0]
-          $minor = if ($versionParts.Length -gt 1) { [int]$versionParts[1] } else { 0 }
+          $minor = if ($versionParts.Length -gt 1) { [decimal]$versionParts[1] } else { 0 }
           
           if ($isMajorBump) {
             # Major version bump (e.g., v0.5 -> v1.0)
@@ -90,16 +89,15 @@ jobs:
             $minor = 0
             $newVersion = "v$major.$minor"
             echo "major_update=true" >> $env:GITHUB_OUTPUT
-          } elseif ($isMinorBump) {
-            # Minor version bump with jump (e.g., v0.5 -> v0.15)
-            $minor = $minor + 10
-            $newVersion = "v$major.$minor"
-            echo "minor_update=true" >> $env:GITHUB_OUTPUT
           } else {
-            # Regular increment (e.g., v0.5 -> v0.6)
-            $minor++
+            # Regular increment by 0.1 (e.g., v0.1 -> v0.2, v0.5 -> v0.6, v1.0 -> v1.1)
+            $minor = $minor + 0.1
             $newVersion = "v$major.$minor"
-            echo "patch_update=true" >> $env:GITHUB_OUTPUT
+            if ($isMinorBump) {
+              echo "minor_update=true" >> $env:GITHUB_OUTPUT
+            } else {
+              echo "patch_update=true" >> $env:GITHUB_OUTPUT
+            }
           }
         } else {
           # No previous tags, start with v0.1
