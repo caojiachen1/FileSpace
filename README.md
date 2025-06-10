@@ -66,22 +66,40 @@ dotnet run
 ### 🚀 Priority Features (Core Functionality)
 
 #### 📁 File Operations
-- [ ] **Copy/Cut/Paste**: Basic file operations with clipboard support
-- [ ] **Delete Files/Folders**: Support both recycle bin and permanent deletion
-- [ ] **Rename**: In-place file/folder renaming functionality
+- ✅ **Copy/Cut/Paste**: Basic file operations with clipboard support (Ctrl+C, Ctrl+X, Ctrl+V)
+- ✅ **Delete Files/Folders**: Support both recycle bin (Delete) and permanent deletion (Shift+Delete)
+- ✅ **Rename**: In-place file/folder renaming functionality (F2)
+- ✅ **Multi-File Selection**: Ctrl/Shift multi-selection support
+- ✅ **Batch Operations**: Bulk copy, delete, move operations with progress tracking
+- ✅ **Selection Tools**: Select all (Ctrl+A), invert selection, and clear selection
 - [ ] **Create New Folder**: Directory creation with input validation
 - [ ] **File Drag & Drop**: Support drag and drop for move/copy operations
 
-#### 🔍 Search & Filter
-- [ ] **File Search**: Search by name, type, size with regex support
-- [ ] **Full-Text Search**: Search within file contents
-- [ ] **Advanced Filtering**: Filter by date range, size range, file attributes
-- [ ] **Search History**: Remember and suggest previous searches
+### 🎯 Multi-Selection & Batch Operations ✅
+- **Multi-File Selection**: Full Ctrl/Shift multi-selection support
+- **Batch Copy/Cut/Paste**: Copy or move multiple files simultaneously
+- **Batch Delete**: Delete multiple files to recycle bin or permanently
+- **Selection Utilities**: 
+  - Select All (Ctrl+A)
+  - Invert Selection
+  - Visual selection count in toolbar and context menu
+- **Progress Tracking**: Real-time progress for batch operations
+- **Smart UI**: Toolbar buttons and context menu adapt to selection count
 
-#### 🎯 Multi-Selection & Batch Operations
-- [ ] **Multi-File Selection**: Ctrl/Shift multi-selection support
-- [ ] **Batch Operations**: Bulk copy, delete, move operations
-- [ ] **Select All/None/Invert**: Quick selection utilities
+### ⌨️ Keyboard Shortcuts
+- **Ctrl+C**: Copy selected files
+- **Ctrl+X**: Cut selected files  
+- **Ctrl+V**: Paste files
+- **Delete**: Delete selected files to recycle bin
+- **Shift+Delete**: Permanently delete selected files
+- **F2**: Rename selected file
+- **Ctrl+A**: Select all files
+- **Escape**: Cancel current operation/close dialog
+
+#### 🎯 Multi-Selection & Batch Operations ✅
+- ✅ **Multi-File Selection**: Ctrl/Shift multi-selection support
+- ✅ **Batch Operations**: Bulk copy, delete, move operations
+- ✅ **Select All/None/Invert**: Quick selection utilities with keyboard shortcuts
 
 ### 🎨 UI/UX Enhancements
 

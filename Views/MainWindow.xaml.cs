@@ -105,7 +105,14 @@ namespace FileSpace.Views
                     case Key.Delete:
                         if (!viewModel.IsRenaming && viewModel.SelectedFiles.Any())
                         {
-                            viewModel.DeleteFilesCommand.Execute(null);
+                            if (Keyboard.Modifiers == ModifierKeys.Shift)
+                            {
+                                viewModel.DeleteFilesPermanentlyCommand.Execute(null);
+                            }
+                            else
+                            {
+                                viewModel.DeleteFilesCommand.Execute(null);
+                            }
                             e.Handled = true;
                         }
                         break;
@@ -127,6 +134,13 @@ namespace FileSpace.Views
                         if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.SelectedFiles.Any())
                         {
                             viewModel.CutFilesCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.A:
+                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming)
+                        {
+                            viewModel.SelectAllCommand.Execute(null);
                             e.Handled = true;
                         }
                         break;

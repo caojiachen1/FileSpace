@@ -6,7 +6,8 @@ namespace FileSpace.Services
     public enum FileOperation
     {
         Copy,
-        Move
+        Move,
+        Delete
     }
 
     public class FileOperationEventArgs : EventArgs
@@ -270,31 +271,66 @@ namespace FileSpace.Services
             });
         }
 
-        public async Task<bool> DeleteFilesToRecycleBinAsync(IEnumerable<string> paths)
+        public async Task<bool> DeleteFilesToRecycleBinAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
         {
             try
             {
+                var pathList = paths.ToList();
+                int totalFiles = pathList.Count;
+                int completedFiles = 0;
+
                 await Task.Run(() =>
                 {
-                    foreach (var path in paths)
+                    foreach (var path in pathList)
                     {
-                        if (File.Exists(path))
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        try
                         {
-                            Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, 
-                                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                            var fileName = Path.GetFileName(path);
+                            
+                            // Report progress before deletion
+                            OperationProgress?.Invoke(this, new FileOperationEventArgs
+                            {
+                                SourcePath = path,
+                                DestinationPath = "",
+                                Operation = FileOperation.Delete,
+                                IsDirectory = Directory.Exists(path),
+                                FilesCompleted = completedFiles,
+                                TotalFiles = totalFiles,
+                                CurrentFile = fileName
+                            });
+
+                            if (File.Exists(path))
+                            {
+                                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, 
+                                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                            }
+                            else if (Directory.Exists(path))
+                            {
+                                Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(path,
+                                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                            }
+
+                            completedFiles++;
                         }
-                        else if (Directory.Exists(path))
+                        catch (Exception ex)
                         {
-                            Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(path,
-                                Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                                Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                            // Continue with other files even if one fails
+                            System.Diagnostics.Debug.WriteLine($"Failed to delete {path}: {ex.Message}");
                         }
                     }
-                });
+                }, cancellationToken);
 
-                OperationCompleted?.Invoke(this, $"已删除 {paths.Count()} 个项目到回收站");
+                OperationCompleted?.Invoke(this, $"已删除 {completedFiles} 个项目到回收站");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                OperationFailed?.Invoke(this, "删除操作已取消");
+                return false;
             }
             catch (Exception ex)
             {
@@ -303,27 +339,62 @@ namespace FileSpace.Services
             }
         }
 
-        public async Task<bool> DeleteFilesPermanentlyAsync(IEnumerable<string> paths)
+        public async Task<bool> DeleteFilesPermanentlyAsync(IEnumerable<string> paths, CancellationToken cancellationToken = default)
         {
             try
             {
+                var pathList = paths.ToList();
+                int totalFiles = pathList.Count;
+                int completedFiles = 0;
+
                 await Task.Run(() =>
                 {
-                    foreach (var path in paths)
+                    foreach (var path in pathList)
                     {
-                        if (File.Exists(path))
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        try
                         {
-                            File.Delete(path);
+                            var fileName = Path.GetFileName(path);
+                            
+                            // Report progress before deletion
+                            OperationProgress?.Invoke(this, new FileOperationEventArgs
+                            {
+                                SourcePath = path,
+                                DestinationPath = "",
+                                Operation = FileOperation.Delete,
+                                IsDirectory = Directory.Exists(path),
+                                FilesCompleted = completedFiles,
+                                TotalFiles = totalFiles,
+                                CurrentFile = fileName
+                            });
+
+                            if (File.Exists(path))
+                            {
+                                File.Delete(path);
+                            }
+                            else if (Directory.Exists(path))
+                            {
+                                Directory.Delete(path, true);
+                            }
+
+                            completedFiles++;
                         }
-                        else if (Directory.Exists(path))
+                        catch (Exception ex)
                         {
-                            Directory.Delete(path, true);
+                            // Continue with other files even if one fails
+                            System.Diagnostics.Debug.WriteLine($"Failed to delete {path}: {ex.Message}");
                         }
                     }
-                });
+                }, cancellationToken);
 
-                OperationCompleted?.Invoke(this, $"已永久删除 {paths.Count()} 个项目");
+                OperationCompleted?.Invoke(this, $"已永久删除 {completedFiles} 个项目");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                OperationFailed?.Invoke(this, "删除操作已取消");
+                return false;
             }
             catch (Exception ex)
             {

@@ -1302,6 +1302,52 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
+        private async void DeleteFilesPermanently()
+        {
+            if (!SelectedFiles.Any())
+            {
+                StatusText = "请先选择要删除的文件";
+                return;
+            }
+
+            var confirmDialog = new ConfirmationDialog(
+                "确认永久删除",
+                $"确定要永久删除选中的 {SelectedFiles.Count} 个项目吗？\n\n此操作无法撤销，文件将不会进入回收站。",
+                "永久删除",
+                "取消")
+            {
+                Owner = Application.Current.MainWindow
+            };
+
+            if (confirmDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                IsFileOperationInProgress = true;
+                FileOperationProgress = 0;
+                FileOperationStatus = "正在永久删除文件...";
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                var token = _fileOperationCancellationTokenSource.Token;
+
+                var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
+
+                await FileOperationsService.Instance.DeleteFilesPermanentlyAsync(filesToDelete);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "删除操作已取消";
+                IsFileOperationInProgress = false;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"删除失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        [RelayCommand]
         private async void DeleteFiles()
         {
             if (!SelectedFiles.Any())
@@ -1312,7 +1358,7 @@ namespace FileSpace.ViewModels
 
             var confirmDialog = new ConfirmationDialog(
                 "确认删除",
-                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？\n\n此操作无法撤销。",
+                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？\n\n文件将被移动到回收站。",
                 "删除",
                 "取消")
             {
@@ -1333,53 +1379,7 @@ namespace FileSpace.ViewModels
 
                 var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
 
-                // Delete files manually since DeleteFilesAsync doesn't exist
-                await Task.Run(() =>
-                {
-                    int totalFiles = filesToDelete.Count;
-                    int completed = 0;
-
-                    foreach (var filePath in filesToDelete)
-                    {
-                        token.ThrowIfCancellationRequested();
-
-                        try
-                        {
-                            if (Directory.Exists(filePath))
-                            {
-                                Directory.Delete(filePath, true);
-                            }
-                            else if (File.Exists(filePath))
-                            {
-                                File.Delete(filePath);
-                            }
-
-                            completed++;
-                            var progress = (double)completed / totalFiles * 100;
-
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                FileOperationProgress = progress;
-                                FileOperationStatus = $"正在删除: {Path.GetFileName(filePath)} ({completed}/{totalFiles})";
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                StatusText = $"删除 {Path.GetFileName(filePath)} 失败: {ex.Message}";
-                            });
-                        }
-                    }
-                }, token);
-
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    IsFileOperationInProgress = false;
-                    FileOperationStatus = $"已删除 {filesToDelete.Count} 个项目";
-                    StatusText = $"已删除 {filesToDelete.Count} 个项目";
-                    Refresh();
-                });
+                await FileOperationsService.Instance.DeleteFilesToRecycleBinAsync(filesToDelete);
             }
             catch (OperationCanceledException)
             {
@@ -1590,6 +1590,57 @@ namespace FileSpace.ViewModels
             }
         }
 
+        [RelayCommand]
+        private void SelectAll()
+        {
+            SelectedFiles.Clear();
+            foreach (var file in Files)
+            {
+                SelectedFiles.Add(file);
+            }
+            
+            // Update UI selection
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.FileListView.SelectAll();
+                }
+            });
+            
+            StatusText = $"已选择 {SelectedFiles.Count} 个项目";
+        }
+
+        [RelayCommand]
+        private void InvertSelection()
+        {
+            var currentSelection = SelectedFiles.ToList();
+            SelectedFiles.Clear();
+            
+            foreach (var file in Files)
+            {
+                if (!currentSelection.Contains(file))
+                {
+                    SelectedFiles.Add(file);
+                }
+            }
+            
+            // Update UI selection
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.FileListView.SelectedItems.Clear();
+                    foreach (var file in SelectedFiles)
+                    {
+                        mainWindow.FileListView.SelectedItems.Add(file);
+                    }
+                }
+            });
+            
+            StatusText = $"已选择 {SelectedFiles.Count} 个项目";
+        }
+
         public bool CanBack => _backHistory.Count > 0;
         public bool CanForward => _forwardHistory.Count > 0;
         public bool CanUp => !string.IsNullOrEmpty(CurrentPath) && Directory.GetParent(CurrentPath) != null;
@@ -1598,5 +1649,8 @@ namespace FileSpace.ViewModels
         public bool CanCopy => SelectedFiles.Any();
         public bool CanCut => SelectedFiles.Any();
         public bool CanRename => SelectedFile != null;
+        public bool CanSelectAll => Files.Any();
+        public bool CanInvertSelection => Files.Any();
+        public bool CanDeletePermanently => SelectedFiles.Any();
     }
 }
