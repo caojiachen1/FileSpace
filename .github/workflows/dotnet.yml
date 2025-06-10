@@ -71,19 +71,44 @@ jobs:
         }
         
         # Check commit message for version bump indicators
-        $commitMessage = "${{ github.event.head_commit.message }}"
+        $commitMessage = "${{ github.event.head_commit.message }}" -replace '"', '\"' -replace "'", "\'"
+        Write-Host "Processing commit message: $commitMessage"
+        
+        # Validate commit message is not empty
+        if ([string]::IsNullOrWhiteSpace($commitMessage)) {
+          Write-Host "Warning: Empty commit message, treating as patch update"
+          $commitMessage = "Update"
+        }
+        
         $isMajorBump = $commitMessage -match "\[major\]" -or $commitMessage -match "BREAKING CHANGE"
         $isMinorBump = $commitMessage -match "\[minor\]" -or $commitMessage -match "\[feature\]"
         
-        # Clean commit message by removing version tags
-        $cleanCommitMessage = $commitMessage -replace "\s*\[(major|minor|feature)\]\s*", "" -replace "BREAKING CHANGE:\s*", ""
+        # Clean commit message by removing version tags with improved regex
+        $cleanCommitMessage = $commitMessage -replace "\s*\[(major|minor|feature)\]\s*", "" -replace "BREAKING CHANGE:\s*", "" -replace "\s+", " "
+        $cleanCommitMessage = $cleanCommitMessage.Trim()
+        
+        # Ensure clean commit message is not empty
+        if ([string]::IsNullOrWhiteSpace($cleanCommitMessage)) {
+          $cleanCommitMessage = "Update"
+        }
+        
+        # Escape special characters for GitHub output
+        $cleanCommitMessage = $cleanCommitMessage -replace "`n", " " -replace "`r", " " -replace "\*", "\*" -replace "_", "\_"
         
         if ($latestTag) {
           # Extract version number
           $version = $latestTag -replace '^v', ''
           $versionParts = $version.Split('.')
-          $major = [int]$versionParts[0]
-          $minor = if ($versionParts.Length -gt 1) { [int]$versionParts[1] } else { 0 }
+          
+          # Validate version parts
+          if ($versionParts.Length -eq 0) {
+            Write-Host "Warning: Invalid version format in tag $latestTag, starting fresh"
+            $major = 0
+            $minor = 0
+          } else {
+            $major = if ([int]::TryParse($versionParts[0], [ref]$null)) { [int]$versionParts[0] } else { 0 }
+            $minor = if ($versionParts.Length -gt 1 -and [int]::TryParse($versionParts[1], [ref]$null)) { [int]$versionParts[1] } else { 0 }
+          }
           
           if ($isMajorBump) {
             # Major version bump (e.g., v0.3 -> v1.0)
