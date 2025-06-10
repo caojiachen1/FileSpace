@@ -59,18 +59,16 @@ jobs:
     - name: Get latest tag and generate new version
       id: version
       run: |
-        # Get the latest tag that starts with 'v'
-        $latestTag = git tag -l "v*" | Sort-Object {
-          try {
-            $versionStr = $_ -replace '^v', ''
-            $parts = $versionStr.Split('.')
-            $major = [int]$parts[0]
-            $minor = if ($parts.Length -gt 1) { [int]($parts[1] * 10) } else { 0 }
-            return $major * 1000 + $minor
-          } catch {
-            return 0
-          }
-        } | Select-Object -Last 1
+        # Get the latest release tag from GitHub API
+        try {
+          $headers = @{ 'Authorization' = 'token ${{ secrets.GITHUB_TOKEN }}' }
+          $response = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest" -Headers $headers
+          $latestTag = $response.tag_name
+          echo "Found latest release tag: $latestTag"
+        } catch {
+          echo "No previous releases found or API error: $_"
+          $latestTag = $null
+        }
         
         # Check commit message for version bump indicators
         $commitMessage = "${{ github.event.head_commit.message }}"
@@ -104,7 +102,7 @@ jobs:
             }
           }
         } else {
-          # No previous tags, start with v0.1
+          # No previous releases, start with v0.1
           $newVersion = "v0.1"
           echo "initial_release=true" >> $env:GITHUB_OUTPUT
         }
@@ -178,6 +176,7 @@ jobs:
           - `FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
           - `FileSpace-${{ steps.version.outputs.new_version }}-portable.zip` - Extract and run
         draft: false
+        prerelease: false
 
     - name: Upload ZIP Package
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
