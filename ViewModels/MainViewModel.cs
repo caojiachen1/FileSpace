@@ -6,6 +6,7 @@ using System.Windows;
 using System.Threading;
 using System.Text;
 using FileSpace.Services;
+using FileSpace.Views;
 
 namespace FileSpace.ViewModels
 {
@@ -41,9 +42,31 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private string _sizeCalculationProgress = string.Empty;
 
+        [ObservableProperty]
+        private ObservableCollection<FileItemViewModel> _selectedFiles = new();
+
+        [ObservableProperty]
+        private bool _isFileOperationInProgress;
+
+        [ObservableProperty]
+        private string _fileOperationStatus = string.Empty;
+
+        [ObservableProperty]
+        private double _fileOperationProgress;
+
+        [ObservableProperty]
+        private bool _isRenaming;
+
+        [ObservableProperty]
+        private FileItemViewModel? _renamingFile;
+
+        [ObservableProperty]
+        private string _newFileName = string.Empty;
+
         private CancellationTokenSource? _previewCancellationTokenSource;
+        private CancellationTokenSource? _fileOperationCancellationTokenSource;
         private readonly SemaphoreSlim _previewSemaphore = new(1, 1);
-        
+
         // Add tracking for current preview folder
         private string _currentPreviewFolderPath = string.Empty;
 
@@ -53,10 +76,15 @@ namespace FileSpace.ViewModels
         public MainViewModel()
         {
             LoadInitialData();
-            
+
             // Subscribe to background size calculation events
             BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted += OnSizeCalculationCompleted;
             BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress += OnSizeCalculationProgress;
+
+            // Subscribe to file operations events
+            FileOperationsService.Instance.OperationProgress += OnFileOperationProgress;
+            FileOperationsService.Instance.OperationCompleted += OnFileOperationCompleted;
+            FileOperationsService.Instance.OperationFailed += OnFileOperationFailed;
         }
 
         partial void OnCurrentPathChanged(string value)
@@ -72,7 +100,7 @@ namespace FileSpace.ViewModels
                 SizeCalculationProgress = "";
                 _currentPreviewFolderPath = string.Empty;
             }
-            
+
             _ = ShowPreviewAsync();
         }
 
@@ -81,7 +109,7 @@ namespace FileSpace.ViewModels
             try
             {
                 StatusText = "正在加载驱动器...";
-                
+
                 // Load drives asynchronously
                 var drives = await Task.Run(() =>
                 {
@@ -127,7 +155,7 @@ namespace FileSpace.ViewModels
                 {
                     CurrentPath = drives.FirstOrDefault() ?? @"C:\";
                 }
-                
+
                 StatusText = $"已加载 {drives.Count} 个驱动器";
             }
             catch (Exception ex)
@@ -141,7 +169,7 @@ namespace FileSpace.ViewModels
             try
             {
                 Files.Clear();
-                
+
                 if (!Directory.Exists(CurrentPath))
                 {
                     StatusText = "路径不存在";
@@ -325,10 +353,10 @@ namespace FileSpace.ViewModels
             try
             {
                 var dirInfo = new DirectoryInfo(SelectedFile!.FullPath);
-                
+
                 // Set current preview folder path
                 _currentPreviewFolderPath = dirInfo.FullName;
-                
+
                 var panel = new System.Windows.Controls.StackPanel();
                 panel.Children.Add(CreateInfoTextBlock($"文件夹: {dirInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {dirInfo.FullName}"));
@@ -383,7 +411,7 @@ namespace FileSpace.ViewModels
                 var sizeStatusBlock = CreateInfoTextBlock("");
                 var progressBlock = CreateInfoTextBlock("");
                 var sizeResultBlock = CreateInfoTextBlock("");
-                
+
                 if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
                 {
                     sizeStatusBlock.Text = $"计算失败: {cachedSize.Error}";
@@ -411,12 +439,12 @@ namespace FileSpace.ViewModels
                 {
                     sizeStatusBlock.Text = "准备计算...";
                     // Queue the calculation in background
-                    backgroundCalculator.QueueFolderSizeCalculation(dirInfo.FullName, 
+                    backgroundCalculator.QueueFolderSizeCalculation(dirInfo.FullName,
                         new { PreviewPanel = panel, StatusBlock = sizeStatusBlock, ProgressBlock = progressBlock, ResultBlock = sizeResultBlock });
                     IsSizeCalculating = true;
                     SizeCalculationProgress = "正在排队计算...";
                 }
-                
+
                 panel.Children.Add(sizeStatusBlock);
                 panel.Children.Add(progressBlock);
                 panel.Children.Add(sizeResultBlock);
@@ -445,12 +473,12 @@ namespace FileSpace.ViewModels
                 {
                     UpdateDirectoryPreviewWithSize(e.SizeInfo);
                 }
-                
+
                 // Update directory tree item if exists
                 UpdateDirectoryTreeItemSize(e.FolderPath, e.SizeInfo);
-                
+
                 IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.ActiveCalculationsCount > 0;
-                
+
                 // Clear progress if this was the current preview folder
                 if (_currentPreviewFolderPath == e.FolderPath)
                 {
@@ -464,8 +492,8 @@ namespace FileSpace.ViewModels
             Application.Current.Dispatcher.Invoke(() =>
             {
                 // Only show progress for the currently selected folder
-                if (SelectedFile?.IsDirectory == true && 
-                    SelectedFile.FullPath == e.FolderPath && 
+                if (SelectedFile?.IsDirectory == true &&
+                    SelectedFile.FullPath == e.FolderPath &&
                     _currentPreviewFolderPath == e.FolderPath)
                 {
                     var currentPath = e.Progress.CurrentPath;
@@ -494,7 +522,7 @@ namespace FileSpace.ViewModels
                         else
                         {
                             child.Text = $"总大小: {sizeInfo.FormattedSize}";
-                            
+
                             // Update result block
                             var resultBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
                                 .FirstOrDefault(tb => tb.Text.StartsWith("包含") || string.IsNullOrEmpty(tb.Text));
@@ -502,7 +530,7 @@ namespace FileSpace.ViewModels
                             {
                                 resultBlock.Text = $"包含 {sizeInfo.FileCount:N0} 个文件，{sizeInfo.DirectoryCount:N0} 个文件夹";
                             }
-                            
+
                             // Update progress block for inaccessible items
                             if (sizeInfo.InaccessibleItems > 0)
                             {
@@ -544,7 +572,7 @@ namespace FileSpace.ViewModels
                     item.IsSizeCalculating = false;
                     return;
                 }
-                
+
                 if (item.SubDirectories.Any())
                 {
                     UpdateDirectoryTreeItemSizeRecursive(item.SubDirectories, folderPath, sizeInfo);
@@ -558,7 +586,7 @@ namespace FileSpace.ViewModels
             {
                 var fileInfo = new FileInfo(SelectedFile!.FullPath);
                 var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
-                
+
                 // Detect encoding and reload if necessary
                 var encoding = DetectEncoding(SelectedFile.FullPath);
                 if (encoding != Encoding.UTF8)
@@ -575,7 +603,7 @@ namespace FileSpace.ViewModels
                 }
 
                 var panel = new System.Windows.Controls.StackPanel();
-                
+
                 // Add file information
                 panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
@@ -585,7 +613,7 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
                 panel.Children.Add(CreateInfoTextBlock(""));
-                
+
                 var previewHeader = CreateInfoTextBlock("文件预览:");
                 previewHeader.FontWeight = System.Windows.FontWeights.Bold;
                 panel.Children.Add(previewHeader);
@@ -621,11 +649,11 @@ namespace FileSpace.ViewModels
             try
             {
                 var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                
+
                 var image = await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    
+
                     return Application.Current.Dispatcher.Invoke(() =>
                     {
                         var bitmap = new System.Windows.Media.Imaging.BitmapImage();
@@ -647,7 +675,7 @@ namespace FileSpace.ViewModels
                 }, cancellationToken);
 
                 var panel = new System.Windows.Controls.StackPanel();
-                
+
                 // Add file information
                 panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
@@ -657,11 +685,11 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {image.Source.Width} × {image.Source.Height} 像素"));
                 panel.Children.Add(CreateInfoTextBlock(""));
-                
+
                 var previewHeader = CreateInfoTextBlock("图片预览:");
                 previewHeader.FontWeight = System.Windows.FontWeights.Bold;
                 panel.Children.Add(previewHeader);
-                
+
                 panel.Children.Add(image);
 
                 PreviewContent = panel;
@@ -679,10 +707,10 @@ namespace FileSpace.ViewModels
         private async Task ShowPdfPreviewAsync(CancellationToken cancellationToken)
         {
             await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
-            
+
             var fileInfo = new FileInfo(SelectedFile!.FullPath);
             var panel = new System.Windows.Controls.StackPanel();
-            
+
             // Add file information
             panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
             panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
@@ -691,11 +719,11 @@ namespace FileSpace.ViewModels
             panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock(""));
-            
+
             var previewHeader = CreateInfoTextBlock("PDF 预览信息:");
             previewHeader.FontWeight = System.Windows.FontWeights.Bold;
             panel.Children.Add(previewHeader);
-            
+
             panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
             panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
 
@@ -710,7 +738,7 @@ namespace FileSpace.ViewModels
             {
                 var fileInfo = new FileInfo(SelectedFile!.FullPath);
                 var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
-                
+
                 bool isTruncated = false;
                 if (content.Length > 50000)
                 {
@@ -719,7 +747,7 @@ namespace FileSpace.ViewModels
                 }
 
                 var panel = new System.Windows.Controls.StackPanel();
-                
+
                 // Add file information
                 panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
@@ -728,11 +756,11 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock(""));
-                
+
                 var previewHeader = CreateInfoTextBlock("HTML 源代码预览:");
                 previewHeader.FontWeight = System.Windows.FontWeights.Bold;
                 panel.Children.Add(previewHeader);
-                
+
                 var textBox = new System.Windows.Controls.TextBox
                 {
                     Text = content + (isTruncated ? "\n\n... (已截断)" : ""),
@@ -767,7 +795,7 @@ namespace FileSpace.ViewModels
                 var previewLines = lines.Take(100).ToArray(); // Show first 100 lines
 
                 var panel = new System.Windows.Controls.StackPanel();
-                
+
                 // Add file information
                 panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
@@ -777,7 +805,7 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
                 panel.Children.Add(CreateInfoTextBlock(""));
-                
+
                 var previewHeader = CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行):");
                 previewHeader.FontWeight = System.Windows.FontWeights.Bold;
                 panel.Children.Add(previewHeader);
@@ -819,10 +847,10 @@ namespace FileSpace.ViewModels
         private async Task ShowFileInfoAsync(CancellationToken cancellationToken)
         {
             await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
-            
+
             var fileInfo = new FileInfo(SelectedFile!.FullPath);
             var panel = new System.Windows.Controls.StackPanel();
-            
+
             panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
             panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
             panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
@@ -862,9 +890,9 @@ namespace FileSpace.ViewModels
         private System.Windows.Controls.StackPanel CreateErrorPanel(string title, string message)
         {
             var panel = new System.Windows.Controls.StackPanel();
-            panel.Children.Add(new System.Windows.Controls.TextBlock 
-            { 
-                Text = title, 
+            panel.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = title,
                 FontWeight = System.Windows.FontWeights.Bold,
                 Foreground = System.Windows.Media.Brushes.Red,
                 Margin = new System.Windows.Thickness(0, 0, 0, 10)
@@ -876,9 +904,9 @@ namespace FileSpace.ViewModels
         private System.Windows.Controls.StackPanel CreateInfoPanel(string title, string message)
         {
             var panel = new System.Windows.Controls.StackPanel();
-            panel.Children.Add(new System.Windows.Controls.TextBlock 
-            { 
-                Text = title, 
+            panel.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = title,
                 FontWeight = System.Windows.FontWeights.Bold,
                 Margin = new System.Windows.Thickness(0, 0, 0, 10)
             });
@@ -888,9 +916,9 @@ namespace FileSpace.ViewModels
 
         private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
         {
-            return new System.Windows.Controls.TextBlock 
-            { 
-                Text = text, 
+            return new System.Windows.Controls.TextBlock
+            {
+                Text = text,
                 Margin = new System.Windows.Thickness(0, 2, 0, 2),
                 TextWrapping = System.Windows.TextWrapping.Wrap
             };
@@ -900,7 +928,7 @@ namespace FileSpace.ViewModels
         {
             return extension switch
             {
-                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" 
+                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini"
                 or ".md" or ".yaml" or ".yml" or ".html" or ".htm" or ".css" or ".js"
                 or ".py" or ".java" or ".cpp" or ".h" or ".sql" => true,
                 _ => false
@@ -1035,7 +1063,7 @@ namespace FileSpace.ViewModels
         private void NavigateToPath(string? path)
         {
             if (string.IsNullOrEmpty(path)) return;
-            
+
             try
             {
                 // Check if we have access to the directory before navigating
@@ -1047,7 +1075,7 @@ namespace FileSpace.ViewModels
 
                 // Try to enumerate the directory to check access
                 Directory.GetDirectories(path).Take(1).ToList();
-                
+
                 if (!string.IsNullOrEmpty(CurrentPath))
                 {
                     _backHistory.Push(CurrentPath);
@@ -1100,7 +1128,7 @@ namespace FileSpace.ViewModels
         {
             StatusText = "正在刷新...";
             LoadFiles();
-            
+
             // Refresh the directory tree
             try
             {
@@ -1161,5 +1189,409 @@ namespace FileSpace.ViewModels
                 StatusText = $"打开失败: {ex.Message}";
             }
         }
+
+        private void OnFileOperationProgress(object? sender, FileOperationEventArgs e)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                var percentage = e.TotalFiles > 0 ? (double)e.FilesCompleted / e.TotalFiles * 100 : 0;
+                FileOperationProgress = percentage;
+                FileOperationStatus = $"{e.Operation}: {e.CurrentFile} ({e.FilesCompleted}/{e.TotalFiles})";
+            });
+        }
+
+        private void OnFileOperationCompleted(object? sender, string message)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                IsFileOperationInProgress = false;
+                FileOperationStatus = message;
+                StatusText = message;
+                Refresh();
+
+                // Clear clipboard if it was a move operation
+                if (ClipboardService.Instance.ClipboardOperation == ClipboardFileOperation.Move)
+                {
+                    ClipboardService.Instance.ClearClipboard();
+                }
+            });
+        }
+
+        private void OnFileOperationFailed(object? sender, string message)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                IsFileOperationInProgress = false;
+                FileOperationStatus = message;
+                StatusText = message;
+            });
+        }
+
+        [RelayCommand]
+        private void CopyFiles()
+        {
+            var selectedPaths = SelectedFiles.Select(f => f.FullPath).ToList();
+            if (selectedPaths.Any())
+            {
+                ClipboardService.Instance.CopyFiles(selectedPaths);
+                StatusText = $"已复制 {selectedPaths.Count} 个项目到剪贴板";
+            }
+        }
+
+        [RelayCommand]
+        private void CutFiles()
+        {
+            var selectedPaths = SelectedFiles.Select(f => f.FullPath).ToList();
+            if (selectedPaths.Any())
+            {
+                ClipboardService.Instance.CutFiles(selectedPaths);
+                StatusText = $"已剪切 {selectedPaths.Count} 个项目到剪贴板";
+            }
+        }
+
+        [RelayCommand]
+        private async void PasteFiles()
+        {
+            if (!ClipboardService.Instance.CanPaste())
+            {
+                StatusText = "剪贴板为空或文件不存在";
+                return;
+            }
+
+            try
+            {
+                IsFileOperationInProgress = true;
+                FileOperationProgress = 0;
+                FileOperationStatus = "正在准备粘贴操作...";
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                var token = _fileOperationCancellationTokenSource.Token;
+
+                var operation = ClipboardService.Instance.ClipboardOperation;
+                var sourceFiles = ClipboardService.Instance.ClipboardFiles.ToList();
+                var destinationFolder = CurrentPath;
+
+                if (operation == ClipboardFileOperation.Copy)
+                {
+                    await FileOperationsService.Instance.CopyFilesAsync(sourceFiles, destinationFolder, token);
+                }
+                else if (operation == ClipboardFileOperation.Move)
+                {
+                    await FileOperationsService.Instance.MoveFilesAsync(sourceFiles, destinationFolder, token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "粘贴操作已取消";
+                IsFileOperationInProgress = false;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"粘贴失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        [RelayCommand]
+        private void CancelFileOperation()
+        {
+            _fileOperationCancellationTokenSource?.Cancel();
+            StatusText = "正在取消操作...";
+        }
+
+        [RelayCommand]
+        private async void DeleteFiles()
+        {
+            if (!SelectedFiles.Any())
+            {
+                StatusText = "请先选择要删除的文件";
+                return;
+            }
+
+            var result = System.Windows.MessageBox.Show(
+                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？",
+                "确认删除",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (result != System.Windows.MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                IsFileOperationInProgress = true;
+                FileOperationProgress = 0;
+                FileOperationStatus = "正在删除文件...";
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                var token = _fileOperationCancellationTokenSource.Token;
+
+                var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
+
+                // Delete files manually since DeleteFilesAsync doesn't exist
+                await Task.Run(() =>
+                {
+                    int totalFiles = filesToDelete.Count;
+                    int completed = 0;
+
+                    foreach (var filePath in filesToDelete)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        try
+                        {
+                            if (Directory.Exists(filePath))
+                            {
+                                Directory.Delete(filePath, true);
+                            }
+                            else if (File.Exists(filePath))
+                            {
+                                File.Delete(filePath);
+                            }
+
+                            completed++;
+                            var progress = (double)completed / totalFiles * 100;
+
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                FileOperationProgress = progress;
+                                FileOperationStatus = $"正在删除: {Path.GetFileName(filePath)} ({completed}/{totalFiles})";
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                StatusText = $"删除 {Path.GetFileName(filePath)} 失败: {ex.Message}";
+                            });
+                        }
+                    }
+                }, token);
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsFileOperationInProgress = false;
+                    FileOperationStatus = $"已删除 {filesToDelete.Count} 个项目";
+                    StatusText = $"已删除 {filesToDelete.Count} 个项目";
+                    Refresh();
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "删除操作已取消";
+                IsFileOperationInProgress = false;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"删除失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        [RelayCommand]
+        private void ShowProperties()
+        {
+            if (SelectedFile != null)
+            {
+                try
+                {
+                    var propertiesViewModel = new PropertiesViewModel(SelectedFile.FullPath);
+                    var propertiesWindow = new PropertiesWindow(propertiesViewModel)
+                    {
+                        Owner = Application.Current.MainWindow
+                    };
+                    propertiesWindow.Show();
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"无法显示属性: {ex.Message}";
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void StartRename()
+        {
+            if (SelectedFile != null)
+            {
+                StartInPlaceRename(SelectedFile);
+            }
+        }
+
+        [RelayCommand]
+        private void ShowRenameDialog()
+        {
+            if (SelectedFile != null)
+            {
+                try
+                {
+                    var renameWindow = new RenameDialog(SelectedFile.Name, SelectedFile.IsDirectory)
+                    {
+                        Owner = Application.Current.MainWindow
+                    };
+
+                    if (renameWindow.ShowDialog() == true)
+                    {
+                        var newName = renameWindow.NewName;
+                        if (!string.IsNullOrWhiteSpace(newName) && newName != SelectedFile.Name)
+                        {
+                            PerformRename(SelectedFile, newName);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"重命名失败: {ex.Message}";
+                }
+            }
+        }
+
+        public void StartInPlaceRename(FileItemViewModel file)
+        {
+            if (IsRenaming) return;
+
+            IsRenaming = true;
+            RenamingFile = file;
+            
+            if (file.IsDirectory)
+            {
+                NewFileName = file.Name;
+            }
+            else
+            {
+                // For files, show full name with extension but we'll select only the name part in the UI
+                NewFileName = file.Name;
+            }
+        }
+
+        [RelayCommand]
+        private void ConfirmRename()
+        {
+            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
+            {
+                var newName = NewFileName.Trim();
+                
+                if (newName != RenamingFile.Name)
+                {
+                    // Check for extension changes on files
+                    if (!RenamingFile.IsDirectory)
+                    {
+                        var originalExt = Path.GetExtension(RenamingFile.Name);
+                        var newExt = Path.GetExtension(newName);
+                        
+                        if (!string.Equals(originalExt, newExt, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!ConfirmExtensionChangeInline(originalExt, newExt))
+                            {
+                                return; // User cancelled the extension change
+                            }
+                        }
+                    }
+                    
+                    PerformRename(RenamingFile, newName);
+                }
+            }
+            CancelRename();
+        }
+
+        private bool ConfirmExtensionChangeInline(string originalExt, string newExt)
+        {
+            var message = string.IsNullOrEmpty(newExt) 
+                ? $"您即将移除文件扩展名 '{originalExt}'。\n\n这可能导致文件无法正常打开。确定要继续吗？"
+                : $"您即将将文件扩展名从 '{originalExt}' 更改为 '{newExt}'。\n\n这可能导致文件无法正常打开。确定要继续吗？";
+
+            var warningDialog = new WarningDialog(
+                "扩展名更改警告",
+                message,
+                "继续更改",
+                "取消")
+            {
+                Owner = Application.Current.MainWindow
+            };
+
+            return warningDialog.ShowDialog() == true;
+        }
+
+        [RelayCommand]
+        private void CancelRename()
+        {
+            IsRenaming = false;
+            RenamingFile = null;
+            NewFileName = string.Empty;
+        }
+
+        private async void PerformRename(FileItemViewModel file, string newName)
+        {
+            try
+            {
+                var oldPath = file.FullPath;
+                var newPath = Path.Combine(Path.GetDirectoryName(oldPath)!, newName);
+
+                // Check if target already exists
+                if (File.Exists(newPath) || Directory.Exists(newPath))
+                {
+                    StatusText = "目标文件或文件夹已存在";
+                    return;
+                }
+
+                // Validate filename
+                if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                {
+                    StatusText = "文件名包含无效字符";
+                    return;
+                }
+
+                IsFileOperationInProgress = true;
+                FileOperationStatus = $"正在重命名: {file.Name} -> {newName}";
+                FileOperationProgress = 0;
+
+                await Task.Run(() =>
+                {
+                    if (file.IsDirectory)
+                    {
+                        Directory.Move(oldPath, newPath);
+                    }
+                    else
+                    {
+                        File.Move(oldPath, newPath);
+                    }
+                });
+
+                // Update the file item
+                file.Name = newName;
+                file.FullPath = newPath;
+
+                StatusText = $"重命名成功: {newName}";
+                IsFileOperationInProgress = false;
+                FileOperationProgress = 100;
+
+                // Refresh the current directory
+                LoadFiles();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                StatusText = "重命名失败: 没有权限";
+                IsFileOperationInProgress = false;
+            }
+            catch (IOException ex)
+            {
+                StatusText = $"重命名失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"重命名失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        public bool CanBack => _backHistory.Count > 0;
+        public bool CanForward => _forwardHistory.Count > 0;
+        public bool CanUp => !string.IsNullOrEmpty(CurrentPath) && Directory.GetParent(CurrentPath) != null;
+        public bool CanPaste => ClipboardService.Instance.CanPaste();
+        public bool CanDelete => SelectedFiles.Any();
+        public bool CanCopy => SelectedFiles.Any();
+        public bool CanCut => SelectedFiles.Any();
+        public bool CanRename => SelectedFile != null;
     }
 }

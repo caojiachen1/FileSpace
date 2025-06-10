@@ -16,4 +16,10 @@
     <PackageReference Include="WPF-UI" Version="4.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic">
+      <HintPath>C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\8.0.0\Microsoft.VisualBasic.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

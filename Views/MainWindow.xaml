@@ -15,6 +15,12 @@
         <!-- Add missing converters -->
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         
+        <!-- Add inverse boolean to visibility converter -->
+        <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        
+        <!-- Add equality converter for comparing objects -->
+        <local:EqualityConverter x:Key="EqualityConverter"/>
+        
         <!-- Custom expand/collapse toggle style with down arrow -->
         <Style x:Key="ExpandCollapseToggleStyle" TargetType="ToggleButton">
             <Setter Property="Focusable" Value="False"/>
@@ -267,17 +273,118 @@
                               SelectedItem="{Binding SelectedFile}"
                               Background="Transparent" BorderThickness="0"
                               MouseDoubleClick="FileListView_MouseDoubleClick"
+                              SelectionChanged="FileListView_SelectionChanged"
+                              KeyDown="FileListView_KeyDown"
                               ItemContainerStyle="{StaticResource FileListViewItemStyle}">
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="打开" Click="ContextMenu_Open">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Open24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="重命名" Command="{Binding ShowRenameDialogCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Rename24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="复制" Command="{Binding CopyFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Copy24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="剪切" Command="{Binding CutFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Cut24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ClipboardPaste24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="删除" Command="{Binding DeleteFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Delete24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="名称" Width="200">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
-                                                               Foreground="{Binding IconColor}"/>
-                                                <TextBlock Text="{Binding Name}"/>
-                                            </StackPanel>
+                                            <Grid>
+                                                <!-- Normal display -->
+                                                <StackPanel Orientation="Horizontal" 
+                                                           Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
+                                                                   Foreground="{Binding IconColor}"/>
+                                                    <TextBlock Text="{Binding Name}"/>
+                                                </StackPanel>
+                                                
+                                                <!-- Rename mode -->
+                                                <StackPanel Orientation="Horizontal" 
+                                                           Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
+                                                                   Foreground="{Binding IconColor}"/>
+                                                    <Grid>
+                                                        <!-- Show original name if not the item being renamed -->
+                                                        <TextBlock Text="{Binding Name}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Value="True">
+                                                                            <DataTrigger.Binding>
+                                                                                <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                                    <Binding/>
+                                                                                    <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                                </MultiBinding>
+                                                                            </DataTrigger.Binding>
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        
+                                                        <!-- Show textbox for the item being renamed -->
+                                                        <ui:TextBox x:Name="RenameTextBox" 
+                                                                   Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
+                                                                   KeyDown="RenameTextBox_KeyDown"
+                                                                   LostFocus="RenameTextBox_LostFocus"
+                                                                   Loaded="RenameTextBox_Loaded">
+                                                            <ui:TextBox.Style>
+                                                                <Style TargetType="ui:TextBox">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Value="True">
+                                                                            <DataTrigger.Binding>
+                                                                                <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                                    <Binding/>
+                                                                                    <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                                </MultiBinding>
+                                                                            </DataTrigger.Binding>
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ui:TextBox.Style>
+                                                        </ui:TextBox>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>

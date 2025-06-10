@@ -56,3 +56,4 @@ nunit-*.xml
 .vs/
 .vscode/
 publish/
+todo.txt
