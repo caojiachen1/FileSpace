@@ -1641,6 +1641,24 @@ namespace FileSpace.ViewModels
             StatusText = $"已选择 {SelectedFiles.Count} 个项目";
         }
 
+        [RelayCommand]
+        private void ClearSelection()
+        {
+            SelectedFiles.Clear();
+            SelectedFile = null;
+            
+            // Update UI selection
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.FileListView.SelectedItems.Clear();
+                }
+            });
+            
+            StatusText = "已清除选择";
+        }
+
         public bool CanBack => _backHistory.Count > 0;
         public bool CanForward => _forwardHistory.Count > 0;
         public bool CanUp => !string.IsNullOrEmpty(CurrentPath) && Directory.GetParent(CurrentPath) != null;
@@ -1652,5 +1670,6 @@ namespace FileSpace.ViewModels
         public bool CanSelectAll => Files.Any();
         public bool CanInvertSelection => Files.Any();
         public bool CanDeletePermanently => SelectedFiles.Any();
+        public bool CanClearSelection => SelectedFiles.Any();
     }
 }

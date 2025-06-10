@@ -284,6 +284,7 @@
                               SelectedItem="{Binding SelectedFile}"
                               Background="Transparent" BorderThickness="0"
                               MouseDoubleClick="FileListView_MouseDoubleClick"
+                              MouseDown="FileListView_MouseDown"
                               SelectionChanged="FileListView_SelectionChanged"
                               KeyDown="FileListView_KeyDown"
                               ItemContainerStyle="{StaticResource FileListViewItemStyle}">
@@ -418,15 +419,11 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Grid.Row="0" Text="预览" FontWeight="Bold" Margin="10" 
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                    
                     <!-- Size Calculation Progress -->
-                    <StackPanel Grid.Row="1" Margin="10,0,10,5" 
+                    <StackPanel Grid.Row="0" Margin="10,10,10,5" 
                                 Visibility="{Binding IsSizeCalculating, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,0,5"/>
                         <TextBlock Text="{Binding SizeCalculationProgress}" FontSize="11"
@@ -434,7 +431,7 @@
                                    TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     
-                    <ScrollViewer Grid.Row="2" x:Name="PreviewScrollViewer" Margin="10">
+                    <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" Margin="10">
                         <!-- Loading Overlay -->
                         <Grid>
                             <ContentPresenter Content="{Binding PreviewContent}"/>

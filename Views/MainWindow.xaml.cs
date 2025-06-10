@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Wpf.Ui.Controls;
 using FileSpace.ViewModels;
 using System.IO;
@@ -31,7 +32,54 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            // Check if the double-click is on a ListViewItem, not just empty space
+            // var hitTest = VisualTreeHelper.HitTest(FileListView, e.GetPosition(FileListView));
+            // if (hitTest != null)
+            // {
+            //     var listViewItem = FindAncestor<Wpf.Ui.Controls.ListViewItem>(hitTest.VisualHit);
+            //     if (listViewItem != null && listViewItem.DataContext is FileItemViewModel file)
+            //     {
+            //         ViewModel.FileDoubleClickCommand.Execute(file);
+            //     }
+            // }
             ViewModel.FileDoubleClickCommand.Execute(ViewModel.SelectedFile);
+        }
+
+        private void FileListView_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // Check if click is on empty area (not on a ListViewItem)
+            var hitTest = VisualTreeHelper.HitTest(FileListView, e.GetPosition(FileListView));
+            if (hitTest != null)
+            {
+                var listViewItem = FindAncestor<Wpf.Ui.Controls.ListViewItem>(hitTest.VisualHit);
+                if (listViewItem == null)
+                {
+                    // Clicked on empty area, clear selection
+                    FileListView.SelectedItems.Clear();
+                    if (DataContext is MainViewModel viewModel)
+                    {
+                        viewModel.SelectedFiles.Clear();
+                    }
+                    
+                    // Ensure the ListView gets focus for keyboard shortcuts
+                    FileListView.Focus();
+                }
+            }
+        }
+
+        private static T? FindAncestor<T>(DependencyObject current) where T : class
+        {
+            do
+            {
+                if (current is T ancestor)
+                {
+                    return ancestor;
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+            while (current != null);
+
+            return null;
         }
 
         private void AddressBar_KeyDown(object sender, KeyEventArgs e)
@@ -88,6 +136,13 @@ namespace FileSpace.Views
             {
                 switch (e.Key)
                 {
+                    case Key.Enter:
+                        if (viewModel.SelectedFile != null && !viewModel.IsRenaming)
+                        {
+                            viewModel.FileDoubleClickCommand.Execute(viewModel.SelectedFile);
+                            e.Handled = true;
+                        }
+                        break;
                     case Key.F2:
                         if (viewModel.SelectedFile != null && !viewModel.IsRenaming)
                         {
@@ -99,6 +154,21 @@ namespace FileSpace.Views
                         if (viewModel.IsRenaming)
                         {
                             viewModel.CancelRenameCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        else
+                        {
+                            // Clear selection on Escape when not renaming
+                            FileListView.SelectedItems.Clear();
+                            viewModel.SelectedFiles.Clear();
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.Back:
+                        // Backspace key - navigate to parent directory
+                        if (!viewModel.IsRenaming && viewModel.CanUp)
+                        {
+                            viewModel.UpCommand.Execute(null);
                             e.Handled = true;
                         }
                         break;

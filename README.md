@@ -95,6 +95,7 @@ dotnet run
 - **F2**: Rename selected file
 - **Ctrl+A**: Select all files
 - **Escape**: Cancel current operation/close dialog
+- **Backspace**: Navigate to parent directory
 
 #### 🎯 Multi-Selection & Batch Operations ✅
 - ✅ **Multi-File Selection**: Ctrl/Shift multi-selection support
