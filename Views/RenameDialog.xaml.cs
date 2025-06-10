@@ -80,6 +80,34 @@ namespace FileSpace.Views
                     Close();
                     e.Handled = true;
                     break;
+                case Key.C:
+                    if (Keyboard.Modifiers == ModifierKeys.Control)
+                    {
+                        // Allow default Ctrl+C behavior for text selection
+                        return;
+                    }
+                    break;
+                case Key.V:
+                    if (Keyboard.Modifiers == ModifierKeys.Control)
+                    {
+                        // Allow default Ctrl+V behavior for text pasting
+                        return;
+                    }
+                    break;
+                case Key.X:
+                    if (Keyboard.Modifiers == ModifierKeys.Control)
+                    {
+                        // Allow default Ctrl+X behavior for text cutting
+                        return;
+                    }
+                    break;
+                case Key.A:
+                    if (Keyboard.Modifiers == ModifierKeys.Control)
+                    {
+                        // Allow default Ctrl+A behavior for select all
+                        return;
+                    }
+                    break;
             }
         }
 

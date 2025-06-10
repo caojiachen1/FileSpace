@@ -109,6 +109,27 @@ namespace FileSpace.Views
                             e.Handled = true;
                         }
                         break;
+                    case Key.C:
+                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.SelectedFiles.Any())
+                        {
+                            viewModel.CopyFilesCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.V:
+                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.CanPaste)
+                        {
+                            viewModel.PasteFilesCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.X:
+                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.SelectedFiles.Any())
+                        {
+                            viewModel.CutFilesCommand.Execute(null);
+                            e.Handled = true;
+                        }
+                        break;
                 }
             }
         }

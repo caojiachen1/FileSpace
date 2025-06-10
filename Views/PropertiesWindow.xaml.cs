@@ -2,6 +2,7 @@ using System.Windows;
 using Wpf.Ui.Controls;
 using FileSpace.ViewModels;
 using System;
+using System.Windows.Input;
 
 namespace FileSpace.Views
 {
@@ -14,6 +15,18 @@ namespace FileSpace.Views
         {
             InitializeComponent();
             DataContext = viewModel;
+            
+            // Add KeyDown event handler for escape key
+            KeyDown += PropertiesWindow_KeyDown;
+        }
+
+        private void PropertiesWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

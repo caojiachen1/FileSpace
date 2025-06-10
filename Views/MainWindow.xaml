@@ -264,7 +264,18 @@
                         <ui:Button Content="返回" Icon="ArrowLeft24" Click="BackButton_Click" Margin="0,0,5,0"/>
                         <ui:Button Content="前进" Icon="ArrowRight24" Click="ForwardButton_Click" Margin="0,0,5,0"/>
                         <ui:Button Content="上级" Icon="ArrowUp24" Click="UpButton_Click" Margin="0,0,5,0"/>
-                        <ui:Button Content="刷新" Icon="ArrowClockwise24" Click="RefreshButton_Click"/>
+                        <ui:Button Content="刷新" Icon="ArrowClockwise24" Click="RefreshButton_Click" Margin="0,0,5,0"/>
+                        
+                        <!-- File operation buttons with keyboard shortcuts -->
+                        <Separator Margin="5,0"/>
+                        <ui:Button Content="复制" Icon="Copy24" Command="{Binding CopyFilesCommand}" 
+                                   Margin="0,0,5,0" ToolTip="复制选中项 (Ctrl+C)"/>
+                        <ui:Button Content="剪切" Icon="Cut24" Command="{Binding CutFilesCommand}" 
+                                   Margin="0,0,5,0" ToolTip="剪切选中项 (Ctrl+X)"/>
+                        <ui:Button Content="粘贴" Icon="ClipboardPaste24" Command="{Binding PasteFilesCommand}" 
+                                   Margin="0,0,5,0" ToolTip="粘贴 (Ctrl+V)"/>
+                        <ui:Button Content="删除" Icon="Delete24" Command="{Binding DeleteFilesCommand}" 
+                                   ToolTip="删除选中项 (Delete)"/>
                     </StackPanel>
 
                     <!-- File List -->

@@ -1234,7 +1234,8 @@ namespace FileSpace.ViewModels
             if (selectedPaths.Any())
             {
                 ClipboardService.Instance.CopyFiles(selectedPaths);
-                StatusText = $"已复制 {selectedPaths.Count} 个项目到剪贴板";
+                StatusText = $"已复制 {selectedPaths.Count} 个项目到剪贴板 (Ctrl+C)";
+                OnPropertyChanged(nameof(CanPaste)); // Notify that paste state might have changed
             }
         }
 
@@ -1245,7 +1246,8 @@ namespace FileSpace.ViewModels
             if (selectedPaths.Any())
             {
                 ClipboardService.Instance.CutFiles(selectedPaths);
-                StatusText = $"已剪切 {selectedPaths.Count} 个项目到剪贴板";
+                StatusText = $"已剪切 {selectedPaths.Count} 个项目到剪贴板 (Ctrl+X)";
+                OnPropertyChanged(nameof(CanPaste)); // Notify that paste state might have changed
             }
         }
 
@@ -1308,13 +1310,16 @@ namespace FileSpace.ViewModels
                 return;
             }
 
-            var result = System.Windows.MessageBox.Show(
-                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？",
+            var confirmDialog = new ConfirmationDialog(
                 "确认删除",
-                System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Warning);
+                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？\n\n此操作无法撤销。",
+                "删除",
+                "取消")
+            {
+                Owner = Application.Current.MainWindow
+            };
 
-            if (result != System.Windows.MessageBoxResult.Yes)
+            if (confirmDialog.ShowDialog() != true)
                 return;
 
             try
