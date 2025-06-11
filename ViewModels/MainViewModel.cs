@@ -7,6 +7,7 @@ using System.Threading;
 using System.Text;
 using FileSpace.Services;
 using FileSpace.Views;
+using magika;
 
 namespace FileSpace.ViewModels
 {
@@ -580,6 +581,35 @@ namespace FileSpace.ViewModels
             }
         }
 
+        private async Task<string> DetectFileTypeAsync(string filePath, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await Task.Run(() =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var magika = new Magika();
+                    var res = magika.IdentifyPath(filePath);
+                    
+                    // Don't show probability for unknown file types
+                    if (res.output.ct_label.Equals("unknown", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "unknown";
+                    }
+                    
+                    return $"{res.output.ct_label} ({res.output.score:P1})";
+                }, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return "检测已取消";
+            }
+            catch (Exception)
+            {
+                return "检测失败";
+            }
+        }
+
         private async Task ShowTextPreviewAsync(CancellationToken cancellationToken)
         {
             try
@@ -612,6 +642,9 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
+                
+                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                panel.Children.Add(aiDetectionBlock);
                 panel.Children.Add(CreateInfoTextBlock(""));
 
                 var previewHeader = CreateInfoTextBlock("文件预览:");
@@ -635,6 +668,19 @@ namespace FileSpace.ViewModels
                 PreviewContent = panel;
                 PreviewStatus = $"文本预览 ({content.Length:N0} 字符)";
                 IsPreviewLoading = false;
+
+                // Start AI detection asynchronously
+                _ = Task.Run(async () =>
+                {
+                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                        {
+                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        }
+                    });
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -684,6 +730,9 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {image.Source.Width} × {image.Source.Height} 像素"));
+                
+                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                panel.Children.Add(aiDetectionBlock);
                 panel.Children.Add(CreateInfoTextBlock(""));
 
                 var previewHeader = CreateInfoTextBlock("图片预览:");
@@ -695,6 +744,19 @@ namespace FileSpace.ViewModels
                 PreviewContent = panel;
                 PreviewStatus = "图片预览";
                 IsPreviewLoading = false;
+
+                // Start AI detection asynchronously
+                _ = Task.Run(async () =>
+                {
+                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                        {
+                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        }
+                    });
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -718,6 +780,9 @@ namespace FileSpace.ViewModels
             panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
             panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            
+            var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+            panel.Children.Add(aiDetectionBlock);
             panel.Children.Add(CreateInfoTextBlock(""));
 
             var previewHeader = CreateInfoTextBlock("PDF 预览信息:");
@@ -730,6 +795,19 @@ namespace FileSpace.ViewModels
             PreviewContent = panel;
             PreviewStatus = "PDF 文档信息";
             IsPreviewLoading = false;
+
+            // Start AI detection asynchronously
+            _ = Task.Run(async () =>
+            {
+                var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                    {
+                        aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                    }
+                });
+            }, cancellationToken);
         }
 
         private async Task ShowHtmlPreviewAsync(CancellationToken cancellationToken)
@@ -755,6 +833,9 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                
+                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                panel.Children.Add(aiDetectionBlock);
                 panel.Children.Add(CreateInfoTextBlock(""));
 
                 var previewHeader = CreateInfoTextBlock("HTML 源代码预览:");
@@ -777,6 +858,19 @@ namespace FileSpace.ViewModels
                 PreviewContent = panel;
                 PreviewStatus = "HTML 源代码";
                 IsPreviewLoading = false;
+
+                // Start AI detection asynchronously
+                _ = Task.Run(async () =>
+                {
+                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                        {
+                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        }
+                    });
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -804,6 +898,9 @@ namespace FileSpace.ViewModels
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
+                
+                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                panel.Children.Add(aiDetectionBlock);
                 panel.Children.Add(CreateInfoTextBlock(""));
 
                 var previewHeader = CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行):");
@@ -835,6 +932,19 @@ namespace FileSpace.ViewModels
                 PreviewContent = panel;
                 PreviewStatus = $"CSV 预览 ({lines.Length} 行)";
                 IsPreviewLoading = false;
+
+                // Start AI detection asynchronously
+                _ = Task.Run(async () =>
+                {
+                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                        {
+                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        }
+                    });
+                }, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -859,10 +969,26 @@ namespace FileSpace.ViewModels
             panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
             panel.Children.Add(CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
+            
+            var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+            panel.Children.Add(aiDetectionBlock);
 
             PreviewContent = panel;
             PreviewStatus = "文件信息";
             IsPreviewLoading = false;
+
+            // Start AI detection asynchronously
+            _ = Task.Run(async () =>
+            {
+                var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                    {
+                        aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                    }
+                });
+            }, cancellationToken);
         }
 
         private System.Windows.Controls.StackPanel CreateLoadingIndicator()

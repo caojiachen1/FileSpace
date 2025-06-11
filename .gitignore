@@ -32,7 +32,7 @@ artifacts/
 ScaffoldingReadMe.txt
 
 # NuGet Packages
-*.nupkg
+# *.nupkg
 # NuGet Symbol Packages
 *.snupkg
 
@@ -57,3 +57,4 @@ nunit-*.xml
 .vscode/
 publish/
 todo.txt
+Packages

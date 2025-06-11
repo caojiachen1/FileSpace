@@ -13,13 +13,13 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Magika.CSharp" Version="0.5.1" />
     <PackageReference Include="WPF-UI" Version="4.0.2" />
+  <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
   </ItemGroup>
-
+	
   <ItemGroup>
-    <Reference Include="Microsoft.VisualBasic">
-      <HintPath>C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\8.0.0\Microsoft.VisualBasic.dll</HintPath>
-    </Reference>
+    <EmbeddedResource Include="Model/model.onnx" Logicalname="magika_model.onnx" />
   </ItemGroup>
 
 </Project>
