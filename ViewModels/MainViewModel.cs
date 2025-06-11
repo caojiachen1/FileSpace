@@ -12,15 +12,15 @@ using magika;
 
 namespace FileSpace.ViewModels
 {
-    public enum FilePreviewType
-    {
-        Text,
-        Image,
-        Pdf,
-        Html,
-        Csv,
-        General
-    }
+    // public enum FilePreviewType
+    // {
+    //     Text,
+    //     Image,
+    //     Pdf,
+    //     Html,
+    //     Csv,
+    //     General
+    // }
 
     public partial class MainViewModel : ObservableObject
     {
@@ -235,15 +235,7 @@ namespace FileSpace.ViewModels
 
         private FilePreviewType DetermineFileType(string extension)
         {
-            return extension.ToLower() switch
-            {
-                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".md" or ".yaml" or ".yml" => FilePreviewType.Text,
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => FilePreviewType.Image,
-                ".pdf" => FilePreviewType.Pdf,
-                ".html" or ".htm" => FilePreviewType.Html,
-                ".csv" => FilePreviewType.Csv,
-                _ => FilePreviewType.General
-            };
+            return FilePreviewUtils.DetermineFileType(extension);
         }
 
         private async Task ShowFileInfoAndPreviewAsync(CancellationToken cancellationToken, FilePreviewType fileType)
@@ -254,31 +246,31 @@ namespace FileSpace.ViewModels
                 var panel = new System.Windows.Controls.StackPanel();
 
                 // Add common file information
-                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
 
                 // Add specific information based on file type
                 await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
 
-                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                var aiDetectionBlock = UIElementUtils.CreateInfoTextBlock("AI检测文件类型: 正在检测...");
                 panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(CreateInfoTextBlock(""));
+                panel.Children.Add(UIElementUtils.CreateInfoTextBlock(""));
 
                 // Add preview content based on file type
                 await AddPreviewContentAsync(panel, fileInfo, fileType, cancellationToken);
 
                 PreviewContent = panel;
-                SetPreviewStatus(fileType, fileInfo);
+                PreviewStatus = FilePreviewUtils.GetPreviewStatus(fileType, fileInfo);
                 IsPreviewLoading = false;
 
                 // Start AI detection asynchronously
                 _ = Task.Run(async () =>
                 {
-                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    var aiResult = await MagikaDetector.DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
@@ -290,7 +282,7 @@ namespace FileSpace.ViewModels
             }
             catch (Exception ex)
             {
-                PreviewContent = CreateErrorPanel($"{GetFileTypeDisplayName(fileType)}预览错误", ex.Message);
+                PreviewContent = UIElementUtils.CreateErrorPanel($"{FilePreviewUtils.GetFileTypeDisplayName(fileType)}预览错误", ex.Message);
                 PreviewStatus = "预览失败";
                 IsPreviewLoading = false;
             }
@@ -302,16 +294,16 @@ namespace FileSpace.ViewModels
             {
                 case FilePreviewType.Text:
                     var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
-                    panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
+                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
                     break;
 
                 case FilePreviewType.Image:
                     try
                     {
-                        var imageInfo = await GetImageInfoAsync(fileInfo.FullName, cancellationToken);
+                        var imageInfo = await FilePreviewUtils.GetImageInfoAsync(fileInfo.FullName, cancellationToken);
                         if (imageInfo != null)
                         {
-                            panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
+                            panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"图片尺寸: {imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
                         }
                     }
                     catch
@@ -324,7 +316,7 @@ namespace FileSpace.ViewModels
                     try
                     {
                         var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
-                        panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
+                        panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
                     }
                     catch
                     {
@@ -333,39 +325,20 @@ namespace FileSpace.ViewModels
                     break;
 
                 case FilePreviewType.General:
-                    panel.Children.Add(CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
-                    panel.Children.Add(CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
+                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
+                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
                     break;
             }
         }
 
-        private async Task<(double Width, double Height)?> GetImageInfoAsync(string filePath, CancellationToken cancellationToken)
+        private string GetPreviewHeaderText(FilePreviewType fileType)
         {
-            return await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return Application.Current.Dispatcher.Invoke(() =>
-                {
-                    try
-                    {
-                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(filePath);
-                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                        bitmap.EndInit();
-                        return (bitmap.Width, bitmap.Height);
-                    }
-                    catch
-                    {
-                        return ((double, double)?)null;
-                    }
-                });
-            }, cancellationToken);
+            return FilePreviewUtils.GetPreviewHeaderText(fileType);
         }
 
         private async Task AddPreviewContentAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
         {
-            var previewHeader = CreateInfoTextBlock(GetPreviewHeaderText(fileType));
+            var previewHeader = UIElementUtils.CreateInfoTextBlock(GetPreviewHeaderText(fileType));
             previewHeader.FontWeight = System.Windows.FontWeights.Bold;
             panel.Children.Add(previewHeader);
 
@@ -523,43 +496,24 @@ namespace FileSpace.ViewModels
             panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
         }
 
-        private string GetPreviewHeaderText(FilePreviewType fileType)
+        private System.Windows.Controls.StackPanel CreateLoadingIndicator()
         {
-            return fileType switch
-            {
-                FilePreviewType.Text => "文件预览:",
-                FilePreviewType.Image => "图片预览:",
-                FilePreviewType.Html => "HTML 源代码预览:",
-                FilePreviewType.Csv => "CSV 文件预览:",
-                FilePreviewType.Pdf => "PDF 预览信息:",
-                _ => "预览:"
-            };
+            return UIElementUtils.CreateLoadingIndicator();
         }
 
-        private string GetFileTypeDisplayName(FilePreviewType fileType)
+        private System.Windows.Controls.StackPanel CreateErrorPanel(string title, string message)
         {
-            return fileType switch
-            {
-                FilePreviewType.Text => "文本",
-                FilePreviewType.Image => "图片",
-                FilePreviewType.Html => "HTML",
-                FilePreviewType.Csv => "CSV",
-                FilePreviewType.Pdf => "PDF",
-                _ => "文件"
-            };
+            return UIElementUtils.CreateErrorPanel(title, message);
         }
 
-        private void SetPreviewStatus(FilePreviewType fileType, FileInfo fileInfo)
+        private System.Windows.Controls.StackPanel CreateInfoPanel(string title, string message)
         {
-            PreviewStatus = fileType switch
-            {
-                FilePreviewType.Text => $"文本预览",
-                FilePreviewType.Image => "图片预览",
-                FilePreviewType.Html => "HTML 源代码",
-                FilePreviewType.Csv => $"CSV 预览",
-                FilePreviewType.Pdf => "PDF 文档信息",
-                _ => "文件信息"
-            };
+            return UIElementUtils.CreateInfoPanel(title, message);
+        }
+
+        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
+        {
+            return UIElementUtils.CreateInfoTextBlock(text);
         }
 
         private async Task ShowDirectoryPreviewAsync(CancellationToken cancellationToken)
@@ -792,94 +746,6 @@ namespace FileSpace.ViewModels
                     UpdateDirectoryTreeItemSizeRecursive(item.SubDirectories, folderPath, sizeInfo);
                 }
             }
-        }
-
-        private async Task<string> DetectFileTypeAsync(string filePath, CancellationToken cancellationToken)
-        {
-            try
-            {
-                return await Task.Run(() =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var magika = new Magika();
-                    var res = magika.IdentifyPath(filePath);
-                    
-                    // Don't show probability for unknown file types
-                    if (res.output.ct_label.Equals("unknown", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return "unknown";
-                    }
-                    
-                    return $"{res.output.ct_label} ({res.output.score:P1})";
-                }, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return "检测已取消";
-            }
-            catch (Exception)
-            {
-                return "检测失败";
-            }
-        }
-
-        private System.Windows.Controls.StackPanel CreateLoadingIndicator()
-        {
-            var panel = new System.Windows.Controls.StackPanel
-            {
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
-                VerticalAlignment = System.Windows.VerticalAlignment.Center
-            };
-
-            var progressBar = new System.Windows.Controls.ProgressBar
-            {
-                IsIndeterminate = true,
-                Width = 200,
-                Height = 20,
-                Margin = new System.Windows.Thickness(0, 10, 0, 10)
-            };
-
-            panel.Children.Add(CreateInfoTextBlock("正在加载预览..."));
-            panel.Children.Add(progressBar);
-
-            return panel;
-        }
-
-        private System.Windows.Controls.StackPanel CreateErrorPanel(string title, string message)
-        {
-            var panel = new System.Windows.Controls.StackPanel();
-            panel.Children.Add(new System.Windows.Controls.TextBlock
-            {
-                Text = title,
-                FontWeight = System.Windows.FontWeights.Bold,
-                Foreground = System.Windows.Media.Brushes.Red,
-                Margin = new System.Windows.Thickness(0, 0, 0, 10)
-            });
-            panel.Children.Add(CreateInfoTextBlock(message));
-            return panel;
-        }
-
-        private System.Windows.Controls.StackPanel CreateInfoPanel(string title, string message)
-        {
-            var panel = new System.Windows.Controls.StackPanel();
-            panel.Children.Add(new System.Windows.Controls.TextBlock
-            {
-                Text = title,
-                FontWeight = System.Windows.FontWeights.Bold,
-                Margin = new System.Windows.Thickness(0, 0, 0, 10)
-            });
-            panel.Children.Add(CreateInfoTextBlock(message));
-            return panel;
-        }
-
-        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
-        {
-            return new System.Windows.Controls.TextBlock
-            {
-                Text = text,
-                Margin = new System.Windows.Thickness(0, 2, 0, 2),
-                TextWrapping = System.Windows.TextWrapping.Wrap
-            };
         }
 
         [RelayCommand]
