@@ -75,10 +75,12 @@ namespace FileSpace.ViewModels
         private readonly Stack<string> _backHistory = new();
         private readonly Stack<string> _forwardHistory = new();
         private NavigationUtils _navigationUtils;
+        private FileOperationEventHandler _fileOperationEventHandler;
 
         public MainViewModel()
         {
             _navigationUtils = new NavigationUtils(_backHistory, _forwardHistory);
+            _fileOperationEventHandler = new FileOperationEventHandler(this);
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -86,9 +88,9 @@ namespace FileSpace.ViewModels
             BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress += OnSizeCalculationProgress;
 
             // Subscribe to file operations events
-            FileOperationsService.Instance.OperationProgress += OnFileOperationProgress;
-            FileOperationsService.Instance.OperationCompleted += OnFileOperationCompleted;
-            FileOperationsService.Instance.OperationFailed += OnFileOperationFailed;
+            FileOperationsService.Instance.OperationProgress += _fileOperationEventHandler.OnFileOperationProgress;
+            FileOperationsService.Instance.OperationCompleted += _fileOperationEventHandler.OnFileOperationCompleted;
+            FileOperationsService.Instance.OperationFailed += _fileOperationEventHandler.OnFileOperationFailed;
         }
 
         partial void OnCurrentPathChanged(string value)
@@ -483,49 +485,6 @@ namespace FileSpace.ViewModels
             {
                 StatusText = $"打开失败: {ex.Message}";
             }
-        }
-
-        private void OnFileOperationProgress(object? sender, FileOperationEventArgs e)
-        {
-            if (Application.Current?.Dispatcher == null) return;
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                var percentage = e.TotalFiles > 0 ? (double)e.FilesCompleted / e.TotalFiles * 100 : 0;
-                FileOperationProgress = percentage;
-                FileOperationStatus = $"{e.Operation}: {e.CurrentFile} ({e.FilesCompleted}/{e.TotalFiles})";
-            });
-        }
-
-        private void OnFileOperationCompleted(object? sender, string message)
-        {
-            if (Application.Current?.Dispatcher == null) return;
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                IsFileOperationInProgress = false;
-                FileOperationStatus = message;
-                StatusText = message;
-                _ = Refresh();
-
-                // Clear clipboard if it was a move operation
-                if (ClipboardService.Instance.ClipboardOperation == ClipboardFileOperation.Move)
-                {
-                    ClipboardService.Instance.ClearClipboard();
-                }
-            });
-        }
-
-        private void OnFileOperationFailed(object? sender, string message)
-        {
-            if (Application.Current?.Dispatcher == null) return;
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                IsFileOperationInProgress = false;
-                FileOperationStatus = message;
-                StatusText = message;
-            });
         }
 
         [RelayCommand]
@@ -966,9 +925,9 @@ namespace FileSpace.ViewModels
             BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted -= OnSizeCalculationCompleted;
             BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress -= OnSizeCalculationProgress;
 
-            FileOperationsService.Instance.OperationProgress -= OnFileOperationProgress;
-            FileOperationsService.Instance.OperationCompleted -= OnFileOperationCompleted;
-            FileOperationsService.Instance.OperationFailed -= OnFileOperationFailed;
+            FileOperationsService.Instance.OperationProgress -= _fileOperationEventHandler.OnFileOperationProgress;
+            FileOperationsService.Instance.OperationCompleted -= _fileOperationEventHandler.OnFileOperationCompleted;
+            FileOperationsService.Instance.OperationFailed -= _fileOperationEventHandler.OnFileOperationFailed;
 
             // Cancel any ongoing operations
             _previewCancellationTokenSource?.Cancel();
