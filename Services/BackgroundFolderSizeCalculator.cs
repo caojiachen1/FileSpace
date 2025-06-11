@@ -127,6 +127,55 @@ namespace FileSpace.Services
             {
                 dirItem.UpdateSizeFromBackground(result);
             }
+            // Update preview panel context with consistent positioning
+            else if (request.Context != null)
+            {
+                var contextType = request.Context.GetType();
+                if (IsAnonymousType(contextType))
+                {
+                    var properties = contextType.GetProperties();
+                    var statusBlock = properties.FirstOrDefault(p => p.Name == "StatusBlock")?.GetValue(request.Context) as System.Windows.Controls.TextBlock;
+                    var progressBlock = properties.FirstOrDefault(p => p.Name == "ProgressBlock")?.GetValue(request.Context) as System.Windows.Controls.TextBlock;
+                    var fileCountBlock = properties.FirstOrDefault(p => p.Name == "FileCountBlock")?.GetValue(request.Context) as System.Windows.Controls.TextBlock;
+                    var dirCountBlock = properties.FirstOrDefault(p => p.Name == "DirCountBlock")?.GetValue(request.Context) as System.Windows.Controls.TextBlock;
+
+                    if (System.Windows.Application.Current?.Dispatcher != null)
+                    {
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            if (statusBlock != null)
+                            {
+                                if (!string.IsNullOrEmpty(result.Error))
+                                {
+                                    statusBlock.Text = $"计算失败: {result.Error}";
+                                    // Keep original counts when calculation fails
+                                }
+                                else
+                                {
+                                    statusBlock.Text = $"总大小: {result.FormattedSize}";
+                                    // Update counts in their original positions
+                                    if (fileCountBlock != null)
+                                    {
+                                        fileCountBlock.Text = $"直接包含文件: {result.FileCount:N0} 个";
+                                    }
+                                    if (dirCountBlock != null)
+                                    {
+                                        dirCountBlock.Text = $"直接包含文件夹: {result.DirectoryCount:N0} 个";
+                                    }
+                                    if (progressBlock != null && result.InaccessibleItems > 0)
+                                    {
+                                        progressBlock.Text = $"无法访问 {result.InaccessibleItems} 个项目";
+                                    }
+                                    else if (progressBlock != null)
+                                    {
+                                        progressBlock.Text = "";
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
             
             // Notify completion
             SizeCalculationCompleted?.Invoke(this, new FolderSizeCompletedEventArgs(request.FolderPath, result, request.Context));
@@ -137,6 +186,7 @@ namespace FileSpace.Services
             try
             {
                 var dirInfo = new DirectoryInfo(path);
+                bool isRootCalculation = string.IsNullOrEmpty(progress.CurrentPath);
                 
                 // Calculate files in current directory
                 foreach (var file in dirInfo.EnumerateFiles())
@@ -169,7 +219,12 @@ namespace FileSpace.Services
                 {
                     try
                     {
-                        result.DirectoryCount++;
+                        // Only count direct subdirectories for the root folder
+                        if (isRootCalculation)
+                        {
+                            result.DirectoryCount++;
+                        }
+                        
                         progress.ProcessedDirectories++;
                         progress.CurrentPath = subDir.FullName;
                         progressReporter.Report(progress);
@@ -222,6 +277,13 @@ namespace FileSpace.Services
 
         public int ActiveCalculationsCount => _activeCalculations.Count;
         public int CacheSize => _sizeCache.Count;
+
+        private static bool IsAnonymousType(Type type)
+        {
+            return type.Name.Contains("AnonymousType") && 
+                   type.IsGenericType && 
+                   type.Namespace == null;
+        }
     }
 
     public class SizeCalculationRequest

@@ -12,17 +12,7 @@ using magika;
 
 namespace FileSpace.ViewModels
 {
-    // public enum FilePreviewType
-    // {
-    //     Text,
-    //     Image,
-    //     Pdf,
-    //     Html,
-    //     Csv,
-    //     General
-    // }
-
-    public partial class MainViewModel : ObservableObject
+    public partial class MainViewModel : ObservableObject, IDisposable
     {
         [ObservableProperty]
         private string _currentPath = string.Empty;
@@ -183,39 +173,33 @@ namespace FileSpace.ViewModels
                     return;
                 }
 
-                if (SelectedFile.IsDirectory)
-                {
-                    await ShowDirectoryPreviewAsync(cancellationToken);
-                    return;
-                }
-
                 IsPreviewLoading = true;
                 PreviewStatus = "正在加载预览...";
-                PreviewContent = CreateLoadingIndicator();
+                PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
 
-                string extension = Path.GetExtension(SelectedFile.FullPath).ToLower();
-                long fileSize = SelectedFile.Size;
+                // Generate preview using the service
+                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(SelectedFile, cancellationToken);
+                
+                PreviewContent = previewContent;
+                PreviewStatus = GetPreviewStatusForFile(SelectedFile);
+                IsPreviewLoading = false;
 
-                // Check file size limits for different types
-                if (FileUtils.IsTextFile(extension) && fileSize > 10 * 1024 * 1024) // 10MB limit for text
+                // Update tracking for current preview folder
+                if (SelectedFile.IsDirectory)
                 {
-                    PreviewContent = CreateInfoPanel("文件过大", "文本文件超过10MB，无法预览");
-                    PreviewStatus = "文件过大";
-                    IsPreviewLoading = false;
-                    return;
+                    _currentPreviewFolderPath = SelectedFile.FullPath;
+                    IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.IsCalculationActive(SelectedFile.FullPath);
+                    if (IsSizeCalculating)
+                    {
+                        SizeCalculationProgress = "正在计算中...";
+                    }
                 }
-
-                if (FileUtils.IsImageFile(extension) && fileSize > 50 * 1024 * 1024) // 50MB limit for images
+                else
                 {
-                    PreviewContent = CreateInfoPanel("文件过大", "图片文件超过50MB，无法预览");
-                    PreviewStatus = "文件过大";
-                    IsPreviewLoading = false;
-                    return;
+                    _currentPreviewFolderPath = string.Empty;
+                    IsSizeCalculating = false;
+                    SizeCalculationProgress = "";
                 }
-
-                // Determine file type and show preview
-                var fileType = DetermineFileType(extension);
-                await ShowFileInfoAndPreviewAsync(cancellationToken, fileType);
             }
             catch (OperationCanceledException)
             {
@@ -225,7 +209,7 @@ namespace FileSpace.ViewModels
             }
             catch (Exception ex)
             {
-                PreviewContent = CreateErrorPanel("预览错误", ex.Message);
+                PreviewContent = PreviewUIHelper.CreateErrorPanel("预览错误", ex.Message);
                 PreviewStatus = $"预览失败: {ex.Message}";
                 IsPreviewLoading = false;
             }
@@ -235,407 +219,22 @@ namespace FileSpace.ViewModels
             }
         }
 
-        private FilePreviewType DetermineFileType(string extension)
+        private string GetPreviewStatusForFile(FileItemViewModel file)
         {
-            return FilePreviewUtils.DetermineFileType(extension);
-        }
-
-        private async Task ShowFileInfoAndPreviewAsync(CancellationToken cancellationToken, FilePreviewType fileType)
-        {
-            try
+            if (file.IsDirectory)
             {
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                var panel = new System.Windows.Controls.StackPanel();
-
-                // Add common file information
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-
-                // Add specific information based on file type
-                await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
-
-                var aiDetectionBlock = UIElementUtils.CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-                panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(UIElementUtils.CreateInfoTextBlock(""));
-
-                // Add preview content based on file type
-                await AddPreviewContentAsync(panel, fileInfo, fileType, cancellationToken);
-
-                PreviewContent = panel;
-                PreviewStatus = FilePreviewUtils.GetPreviewStatus(fileType, fileInfo);
-                IsPreviewLoading = false;
-
-                // Start AI detection asynchronously
-                _ = Task.Run(async () =>
-                {
-                    var aiResult = await MagikaDetector.DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                        {
-                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                        }
-                    });
-                }, cancellationToken);
+                return "文件夹信息";
             }
-            catch (Exception ex)
-            {
-                PreviewContent = UIElementUtils.CreateErrorPanel($"{FilePreviewUtils.GetFileTypeDisplayName(fileType)}预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-            }
-        }
-
-        private async Task AddFileTypeSpecificInfoAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
-        {
-            switch (fileType)
-            {
-                case FilePreviewType.Text:
-                    var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
-                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
-                    break;
-
-                case FilePreviewType.Image:
-                    try
-                    {
-                        var imageInfo = await FilePreviewUtils.GetImageInfoAsync(fileInfo.FullName, cancellationToken);
-                        if (imageInfo != null)
-                        {
-                            panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"图片尺寸: {imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore image info errors
-                    }
-                    break;
-
-                case FilePreviewType.Csv:
-                    try
-                    {
-                        var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
-                        panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
-                    }
-                    catch
-                    {
-                        // Ignore line count errors
-                    }
-                    break;
-
-                case FilePreviewType.General:
-                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
-                    panel.Children.Add(UIElementUtils.CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
-                    break;
-            }
-        }
-
-        private string GetPreviewHeaderText(FilePreviewType fileType)
-        {
-            return FilePreviewUtils.GetPreviewHeaderText(fileType);
-        }
-
-        private async Task AddPreviewContentAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
-        {
-            var previewHeader = UIElementUtils.CreateInfoTextBlock(GetPreviewHeaderText(fileType));
-            previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-            panel.Children.Add(previewHeader);
-
-            switch (fileType)
-            {
-                case FilePreviewType.Text:
-                    await AddTextPreviewAsync(panel, fileInfo, cancellationToken);
-                    break;
-
-                case FilePreviewType.Html:
-                    await AddHtmlPreviewAsync(panel, fileInfo, cancellationToken);
-                    break;
-
-                case FilePreviewType.Image:
-                    await AddImagePreviewAsync(panel, fileInfo, cancellationToken);
-                    break;
-
-                case FilePreviewType.Csv:
-                    await AddCsvPreviewAsync(panel, fileInfo, cancellationToken);
-                    break;
-
-                case FilePreviewType.Pdf:
-                    AddPdfPreview(panel);
-                    break;
-
-                case FilePreviewType.General:
-                    // No additional preview content for general files
-                    panel.Children.Remove(previewHeader); // Remove the header since there's no preview
-                    break;
-            }
-        }
-
-        private async Task AddTextPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
-        {
-            var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
-            var content = await File.ReadAllTextAsync(fileInfo.FullName, encoding, cancellationToken);
-
-            bool isTruncated = false;
-            if (content.Length > 100000)
-            {
-                content = content.Substring(0, 100000);
-                isTruncated = true;
-            }
-
-            var textBox = new System.Windows.Controls.TextBox
-            {
-                Text = content + (isTruncated ? "\n\n... (文件已截断，仅显示前100,000个字符)" : ""),
-                IsReadOnly = true,
-                TextWrapping = System.Windows.TextWrapping.Wrap,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                Background = System.Windows.Media.Brushes.Transparent,
-                BorderThickness = new System.Windows.Thickness(0),
-                FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
-                MinHeight = 200
-            };
-
-            panel.Children.Add(textBox);
-        }
-
-        private async Task AddHtmlPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
-        {
-            var content = await File.ReadAllTextAsync(fileInfo.FullName, cancellationToken);
-
-            bool isTruncated = false;
-            if (content.Length > 50000)
-            {
-                content = content.Substring(0, 50000);
-                isTruncated = true;
-            }
-
-            var textBox = new System.Windows.Controls.TextBox
-            {
-                Text = content + (isTruncated ? "\n\n... (已截断)" : ""),
-                IsReadOnly = true,
-                TextWrapping = System.Windows.TextWrapping.Wrap,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                Background = System.Windows.Media.Brushes.Transparent,
-                BorderThickness = new System.Windows.Thickness(0),
-                FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
-                MinHeight = 200
-            };
-
-            panel.Children.Add(textBox);
-        }
-
-        private async Task AddImagePreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
-        {
-            var image = await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                return Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(fileInfo.FullName);
-                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                    bitmap.DecodePixelWidth = 800;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-
-                    return new System.Windows.Controls.Image
-                    {
-                        Source = bitmap,
-                        Stretch = System.Windows.Media.Stretch.Uniform,
-                        StretchDirection = System.Windows.Controls.StretchDirection.DownOnly,
-                        MaxHeight = 400
-                    };
-                });
-            }, cancellationToken);
-
-            panel.Children.Add(image);
-        }
-
-        private async Task AddCsvPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
-        {
-            var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
-            var previewLines = lines.Take(100).ToArray();
-
-            // Update the header to show line count
-            var lastChild = panel.Children[panel.Children.Count - 1] as System.Windows.Controls.TextBlock;
-            if (lastChild != null)
-            {
-                lastChild.Text = $"CSV 文件预览 (显示前 {previewLines.Length} 行):";
-            }
-
-            var contentPanel = new System.Windows.Controls.StackPanel();
-            foreach (var line in previewLines)
-            {
-                if (cancellationToken.IsCancellationRequested) break;
-                contentPanel.Children.Add(CreateInfoTextBlock(line));
-            }
-
-            if (lines.Length > 100)
-            {
-                contentPanel.Children.Add(CreateInfoTextBlock(""));
-                contentPanel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
-            }
-
-            var scrollViewer = new System.Windows.Controls.ScrollViewer
-            {
-                Content = contentPanel,
-                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                MaxHeight = 300
-            };
-
-            panel.Children.Add(scrollViewer);
-        }
-
-        private void AddPdfPreview(System.Windows.Controls.StackPanel panel)
-        {
-            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
-            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
-        }
-
-        private System.Windows.Controls.StackPanel CreateLoadingIndicator()
-        {
-            return UIElementUtils.CreateLoadingIndicator();
-        }
-
-        private System.Windows.Controls.StackPanel CreateErrorPanel(string title, string message)
-        {
-            return UIElementUtils.CreateErrorPanel(title, message);
-        }
-
-        private System.Windows.Controls.StackPanel CreateInfoPanel(string title, string message)
-        {
-            return UIElementUtils.CreateInfoPanel(title, message);
-        }
-
-        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
-        {
-            return UIElementUtils.CreateInfoTextBlock(text);
-        }
-
-        private async Task ShowDirectoryPreviewAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var dirInfo = new DirectoryInfo(SelectedFile!.FullPath);
-
-                // Set current preview folder path
-                _currentPreviewFolderPath = dirInfo.FullName;
-
-                var panel = new System.Windows.Controls.StackPanel();
-                panel.Children.Add(CreateInfoTextBlock($"文件夹: {dirInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {dirInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {dirInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {dirInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                // Quick directory count (without recursion)
-                var quickSummary = await Task.Run(() =>
-                {
-                    int fileCount = 0;
-                    int dirCount = 0;
-
-                    try
-                    {
-                        foreach (var file in dirInfo.EnumerateFiles())
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            fileCount++;
-                            if (fileCount > 1000) break; // Quick preview only
-                        }
-
-                        foreach (var dir in dirInfo.EnumerateDirectories())
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            dirCount++;
-                            if (dirCount > 1000) break; // Quick preview only
-                        }
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // Access denied, return partial info
-                    }
-
-                    return new { FileCount = fileCount, DirCount = dirCount };
-                }, cancellationToken);
-
-                panel.Children.Add(CreateInfoTextBlock($"直接包含文件: {quickSummary.FileCount}{(quickSummary.FileCount >= 1000 ? "+" : "")} 个"));
-                panel.Children.Add(CreateInfoTextBlock($"直接包含文件夹: {quickSummary.DirCount}{(quickSummary.DirCount >= 1000 ? "+" : "")} 个"));
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                // Size calculation section
-                var sizeHeaderBlock = CreateInfoTextBlock("总大小计算:");
-                sizeHeaderBlock.FontWeight = System.Windows.FontWeights.Bold;
-                panel.Children.Add(sizeHeaderBlock);
-
-                // Check if we have cached result or active calculation
-                var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
-                var cachedSize = backgroundCalculator.GetCachedSize(dirInfo.FullName);
-                var isActiveCalculation = backgroundCalculator.IsCalculationActive(dirInfo.FullName);
-
-                var sizeStatusBlock = CreateInfoTextBlock("");
-                var progressBlock = CreateInfoTextBlock("");
-                var sizeResultBlock = CreateInfoTextBlock("");
-
-                if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
-                {
-                    sizeStatusBlock.Text = $"计算失败: {cachedSize.Error}";
-                    IsSizeCalculating = false;
-                    SizeCalculationProgress = "";
-                }
-                else if (cachedSize != null && cachedSize.IsCalculationComplete)
-                {
-                    sizeStatusBlock.Text = $"总大小: {cachedSize.FormattedSize}";
-                    sizeResultBlock.Text = $"包含 {cachedSize.FileCount:N0} 个文件，{cachedSize.DirectoryCount:N0} 个文件夹";
-                    if (cachedSize.InaccessibleItems > 0)
-                    {
-                        progressBlock.Text = $"无法访问 {cachedSize.InaccessibleItems} 个项目";
-                    }
-                    IsSizeCalculating = false;
-                    SizeCalculationProgress = "";
-                }
-                else if (isActiveCalculation)
-                {
-                    sizeStatusBlock.Text = "正在后台计算...";
-                    IsSizeCalculating = true;
-                    SizeCalculationProgress = "正在计算中...";
-                }
-                else
-                {
-                    sizeStatusBlock.Text = "准备计算...";
-                    // Queue the calculation in background
-                    backgroundCalculator.QueueFolderSizeCalculation(dirInfo.FullName,
-                        new { PreviewPanel = panel, StatusBlock = sizeStatusBlock, ProgressBlock = progressBlock, ResultBlock = sizeResultBlock });
-                    IsSizeCalculating = true;
-                    SizeCalculationProgress = "正在排队计算...";
-                }
-
-                panel.Children.Add(sizeStatusBlock);
-                panel.Children.Add(progressBlock);
-                panel.Children.Add(sizeResultBlock);
-
-                PreviewContent = panel;
-                PreviewStatus = "文件夹信息";
-                IsPreviewLoading = false;
-            }
-            catch (Exception ex)
-            {
-                PreviewContent = CreateErrorPanel("文件夹预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-                IsSizeCalculating = false;
-                SizeCalculationProgress = "";
-                _currentPreviewFolderPath = string.Empty;
-            }
+            
+            var extension = Path.GetExtension(file.FullPath).ToLower();
+            var fileType = FilePreviewUtils.DetermineFileType(extension);
+            return FilePreviewUtils.GetPreviewStatus(fileType, new FileInfo(file.FullPath));
         }
 
         private void OnSizeCalculationCompleted(object? sender, FolderSizeCompletedEventArgs e)
         {
+            if (Application.Current?.Dispatcher == null) return;
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 // Update any active directory preview if it matches
@@ -659,6 +258,8 @@ namespace FileSpace.ViewModels
 
         private void OnSizeCalculationProgress(object? sender, FolderSizeProgressEventArgs e)
         {
+            if (Application.Current?.Dispatcher == null) return;
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 // Only show progress for the currently selected folder
@@ -688,28 +289,36 @@ namespace FileSpace.ViewModels
                         if (!string.IsNullOrEmpty(sizeInfo.Error))
                         {
                             child.Text = $"计算失败: {sizeInfo.Error}";
+                            // Don't update file/folder counts if calculation failed
                         }
                         else
                         {
                             child.Text = $"总大小: {sizeInfo.FormattedSize}";
 
-                            // Update result block
-                            var resultBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
-                                .FirstOrDefault(tb => tb.Text.StartsWith("包含") || string.IsNullOrEmpty(tb.Text));
-                            if (resultBlock != null)
+                            // Update the file and folder count blocks in their original positions
+                            foreach (var contentChild in panel.Children.OfType<System.Windows.Controls.TextBlock>())
                             {
-                                resultBlock.Text = $"包含 {sizeInfo.FileCount:N0} 个文件，{sizeInfo.DirectoryCount:N0} 个文件夹";
+                                if (contentChild.Text.StartsWith("直接包含文件:"))
+                                {
+                                    contentChild.Text = $"总共包含文件: {sizeInfo.FileCount:N0} 个";
+                                }
+                                else if (contentChild.Text.StartsWith("直接包含文件夹:"))
+                                {
+                                    contentChild.Text = $"直接包含文件夹: {sizeInfo.DirectoryCount:N0} 个";
+                                }
                             }
 
-                            // Update progress block for inaccessible items
-                            if (sizeInfo.InaccessibleItems > 0)
+                            // Update or add inaccessible items info
+                            var progressBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
+                                .LastOrDefault(tb => !tb.Text.StartsWith("直接包含") && !tb.Text.StartsWith("总大小") && !tb.Text.StartsWith("文件夹") && !tb.Text.StartsWith("完整路径") && !tb.Text.StartsWith("创建时间") && !tb.Text.StartsWith("修改时间") && !string.IsNullOrEmpty(tb.Text));
+                            
+                            if (progressBlock != null && sizeInfo.InaccessibleItems > 0)
                             {
-                                var progressBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
-                                    .LastOrDefault();
-                                if (progressBlock != null && !progressBlock.Text.StartsWith("包含"))
-                                {
-                                    progressBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
-                                }
+                                progressBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
+                            }
+                            else if (progressBlock != null)
+                            {
+                                progressBlock.Text = "";
                             }
                         }
                         break;
@@ -878,6 +487,8 @@ namespace FileSpace.ViewModels
 
         private void OnFileOperationProgress(object? sender, FileOperationEventArgs e)
         {
+            if (Application.Current?.Dispatcher == null) return;
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 var percentage = e.TotalFiles > 0 ? (double)e.FilesCompleted / e.TotalFiles * 100 : 0;
@@ -888,6 +499,8 @@ namespace FileSpace.ViewModels
 
         private void OnFileOperationCompleted(object? sender, string message)
         {
+            if (Application.Current?.Dispatcher == null) return;
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 IsFileOperationInProgress = false;
@@ -905,6 +518,8 @@ namespace FileSpace.ViewModels
 
         private void OnFileOperationFailed(object? sender, string message)
         {
+            if (Application.Current?.Dispatcher == null) return;
+
             Application.Current.Dispatcher.Invoke(() =>
             {
                 IsFileOperationInProgress = false;
@@ -1343,6 +958,26 @@ namespace FileSpace.ViewModels
             });
             
             StatusText = "已清除选择";
+        }
+
+        public void Dispose()
+        {
+            // Unsubscribe from events to prevent memory leaks and null reference exceptions
+            BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted -= OnSizeCalculationCompleted;
+            BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress -= OnSizeCalculationProgress;
+
+            FileOperationsService.Instance.OperationProgress -= OnFileOperationProgress;
+            FileOperationsService.Instance.OperationCompleted -= OnFileOperationCompleted;
+            FileOperationsService.Instance.OperationFailed -= OnFileOperationFailed;
+
+            // Cancel any ongoing operations
+            _previewCancellationTokenSource?.Cancel();
+            _fileOperationCancellationTokenSource?.Cancel();
+
+            // Dispose resources
+            _previewSemaphore?.Dispose();
+            _previewCancellationTokenSource?.Dispose();
+            _fileOperationCancellationTokenSource?.Dispose();
         }
 
         public bool CanBack => _navigationUtils.CanGoBack;

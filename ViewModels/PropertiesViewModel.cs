@@ -203,6 +203,7 @@ namespace FileSpace.ViewModels
                     return new { FileCount = fileCount, DirCount = dirCount };
                 });
                 
+                // Set initial content info that will be updated in place
                 DirectoryContentsText = $"包含 {quickCount.FileCount}{(quickCount.FileCount >= 1000 ? "+" : "")} 个文件，{quickCount.DirCount}{(quickCount.DirCount >= 1000 ? "+" : "")} 个文件夹";
                 
                 // Check for cached size or start calculation
@@ -214,11 +215,13 @@ namespace FileSpace.ViewModels
                     if (!string.IsNullOrEmpty(cachedSize.Error))
                     {
                         DirectorySizeText = $"计算失败: {cachedSize.Error}";
+                        // Keep the quick count if calculation failed
                     }
                     else
                     {
                         DirectorySizeText = cachedSize.FormattedSize;
-                        DirectoryContentsText = $"包含 {cachedSize.FileCount:N0} 个文件，{cachedSize.DirectoryCount:N0} 个文件夹";
+                        // Update in the same position with accurate count
+                        DirectoryContentsText = $"总共包含 {cachedSize.FileCount:N0} 个文件，直接包含 {cachedSize.DirectoryCount:N0} 个文件夹";
                     }
                     IsSizeCalculating = false;
                 }
@@ -246,16 +249,20 @@ namespace FileSpace.ViewModels
         {
             if (e.FolderPath == _itemPath)
             {
+                if (Application.Current?.Dispatcher == null) return;
+
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     if (!string.IsNullOrEmpty(e.SizeInfo.Error))
                     {
                         DirectorySizeText = $"计算失败: {e.SizeInfo.Error}";
+                        // Keep existing DirectoryContentsText unchanged when calculation fails
                     }
                     else
                     {
                         DirectorySizeText = e.SizeInfo.FormattedSize;
-                        DirectoryContentsText = $"包含 {e.SizeInfo.FileCount:N0} 个文件，{e.SizeInfo.DirectoryCount:N0} 个文件夹";
+                        // Update in the same position with accurate count
+                        DirectoryContentsText = $"总共包含 {e.SizeInfo.FileCount:N0} 个文件，直接包含 {e.SizeInfo.DirectoryCount:N0} 个文件夹";
                         if (e.SizeInfo.InaccessibleItems > 0)
                         {
                             DirectoryContentsText += $"（{e.SizeInfo.InaccessibleItems} 个项目无法访问）";
@@ -274,6 +281,8 @@ namespace FileSpace.ViewModels
         {
             if (e.FolderPath == _itemPath)
             {
+                if (Application.Current?.Dispatcher == null) return;
+
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     DirectorySizeText = $"正在计算... ({e.Progress.ProcessedFiles} 个文件)";
