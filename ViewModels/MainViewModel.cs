@@ -11,6 +11,16 @@ using magika;
 
 namespace FileSpace.ViewModels
 {
+    public enum FilePreviewType
+    {
+        Text,
+        Image,
+        Pdf,
+        Html,
+        Csv,
+        General
+    }
+
     public partial class MainViewModel : ObservableObject
     {
         [ObservableProperty]
@@ -308,28 +318,9 @@ namespace FileSpace.ViewModels
                     return;
                 }
 
-                // Load preview based on file type
-                switch (extension)
-                {
-                    case ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".md" or ".yaml" or ".yml":
-                        await ShowTextPreviewAsync(cancellationToken);
-                        break;
-                    case ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico":
-                        await ShowImagePreviewAsync(cancellationToken);
-                        break;
-                    case ".pdf":
-                        await ShowPdfPreviewAsync(cancellationToken);
-                        break;
-                    case ".html" or ".htm":
-                        await ShowHtmlPreviewAsync(cancellationToken);
-                        break;
-                    case ".csv":
-                        await ShowCsvPreviewAsync(cancellationToken);
-                        break;
-                    default:
-                        await ShowFileInfoAsync(cancellationToken);
-                        break;
-                }
+                // Determine file type and show preview
+                var fileType = DetermineFileType(extension);
+                await ShowFileInfoAndPreviewAsync(cancellationToken, fileType);
             }
             catch (OperationCanceledException)
             {
@@ -347,6 +338,335 @@ namespace FileSpace.ViewModels
             {
                 _previewSemaphore.Release();
             }
+        }
+
+        private FilePreviewType DetermineFileType(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".md" or ".yaml" or ".yml" => FilePreviewType.Text,
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => FilePreviewType.Image,
+                ".pdf" => FilePreviewType.Pdf,
+                ".html" or ".htm" => FilePreviewType.Html,
+                ".csv" => FilePreviewType.Csv,
+                _ => FilePreviewType.General
+            };
+        }
+
+        private async Task ShowFileInfoAndPreviewAsync(CancellationToken cancellationToken, FilePreviewType fileType)
+        {
+            try
+            {
+                var fileInfo = new FileInfo(SelectedFile!.FullPath);
+                var panel = new System.Windows.Controls.StackPanel();
+
+                // Add common file information
+                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
+                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+
+                // Add specific information based on file type
+                await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
+
+                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
+                panel.Children.Add(aiDetectionBlock);
+                panel.Children.Add(CreateInfoTextBlock(""));
+
+                // Add preview content based on file type
+                await AddPreviewContentAsync(panel, fileInfo, fileType, cancellationToken);
+
+                PreviewContent = panel;
+                SetPreviewStatus(fileType, fileInfo);
+                IsPreviewLoading = false;
+
+                // Start AI detection asynchronously
+                _ = Task.Run(async () =>
+                {
+                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
+                        {
+                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        }
+                    });
+                }, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                PreviewContent = CreateErrorPanel($"{GetFileTypeDisplayName(fileType)}预览错误", ex.Message);
+                PreviewStatus = "预览失败";
+                IsPreviewLoading = false;
+            }
+        }
+
+        private async Task AddFileTypeSpecificInfoAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
+        {
+            switch (fileType)
+            {
+                case FilePreviewType.Text:
+                    var encoding = DetectEncoding(fileInfo.FullName);
+                    panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
+                    break;
+
+                case FilePreviewType.Image:
+                    try
+                    {
+                        var imageInfo = await GetImageInfoAsync(fileInfo.FullName, cancellationToken);
+                        if (imageInfo != null)
+                        {
+                            panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore image info errors
+                    }
+                    break;
+
+                case FilePreviewType.Csv:
+                    try
+                    {
+                        var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
+                        panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
+                    }
+                    catch
+                    {
+                        // Ignore line count errors
+                    }
+                    break;
+
+                case FilePreviewType.General:
+                    panel.Children.Add(CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
+                    panel.Children.Add(CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
+                    break;
+            }
+        }
+
+        private async Task<(double Width, double Height)?> GetImageInfoAsync(string filePath, CancellationToken cancellationToken)
+        {
+            return await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return Application.Current.Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.UriSource = new Uri(filePath);
+                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                        bitmap.EndInit();
+                        return (bitmap.Width, bitmap.Height);
+                    }
+                    catch
+                    {
+                        return ((double, double)?)null;
+                    }
+                });
+            }, cancellationToken);
+        }
+
+        private async Task AddPreviewContentAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
+        {
+            var previewHeader = CreateInfoTextBlock(GetPreviewHeaderText(fileType));
+            previewHeader.FontWeight = System.Windows.FontWeights.Bold;
+            panel.Children.Add(previewHeader);
+
+            switch (fileType)
+            {
+                case FilePreviewType.Text:
+                    await AddTextPreviewAsync(panel, fileInfo, cancellationToken);
+                    break;
+
+                case FilePreviewType.Html:
+                    await AddHtmlPreviewAsync(panel, fileInfo, cancellationToken);
+                    break;
+
+                case FilePreviewType.Image:
+                    await AddImagePreviewAsync(panel, fileInfo, cancellationToken);
+                    break;
+
+                case FilePreviewType.Csv:
+                    await AddCsvPreviewAsync(panel, fileInfo, cancellationToken);
+                    break;
+
+                case FilePreviewType.Pdf:
+                    AddPdfPreview(panel);
+                    break;
+
+                case FilePreviewType.General:
+                    // No additional preview content for general files
+                    panel.Children.Remove(previewHeader); // Remove the header since there's no preview
+                    break;
+            }
+        }
+
+        private async Task AddTextPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        {
+            var encoding = DetectEncoding(fileInfo.FullName);
+            var content = await File.ReadAllTextAsync(fileInfo.FullName, encoding, cancellationToken);
+
+            bool isTruncated = false;
+            if (content.Length > 100000)
+            {
+                content = content.Substring(0, 100000);
+                isTruncated = true;
+            }
+
+            var textBox = new System.Windows.Controls.TextBox
+            {
+                Text = content + (isTruncated ? "\n\n... (文件已截断，仅显示前100,000个字符)" : ""),
+                IsReadOnly = true,
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new System.Windows.Thickness(0),
+                FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
+                MinHeight = 200
+            };
+
+            panel.Children.Add(textBox);
+        }
+
+        private async Task AddHtmlPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        {
+            var content = await File.ReadAllTextAsync(fileInfo.FullName, cancellationToken);
+
+            bool isTruncated = false;
+            if (content.Length > 50000)
+            {
+                content = content.Substring(0, 50000);
+                isTruncated = true;
+            }
+
+            var textBox = new System.Windows.Controls.TextBox
+            {
+                Text = content + (isTruncated ? "\n\n... (已截断)" : ""),
+                IsReadOnly = true,
+                TextWrapping = System.Windows.TextWrapping.Wrap,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new System.Windows.Thickness(0),
+                FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
+                MinHeight = 200
+            };
+
+            panel.Children.Add(textBox);
+        }
+
+        private async Task AddImagePreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        {
+            var image = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(fileInfo.FullName);
+                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = 800;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+
+                    return new System.Windows.Controls.Image
+                    {
+                        Source = bitmap,
+                        Stretch = System.Windows.Media.Stretch.Uniform,
+                        StretchDirection = System.Windows.Controls.StretchDirection.DownOnly,
+                        MaxHeight = 400
+                    };
+                });
+            }, cancellationToken);
+
+            panel.Children.Add(image);
+        }
+
+        private async Task AddCsvPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        {
+            var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
+            var previewLines = lines.Take(100).ToArray();
+
+            // Update the header to show line count
+            var lastChild = panel.Children[panel.Children.Count - 1] as System.Windows.Controls.TextBlock;
+            if (lastChild != null)
+            {
+                lastChild.Text = $"CSV 文件预览 (显示前 {previewLines.Length} 行):";
+            }
+
+            var contentPanel = new System.Windows.Controls.StackPanel();
+            foreach (var line in previewLines)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+                contentPanel.Children.Add(CreateInfoTextBlock(line));
+            }
+
+            if (lines.Length > 100)
+            {
+                contentPanel.Children.Add(CreateInfoTextBlock(""));
+                contentPanel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
+            }
+
+            var scrollViewer = new System.Windows.Controls.ScrollViewer
+            {
+                Content = contentPanel,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                MaxHeight = 300
+            };
+
+            panel.Children.Add(scrollViewer);
+        }
+
+        private void AddPdfPreview(System.Windows.Controls.StackPanel panel)
+        {
+            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
+            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
+        }
+
+        private string GetPreviewHeaderText(FilePreviewType fileType)
+        {
+            return fileType switch
+            {
+                FilePreviewType.Text => "文件预览:",
+                FilePreviewType.Image => "图片预览:",
+                FilePreviewType.Html => "HTML 源代码预览:",
+                FilePreviewType.Csv => "CSV 文件预览:",
+                FilePreviewType.Pdf => "PDF 预览信息:",
+                _ => "预览:"
+            };
+        }
+
+        private string GetFileTypeDisplayName(FilePreviewType fileType)
+        {
+            return fileType switch
+            {
+                FilePreviewType.Text => "文本",
+                FilePreviewType.Image => "图片",
+                FilePreviewType.Html => "HTML",
+                FilePreviewType.Csv => "CSV",
+                FilePreviewType.Pdf => "PDF",
+                _ => "文件"
+            };
+        }
+
+        private void SetPreviewStatus(FilePreviewType fileType, FileInfo fileInfo)
+        {
+            PreviewStatus = fileType switch
+            {
+                FilePreviewType.Text => $"文本预览",
+                FilePreviewType.Image => "图片预览",
+                FilePreviewType.Html => "HTML 源代码",
+                FilePreviewType.Csv => $"CSV 预览",
+                FilePreviewType.Pdf => "PDF 文档信息",
+                _ => "文件信息"
+            };
         }
 
         private async Task ShowDirectoryPreviewAsync(CancellationToken cancellationToken)
@@ -608,387 +928,6 @@ namespace FileSpace.ViewModels
             {
                 return "检测失败";
             }
-        }
-
-        private async Task ShowTextPreviewAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
-
-                // Detect encoding and reload if necessary
-                var encoding = DetectEncoding(SelectedFile.FullPath);
-                if (encoding != Encoding.UTF8)
-                {
-                    content = await File.ReadAllTextAsync(SelectedFile.FullPath, encoding, cancellationToken);
-                }
-
-                // Limit preview length
-                bool isTruncated = false;
-                if (content.Length > 100000) // 100K characters limit
-                {
-                    content = content.Substring(0, 100000);
-                    isTruncated = true;
-                }
-
-                var panel = new System.Windows.Controls.StackPanel();
-
-                // Add file information
-                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
-                
-                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-                panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                var previewHeader = CreateInfoTextBlock("文件预览:");
-                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-                panel.Children.Add(previewHeader);
-
-                var textBox = new System.Windows.Controls.TextBox
-                {
-                    Text = content + (isTruncated ? "\n\n... (文件已截断，仅显示前100,000个字符)" : ""),
-                    IsReadOnly = true,
-                    TextWrapping = System.Windows.TextWrapping.Wrap,
-                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    Background = System.Windows.Media.Brushes.Transparent,
-                    BorderThickness = new System.Windows.Thickness(0),
-                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
-                    MinHeight = 200
-                };
-
-                panel.Children.Add(textBox);
-                PreviewContent = panel;
-                PreviewStatus = $"文本预览 ({content.Length:N0} 字符)";
-                IsPreviewLoading = false;
-
-                // Start AI detection asynchronously
-                _ = Task.Run(async () =>
-                {
-                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                        {
-                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                        }
-                    });
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                PreviewContent = CreateErrorPanel("文本预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-            }
-        }
-
-        private async Task ShowImagePreviewAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-
-                var image = await Task.Run(() =>
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    return Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(SelectedFile!.FullPath);
-                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                        bitmap.DecodePixelWidth = 800; // Limit size for performance
-                        bitmap.EndInit();
-                        bitmap.Freeze();
-
-                        return new System.Windows.Controls.Image
-                        {
-                            Source = bitmap,
-                            Stretch = System.Windows.Media.Stretch.Uniform,
-                            StretchDirection = System.Windows.Controls.StretchDirection.DownOnly,
-                            MaxHeight = 400
-                        };
-                    });
-                }, cancellationToken);
-
-                var panel = new System.Windows.Controls.StackPanel();
-
-                // Add file information
-                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"图片尺寸: {image.Source.Width} × {image.Source.Height} 像素"));
-                
-                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-                panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                var previewHeader = CreateInfoTextBlock("图片预览:");
-                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-                panel.Children.Add(previewHeader);
-
-                panel.Children.Add(image);
-
-                PreviewContent = panel;
-                PreviewStatus = "图片预览";
-                IsPreviewLoading = false;
-
-                // Start AI detection asynchronously
-                _ = Task.Run(async () =>
-                {
-                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                        {
-                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                        }
-                    });
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                PreviewContent = CreateErrorPanel("图片预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-            }
-        }
-
-        private async Task ShowPdfPreviewAsync(CancellationToken cancellationToken)
-        {
-            await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
-
-            var fileInfo = new FileInfo(SelectedFile!.FullPath);
-            var panel = new System.Windows.Controls.StackPanel();
-
-            // Add file information
-            panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-            panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-            panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-            panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
-            panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-            
-            var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-            panel.Children.Add(aiDetectionBlock);
-            panel.Children.Add(CreateInfoTextBlock(""));
-
-            var previewHeader = CreateInfoTextBlock("PDF 预览信息:");
-            previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-            panel.Children.Add(previewHeader);
-
-            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
-            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
-
-            PreviewContent = panel;
-            PreviewStatus = "PDF 文档信息";
-            IsPreviewLoading = false;
-
-            // Start AI detection asynchronously
-            _ = Task.Run(async () =>
-            {
-                var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                    {
-                        aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                    }
-                });
-            }, cancellationToken);
-        }
-
-        private async Task ShowHtmlPreviewAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                var content = await File.ReadAllTextAsync(SelectedFile.FullPath, cancellationToken);
-
-                bool isTruncated = false;
-                if (content.Length > 50000)
-                {
-                    content = content.Substring(0, 50000);
-                    isTruncated = true;
-                }
-
-                var panel = new System.Windows.Controls.StackPanel();
-
-                // Add file information
-                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-                
-                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-                panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                var previewHeader = CreateInfoTextBlock("HTML 源代码预览:");
-                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-                panel.Children.Add(previewHeader);
-
-                var textBox = new System.Windows.Controls.TextBox
-                {
-                    Text = content + (isTruncated ? "\n\n... (已截断)" : ""),
-                    IsReadOnly = true,
-                    TextWrapping = System.Windows.TextWrapping.Wrap,
-                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    Background = System.Windows.Media.Brushes.Transparent,
-                    BorderThickness = new System.Windows.Thickness(0),
-                    FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
-                    MinHeight = 200
-                };
-
-                panel.Children.Add(textBox);
-                PreviewContent = panel;
-                PreviewStatus = "HTML 源代码";
-                IsPreviewLoading = false;
-
-                // Start AI detection asynchronously
-                _ = Task.Run(async () =>
-                {
-                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                        {
-                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                        }
-                    });
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                PreviewContent = CreateErrorPanel("HTML预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-            }
-        }
-
-        private async Task ShowCsvPreviewAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(SelectedFile!.FullPath);
-                var lines = await File.ReadAllLinesAsync(SelectedFile.FullPath, cancellationToken);
-                var previewLines = lines.Take(100).ToArray(); // Show first 100 lines
-
-                var panel = new System.Windows.Controls.StackPanel();
-
-                // Add file information
-                panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-                panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile!.Type}"));
-                panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-                panel.Children.Add(CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
-                
-                var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-                panel.Children.Add(aiDetectionBlock);
-                panel.Children.Add(CreateInfoTextBlock(""));
-
-                var previewHeader = CreateInfoTextBlock($"CSV 文件预览 (显示前 {previewLines.Length} 行):");
-                previewHeader.FontWeight = System.Windows.FontWeights.Bold;
-                panel.Children.Add(previewHeader);
-
-                var contentPanel = new System.Windows.Controls.StackPanel();
-                foreach (var line in previewLines)
-                {
-                    if (cancellationToken.IsCancellationRequested) break;
-                    contentPanel.Children.Add(CreateInfoTextBlock(line));
-                }
-
-                if (lines.Length > 100)
-                {
-                    contentPanel.Children.Add(CreateInfoTextBlock(""));
-                    contentPanel.Children.Add(CreateInfoTextBlock("... (更多内容请双击打开文件)"));
-                }
-
-                var scrollViewer = new System.Windows.Controls.ScrollViewer
-                {
-                    Content = contentPanel,
-                    VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
-                    MaxHeight = 300
-                };
-
-                panel.Children.Add(scrollViewer);
-                PreviewContent = panel;
-                PreviewStatus = $"CSV 预览 ({lines.Length} 行)";
-                IsPreviewLoading = false;
-
-                // Start AI detection asynchronously
-                _ = Task.Run(async () =>
-                {
-                    var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                        {
-                            aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                        }
-                    });
-                }, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                PreviewContent = CreateErrorPanel("CSV预览错误", ex.Message);
-                PreviewStatus = "预览失败";
-                IsPreviewLoading = false;
-            }
-        }
-
-        private async Task ShowFileInfoAsync(CancellationToken cancellationToken)
-        {
-            await Task.Run(() => cancellationToken.ThrowIfCancellationRequested());
-
-            var fileInfo = new FileInfo(SelectedFile!.FullPath);
-            var panel = new System.Windows.Controls.StackPanel();
-
-            panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-            panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-            panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
-            panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
-            panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
-            
-            var aiDetectionBlock = CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-            panel.Children.Add(aiDetectionBlock);
-
-            PreviewContent = panel;
-            PreviewStatus = "文件信息";
-            IsPreviewLoading = false;
-
-            // Start AI detection asynchronously
-            _ = Task.Run(async () =>
-            {
-                var aiResult = await DetectFileTypeAsync(fileInfo.FullName, cancellationToken);
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    if (!cancellationToken.IsCancellationRequested && PreviewContent == panel)
-                    {
-                        aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
-                    }
-                });
-            }, cancellationToken);
         }
 
         private System.Windows.Controls.StackPanel CreateLoadingIndicator()

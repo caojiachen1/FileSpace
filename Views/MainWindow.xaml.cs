@@ -32,16 +32,6 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // Check if the double-click is on a ListViewItem, not just empty space
-            // var hitTest = VisualTreeHelper.HitTest(FileListView, e.GetPosition(FileListView));
-            // if (hitTest != null)
-            // {
-            //     var listViewItem = FindAncestor<Wpf.Ui.Controls.ListViewItem>(hitTest.VisualHit);
-            //     if (listViewItem != null && listViewItem.DataContext is FileItemViewModel file)
-            //     {
-            //         ViewModel.FileDoubleClickCommand.Execute(file);
-            //     }
-            // }
             ViewModel.FileDoubleClickCommand.Execute(ViewModel.SelectedFile);
         }
 
