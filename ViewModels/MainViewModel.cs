@@ -84,9 +84,11 @@ namespace FileSpace.ViewModels
 
         private readonly Stack<string> _backHistory = new();
         private readonly Stack<string> _forwardHistory = new();
+        private NavigationUtils _navigationUtils;
 
         public MainViewModel()
         {
+            _navigationUtils = new NavigationUtils(_backHistory, _forwardHistory);
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -765,11 +767,7 @@ namespace FileSpace.ViewModels
                 // Try to enumerate the directory to check access
                 Directory.GetDirectories(path).Take(1).ToList();
 
-                if (!string.IsNullOrEmpty(CurrentPath))
-                {
-                    _backHistory.Push(CurrentPath);
-                    _forwardHistory.Clear();
-                }
+                _navigationUtils.AddToHistory(CurrentPath);
                 CurrentPath = path;
             }
             catch (UnauthorizedAccessException)
@@ -785,30 +783,30 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void Back()
         {
-            if (_backHistory.Count > 0)
+            var newPath = _navigationUtils.GoBack(CurrentPath);
+            if (newPath != null)
             {
-                _forwardHistory.Push(CurrentPath);
-                CurrentPath = _backHistory.Pop();
+                CurrentPath = newPath;
             }
         }
 
         [RelayCommand]
         private void Forward()
         {
-            if (_forwardHistory.Count > 0)
+            var newPath = _navigationUtils.GoForward(CurrentPath);
+            if (newPath != null)
             {
-                _backHistory.Push(CurrentPath);
-                CurrentPath = _forwardHistory.Pop();
+                CurrentPath = newPath;
             }
         }
 
         [RelayCommand]
         private void Up()
         {
-            var parent = Directory.GetParent(CurrentPath);
-            if (parent != null)
+            var parentPath = NavigationUtils.GoUp(CurrentPath);
+            if (parentPath != null)
             {
-                NavigateToPath(parent.FullName);
+                NavigateToPath(parentPath);
             }
         }
 
@@ -1347,9 +1345,9 @@ namespace FileSpace.ViewModels
             StatusText = "已清除选择";
         }
 
-        public bool CanBack => _backHistory.Count > 0;
-        public bool CanForward => _forwardHistory.Count > 0;
-        public bool CanUp => !string.IsNullOrEmpty(CurrentPath) && Directory.GetParent(CurrentPath) != null;
+        public bool CanBack => _navigationUtils.CanGoBack;
+        public bool CanForward => _navigationUtils.CanGoForward;
+        public bool CanUp => NavigationUtils.CanGoUp(CurrentPath);
         public bool CanPaste => ClipboardService.Instance.CanPaste();
         public bool CanDelete => SelectedFiles.Any();
         public bool CanCopy => SelectedFiles.Any();
