@@ -7,6 +7,7 @@ using System.Threading;
 using System.Text;
 using FileSpace.Services;
 using FileSpace.Views;
+using FileSpace.Utils;
 using magika;
 
 namespace FileSpace.ViewModels
@@ -121,53 +122,17 @@ namespace FileSpace.ViewModels
             {
                 StatusText = "正在加载驱动器...";
 
-                // Load drives asynchronously
-                var drives = await Task.Run(() =>
-                {
-                    var driveList = new List<string>();
-                    foreach (var drive in DriveInfo.GetDrives())
-                    {
-                        if (drive.IsReady && drive.DriveType != DriveType.CDRom)
-                        {
-                            try
-                            {
-                                // Test access to the drive
-                                Directory.GetDirectories(drive.RootDirectory.FullName).Take(1).ToList();
-                                driveList.Add(drive.RootDirectory.FullName);
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                // Skip drives we don't have access to
-                                continue;
-                            }
-                            catch (Exception ex)
-                            {
-                                StatusText = $"驱动器加载警告: {ex.Message}";
-                            }
-                        }
-                    }
-                    return driveList.OrderBy(d => d).ToList();
-                });
+                var (directoryTree, initialPath, statusMessage) = await DriveService.Instance.LoadInitialDataAsync();
 
-                // Add drives to the tree on UI thread
+                // Update UI on main thread
                 DirectoryTree.Clear();
-                foreach (var drive in drives)
+                foreach (var item in directoryTree)
                 {
-                    DirectoryTree.Add(new DirectoryItemViewModel(drive));
+                    DirectoryTree.Add(item);
                 }
 
-                // Set initial path
-                var initialPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                if (Directory.Exists(initialPath))
-                {
-                    CurrentPath = initialPath;
-                }
-                else
-                {
-                    CurrentPath = drives.FirstOrDefault() ?? @"C:\";
-                }
-
-                StatusText = $"已加载 {drives.Count} 个驱动器";
+                CurrentPath = initialPath;
+                StatusText = statusMessage;
             }
             catch (Exception ex)
             {
@@ -175,96 +140,24 @@ namespace FileSpace.ViewModels
             }
         }
 
-        private void LoadFiles()
+        private async void LoadFiles()
         {
             try
             {
+                var (files, statusMessage) = await FileSystemService.Instance.LoadFilesAsync(CurrentPath);
+
+                // Update UI
                 Files.Clear();
-
-                if (!Directory.Exists(CurrentPath))
+                foreach (var file in files)
                 {
-                    StatusText = "路径不存在";
-                    return;
+                    Files.Add(file);
                 }
 
-                // Add directories
-                try
-                {
-                    foreach (var dir in Directory.GetDirectories(CurrentPath))
-                    {
-                        try
-                        {
-                            var dirInfo = new DirectoryInfo(dir);
-                            Files.Add(new FileItemViewModel
-                            {
-                                Name = dirInfo.Name,
-                                FullPath = dirInfo.FullName,
-                                IsDirectory = true,
-                                Icon = Wpf.Ui.Controls.SymbolRegular.Folder24,
-                                IconColor = "#FFE6A23C", // Golden yellow for folders
-                                Type = "文件夹",
-                                ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                            });
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            // Skip directories we don't have access to
-                            continue;
-                        }
-                    }
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    StatusText = "访问被拒绝";
-                    return;
-                }
-
-                // Add files
-                try
-                {
-                    foreach (var file in Directory.GetFiles(CurrentPath))
-                    {
-                        try
-                        {
-                            var fileInfo = new FileInfo(file);
-                            Files.Add(new FileItemViewModel
-                            {
-                                Name = fileInfo.Name,
-                                FullPath = fileInfo.FullName,
-                                IsDirectory = false,
-                                Size = fileInfo.Length,
-                                Icon = GetFileIcon(fileInfo.Extension),
-                                IconColor = GetFileIconColor(fileInfo.Extension),
-                                Type = GetFileType(fileInfo.Extension),
-                                ModifiedTime = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                            });
-                        }
-                        catch (UnauthorizedAccessException)
-                        {
-                            // Skip files we don't have access to
-                            continue;
-                        }
-                    }
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    StatusText = "访问被拒绝";
-                    return;
-                }
-
-                StatusText = $"{Files.Count} 个项目";
-            }
-            catch (UnauthorizedAccessException)
-            {
-                StatusText = "访问被拒绝: 没有权限访问此目录";
-            }
-            catch (DirectoryNotFoundException)
-            {
-                StatusText = "目录不存在";
+                StatusText = statusMessage;
             }
             catch (Exception ex)
             {
-                StatusText = $"错误: {ex.Message}";
+                StatusText = $"加载文件错误: {ex.Message}";
             }
         }
 
@@ -302,7 +195,7 @@ namespace FileSpace.ViewModels
                 long fileSize = SelectedFile.Size;
 
                 // Check file size limits for different types
-                if (IsTextFile(extension) && fileSize > 10 * 1024 * 1024) // 10MB limit for text
+                if (FileUtils.IsTextFile(extension) && fileSize > 10 * 1024 * 1024) // 10MB limit for text
                 {
                     PreviewContent = CreateInfoPanel("文件过大", "文本文件超过10MB，无法预览");
                     PreviewStatus = "文件过大";
@@ -310,7 +203,7 @@ namespace FileSpace.ViewModels
                     return;
                 }
 
-                if (IsImageFile(extension) && fileSize > 50 * 1024 * 1024) // 50MB limit for images
+                if (FileUtils.IsImageFile(extension) && fileSize > 50 * 1024 * 1024) // 50MB limit for images
                 {
                     PreviewContent = CreateInfoPanel("文件过大", "图片文件超过50MB，无法预览");
                     PreviewStatus = "文件过大";
@@ -363,7 +256,7 @@ namespace FileSpace.ViewModels
                 // Add common file information
                 panel.Children.Add(CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
                 panel.Children.Add(CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FormatFileSize(fileInfo.Length)}"));
+                panel.Children.Add(CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
                 panel.Children.Add(CreateInfoTextBlock($"文件类型: {SelectedFile.Type}"));
                 panel.Children.Add(CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
                 panel.Children.Add(CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
@@ -408,7 +301,7 @@ namespace FileSpace.ViewModels
             switch (fileType)
             {
                 case FilePreviewType.Text:
-                    var encoding = DetectEncoding(fileInfo.FullName);
+                    var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
                     panel.Children.Add(CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
                     break;
 
@@ -507,7 +400,7 @@ namespace FileSpace.ViewModels
 
         private async Task AddTextPreviewAsync(System.Windows.Controls.StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
-            var encoding = DetectEncoding(fileInfo.FullName);
+            var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
             var content = await File.ReadAllTextAsync(fileInfo.FullName, encoding, cancellationToken);
 
             bool isTruncated = false;
@@ -989,141 +882,6 @@ namespace FileSpace.ViewModels
             };
         }
 
-        private static bool IsTextFile(string extension)
-        {
-            return extension switch
-            {
-                ".txt" or ".log" or ".cs" or ".xml" or ".json" or ".config" or ".ini"
-                or ".md" or ".yaml" or ".yml" or ".html" or ".htm" or ".css" or ".js"
-                or ".py" or ".java" or ".cpp" or ".h" or ".sql" => true,
-                _ => false
-            };
-        }
-
-        private static bool IsImageFile(string extension)
-        {
-            return extension switch
-            {
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => true,
-                _ => false
-            };
-        }
-
-        private static Encoding DetectEncoding(string filePath)
-        {
-            try
-            {
-                using var reader = new StreamReader(filePath, Encoding.Default, true);
-                reader.Read();
-                return reader.CurrentEncoding;
-            }
-            catch
-            {
-                return Encoding.UTF8;
-            }
-        }
-
-        private static string FormatFileSize(long bytes)
-        {
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            decimal number = bytes;
-            while (Math.Round(number / 1024) >= 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            return $"{number:n1} {suffixes[counter]}";
-        }
-
-        private static Wpf.Ui.Controls.SymbolRegular GetFileIcon(string extension)
-        {
-            return extension.ToLower() switch
-            {
-                ".txt" or ".log" => Wpf.Ui.Controls.SymbolRegular.Document24,
-                ".cs" or ".xml" or ".json" or ".config" or ".ini" or ".html" or ".htm" or ".css" or ".js" => Wpf.Ui.Controls.SymbolRegular.Code24,
-                ".md" or ".yaml" or ".yml" => Wpf.Ui.Controls.SymbolRegular.DocumentText24,
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => Wpf.Ui.Controls.SymbolRegular.Image24,
-                ".pdf" => Wpf.Ui.Controls.SymbolRegular.DocumentPdf24,
-                ".csv" => Wpf.Ui.Controls.SymbolRegular.Table24,
-                ".exe" or ".msi" => Wpf.Ui.Controls.SymbolRegular.Apps24,
-                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => Wpf.Ui.Controls.SymbolRegular.FolderZip24,
-                ".mp3" or ".wav" or ".flac" or ".aac" => Wpf.Ui.Controls.SymbolRegular.MusicNote124,
-                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" => Wpf.Ui.Controls.SymbolRegular.Video24,
-                _ => Wpf.Ui.Controls.SymbolRegular.Document24
-            };
-        }
-
-        private static string GetFileIconColor(string extension)
-        {
-            return extension.ToLower() switch
-            {
-                ".txt" or ".log" => "#FF909399", // Gray for text files
-                ".cs" => "#FF67C23A", // Green for C# files
-                ".xml" or ".config" => "#FFFF9500", // Orange for config files
-                ".json" => "#FFE6A23C", // Yellow for JSON
-                ".ini" => "#FF909399", // Gray for ini files
-                ".html" or ".htm" => "#FFFF6B6B", // Red for HTML
-                ".css" => "#FF4ECDC4", // Teal for CSS
-                ".js" => "#FFFFEB3B", // Yellow for JavaScript
-                ".md" or ".yaml" or ".yml" => "#FF9C27B0", // Purple for markup
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".ico" => "#FF2196F3", // Blue for images
-                ".pdf" => "#FFF44336", // Red for PDF
-                ".csv" => "#FF4CAF50", // Green for CSV
-                ".exe" or ".msi" => "#FF795548", // Brown for executables
-                ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "#FFFF5722", // Deep orange for archives
-                ".mp3" or ".wav" or ".flac" or ".aac" => "#FFE91E63", // Pink for audio
-                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" => "#FF9C27B0", // Purple for video
-                _ => "#FF607D8B" // Blue gray for unknown files
-            };
-        }
-
-        private static string GetFileType(string extension)
-        {
-            return extension.ToLower() switch
-            {
-                ".txt" => "文本文件",
-                ".log" => "日志文件",
-                ".cs" => "C# 源代码",
-                ".xml" => "XML 文件",
-                ".json" => "JSON 文件",
-                ".config" => "配置文件",
-                ".ini" => "配置文件",
-                ".md" => "Markdown 文件",
-                ".yaml" or ".yml" => "YAML 文件",
-                ".html" or ".htm" => "HTML 文件",
-                ".css" => "CSS 样式表",
-                ".js" => "JavaScript 文件",
-                ".jpg" or ".jpeg" => "JPEG 图片",
-                ".png" => "PNG 图片",
-                ".gif" => "GIF 图片",
-                ".bmp" => "位图文件",
-                ".webp" => "WebP 图片",
-                ".tiff" => "TIFF 图片",
-                ".ico" => "图标文件",
-                ".pdf" => "PDF 文档",
-                ".csv" => "CSV 表格",
-                ".exe" => "可执行文件",
-                ".msi" => "安装程序",
-                ".zip" => "ZIP 压缩包",
-                ".rar" => "RAR 压缩包",
-                ".7z" => "7Z 压缩包",
-                ".tar" => "TAR 归档",
-                ".gz" => "GZ 压缩包",
-                ".mp3" => "MP3 音频",
-                ".wav" => "WAV 音频",
-                ".flac" => "FLAC 音频",
-                ".aac" => "AAC 音频",
-                ".mp4" => "MP4 视频",
-                ".avi" => "AVI 视频",
-                ".mkv" => "MKV 视频",
-                ".mov" => "QuickTime 视频",
-                ".wmv" => "WMV 视频",
-                "" => "文件",
-                _ => $"{extension.ToUpper()} 文件"
-            };
-        }
-
         [RelayCommand]
         private void NavigateToPath(string? path)
         {
@@ -1197,9 +955,8 @@ namespace FileSpace.ViewModels
             // Refresh the directory tree
             try
             {
-                var refreshTasks = DirectoryTree.Select(rootItem => rootItem.RefreshAsync()).ToArray();
-                await Task.WhenAll(refreshTasks);
-                StatusText = "刷新完成";
+                var statusMessage = await DriveService.Instance.RefreshDirectoryTreeAsync(DirectoryTree);
+                StatusText = statusMessage;
             }
             catch (Exception ex)
             {
