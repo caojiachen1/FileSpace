@@ -813,7 +813,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private async void Refresh()
+        private async Task Refresh()
         {
             StatusText = "正在刷新...";
             LoadFiles();
@@ -895,7 +895,7 @@ namespace FileSpace.ViewModels
                 IsFileOperationInProgress = false;
                 FileOperationStatus = message;
                 StatusText = message;
-                Refresh();
+                _ = Refresh();
 
                 // Clear clipboard if it was a move operation
                 if (ClipboardService.Instance.ClipboardOperation == ClipboardFileOperation.Move)
@@ -940,7 +940,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private async void PasteFiles()
+        private async Task PasteFiles()
         {
             if (!ClipboardService.Instance.CanPaste())
             {
@@ -990,7 +990,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private async void DeleteFilesPermanently()
+        private async Task DeleteFilesPermanently()
         {
             if (!SelectedFiles.Any())
             {
@@ -1036,7 +1036,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private async void DeleteFiles()
+        private async Task DeleteFiles()
         {
             if (!SelectedFiles.Any())
             {

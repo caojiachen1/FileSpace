@@ -36,7 +36,7 @@ A modern file manager built with WPF, featuring an intuitive interface and power
 Requires .NET 8.0 Runtime and Windows 10 or higher.
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/caojiachen1/FileSpace
 cd FileSpace
 dotnet run
 ```
@@ -201,6 +201,12 @@ dotnet run
 - [ ] **Version Control**: Basic Git integration for developers
 - [ ] **File Comparison**: Compare files and directories
 - [ ] **Network Drive Management**: Enhanced network location handling
+
+## 🙏 Acknowledgments
+
+Special thanks to the following projects that made FileSpace possible:
+
+- **[Magika-CSharp](https://github.com/mkht/Magika-CSharp)** - File type detection library
 
 ---
 
