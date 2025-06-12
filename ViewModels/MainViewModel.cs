@@ -770,6 +770,17 @@ namespace FileSpace.ViewModels
             StatusText = "已清除选择";
         }
 
+        [RelayCommand]
+        private void OpenInExplorer()
+        {
+            var statusMessage = ExplorerService.Instance.OpenInExplorer(
+                SelectedFile?.FullPath,
+                SelectedFile?.IsDirectory ?? false,
+                CurrentPath);
+            
+            StatusText = statusMessage;
+        }
+
         public void Dispose()
         {
             // Unsubscribe from events to prevent memory leaks and null reference exceptions
@@ -801,5 +812,6 @@ namespace FileSpace.ViewModels
         public bool CanInvertSelection => Files.Any();
         public bool CanDeletePermanently => SelectedFiles.Any();
         public bool CanClearSelection => SelectedFiles.Any();
+        public bool CanOpenInExplorer => ExplorerService.Instance.CanOpenInExplorer(CurrentPath);
     }
 }

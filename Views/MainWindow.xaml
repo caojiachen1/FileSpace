@@ -296,6 +296,12 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
+                                <MenuItem Header="在资源管理器中查看" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding IsDirectory}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="FolderOpen24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
                                 <MenuItem Header="重命名" Command="{Binding ShowRenameDialogCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Rename24"/>

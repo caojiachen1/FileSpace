@@ -118,6 +118,7 @@ dotnet run
 - ✅ **Keyboard Shortcuts**: Standard file manager hotkeys
 - ⏳ **File Properties Dialog**: Detailed file information and editing
 - ✅ **Quick Actions Toolbar**: Customizable quick access buttons
+- ✅ **Explorer Integration**: "View in Explorer" context menu option
 
 #### ⭐ Bookmarks & Navigation
 - ⏳ **Favorite Paths**: Bookmark frequently used directories
