@@ -156,7 +156,7 @@ namespace FileSpace.Services
                                     // Update counts in their original positions
                                     if (fileCountBlock != null)
                                     {
-                                        fileCountBlock.Text = $"直接包含文件: {result.FileCount:N0} 个";
+                                        fileCountBlock.Text = $"总共包含文件: {result.FileCount:N0} 个";
                                     }
                                     if (dirCountBlock != null)
                                     {

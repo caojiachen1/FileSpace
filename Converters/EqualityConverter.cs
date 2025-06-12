@@ -16,7 +16,13 @@ namespace FileSpace.Views
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            // Return default values for the target types
+            var result = new object[targetTypes.Length];
+            for (int i = 0; i < targetTypes.Length; i++)
+            {
+                result[i] = targetTypes[i].IsValueType ? Activator.CreateInstance(targetTypes[i]) : null;
+            }
+            return result;
         }
     }
 }
