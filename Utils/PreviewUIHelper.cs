@@ -29,7 +29,7 @@ namespace FileSpace.Utils
                 Margin = new Thickness(0, 2, 0, 2)
             };
 
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120, GridUnitType.Pixel) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             var propertyBlock = new TextBlock
@@ -46,9 +46,9 @@ namespace FileSpace.Utils
             {
                 Text = value,
                 FontWeight = FontWeights.Normal,
-                HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top,
-                TextAlignment = TextAlignment.Left,
+                TextAlignment = TextAlignment.Right,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 TextWrapping = TextWrapping.NoWrap,
                 ToolTip = value, // Show full value in tooltip

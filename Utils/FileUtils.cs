@@ -97,4 +97,11 @@ namespace FileSpace.Utils
         Medium,  // Chunked/streaming preview
         Large    // Skip preview or show info only
     }
+
+    public enum PreviewAlignmentMode
+    {
+        Standard,    // Normal left-right alignment
+        Compact,     // Compact layout for small screens
+        Wide         // Wide layout with more spacing
+    }
 }
