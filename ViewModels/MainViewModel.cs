@@ -76,11 +76,13 @@ namespace FileSpace.ViewModels
         private readonly Stack<string> _forwardHistory = new();
         private NavigationUtils _navigationUtils;
         private FileOperationEventHandler _fileOperationEventHandler;
+        private FolderPreviewUpdateService _folderPreviewUpdateService;
 
         public MainViewModel()
         {
             _navigationUtils = new NavigationUtils(_backHistory, _forwardHistory);
             _fileOperationEventHandler = new FileOperationEventHandler(this);
+            _folderPreviewUpdateService = new FolderPreviewUpdateService();
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -233,31 +235,6 @@ namespace FileSpace.ViewModels
             return FilePreviewUtils.GetPreviewStatus(fileType, new FileInfo(file.FullPath));
         }
 
-        private void OnSizeCalculationCompleted(object? sender, FolderSizeCompletedEventArgs e)
-        {
-            if (Application.Current?.Dispatcher == null) return;
-
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                // Update any active directory preview if it matches
-                if (SelectedFile?.IsDirectory == true && SelectedFile.FullPath == e.FolderPath)
-                {
-                    UpdateDirectoryPreviewWithSize(e.SizeInfo);
-                }
-
-                // Update directory tree item if exists
-                UpdateDirectoryTreeItemSize(e.FolderPath, e.SizeInfo);
-
-                IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.ActiveCalculationsCount > 0;
-
-                // Clear progress if this was the current preview folder
-                if (_currentPreviewFolderPath == e.FolderPath)
-                {
-                    SizeCalculationProgress = "";
-                }
-            });
-        }
-
         private void OnSizeCalculationProgress(object? sender, FolderSizeProgressEventArgs e)
         {
             if (Application.Current?.Dispatcher == null) return;
@@ -269,96 +246,36 @@ namespace FileSpace.ViewModels
                     SelectedFile.FullPath == e.FolderPath &&
                     _currentPreviewFolderPath == e.FolderPath)
                 {
-                    var currentPath = e.Progress.CurrentPath;
-                    if (!string.IsNullOrEmpty(currentPath) && currentPath.Length > 60)
-                    {
-                        currentPath = $"...{currentPath.Substring(currentPath.Length - 50)}";
-                    }
-                    SizeCalculationProgress = $"正在扫描: {Path.GetFileName(currentPath)} ({e.Progress.ProcessedFiles} 文件)";
+                    SizeCalculationProgress = _folderPreviewUpdateService.FormatSizeCalculationProgress(
+                        e.Progress.CurrentPath, 
+                        e.Progress.ProcessedFiles);
                 }
             });
         }
 
-        private void UpdateDirectoryPreviewWithSize(FolderSizeInfo sizeInfo)
+        private void OnSizeCalculationCompleted(object? sender, FolderSizeCompletedEventArgs e)
         {
-            if (PreviewContent is System.Windows.Controls.StackPanel panel)
+            if (Application.Current?.Dispatcher == null) return;
+
+            Application.Current.Dispatcher.Invoke(() =>
             {
-                // Find and update the size status blocks
-                foreach (var child in panel.Children.OfType<System.Windows.Controls.TextBlock>())
+                // Update any active directory preview if it matches
+                if (SelectedFile?.IsDirectory == true && SelectedFile.FullPath == e.FolderPath)
                 {
-                    if (child.Text.StartsWith("总大小:") || child.Text.StartsWith("正在后台计算") || child.Text.StartsWith("准备计算"))
-                    {
-                        if (!string.IsNullOrEmpty(sizeInfo.Error))
-                        {
-                            child.Text = $"计算失败: {sizeInfo.Error}";
-                            // Don't update file/folder counts if calculation failed
-                        }
-                        else
-                        {
-                            child.Text = $"总大小: {sizeInfo.FormattedSize}";
-
-                            // Update the file and folder count blocks in their original positions
-                            foreach (var contentChild in panel.Children.OfType<System.Windows.Controls.TextBlock>())
-                            {
-                                if (contentChild.Text.StartsWith("直接包含文件:"))
-                                {
-                                    contentChild.Text = $"总共包含文件: {sizeInfo.FileCount:N0} 个";
-                                }
-                                else if (contentChild.Text.StartsWith("直接包含文件夹:"))
-                                {
-                                    contentChild.Text = $"直接包含文件夹: {sizeInfo.DirectoryCount:N0} 个";
-                                }
-                            }
-
-                            // Update or add inaccessible items info
-                            var progressBlock = panel.Children.OfType<System.Windows.Controls.TextBlock>()
-                                .LastOrDefault(tb => !tb.Text.StartsWith("直接包含") && !tb.Text.StartsWith("总大小") && !tb.Text.StartsWith("文件夹") && !tb.Text.StartsWith("完整路径") && !tb.Text.StartsWith("创建时间") && !tb.Text.StartsWith("修改时间") && !string.IsNullOrEmpty(tb.Text));
-                            
-                            if (progressBlock != null && sizeInfo.InaccessibleItems > 0)
-                            {
-                                progressBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
-                            }
-                            else if (progressBlock != null)
-                            {
-                                progressBlock.Text = "";
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-        private void UpdateDirectoryTreeItemSize(string folderPath, FolderSizeInfo sizeInfo)
-        {
-            // Update directory tree items recursively
-            UpdateDirectoryTreeItemSizeRecursive(DirectoryTree, folderPath, sizeInfo);
-        }
-
-        private void UpdateDirectoryTreeItemSizeRecursive(ObservableCollection<DirectoryItemViewModel> items, string folderPath, FolderSizeInfo sizeInfo)
-        {
-            foreach (var item in items)
-            {
-                if (item.FullPath == folderPath)
-                {
-                    item.SizeInfo = sizeInfo;
-                    if (!string.IsNullOrEmpty(sizeInfo.Error))
-                    {
-                        item.SizeText = "计算失败";
-                    }
-                    else
-                    {
-                        item.SizeText = sizeInfo.FormattedSize;
-                    }
-                    item.IsSizeCalculating = false;
-                    return;
+                    _folderPreviewUpdateService.UpdateDirectoryPreviewWithSize(PreviewContent, e.SizeInfo);
                 }
 
-                if (item.SubDirectories.Any())
+                // Update directory tree item if exists
+                _folderPreviewUpdateService.UpdateDirectoryTreeItemSize(DirectoryTree, e.FolderPath, e.SizeInfo);
+
+                IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.ActiveCalculationsCount > 0;
+
+                // Clear progress if this was the current preview folder
+                if (_currentPreviewFolderPath == e.FolderPath)
                 {
-                    UpdateDirectoryTreeItemSizeRecursive(item.SubDirectories, folderPath, sizeInfo);
+                    SizeCalculationProgress = "";
                 }
-            }
+            });
         }
 
         [RelayCommand]
