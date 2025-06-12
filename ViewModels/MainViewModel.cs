@@ -73,16 +73,17 @@ namespace FileSpace.ViewModels
         private string _currentPreviewFolderPath = string.Empty;
 
         private readonly Stack<string> _backHistory = new();
-        private readonly Stack<string> _forwardHistory = new();
         private NavigationUtils _navigationUtils;
         private FileOperationEventHandler _fileOperationEventHandler;
         private FolderPreviewUpdateService _folderPreviewUpdateService;
+        private NavigationService _navigationService;
 
         public MainViewModel()
         {
-            _navigationUtils = new NavigationUtils(_backHistory, _forwardHistory);
+            _navigationUtils = new NavigationUtils(_backHistory);
             _fileOperationEventHandler = new FileOperationEventHandler(this);
             _folderPreviewUpdateService = new FolderPreviewUpdateService();
+            _navigationService = new NavigationService(this);
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -281,61 +282,19 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void NavigateToPath(string? path)
         {
-            if (string.IsNullOrEmpty(path)) return;
-
-            try
-            {
-                // Check if we have access to the directory before navigating
-                if (!Directory.Exists(path))
-                {
-                    StatusText = "路径不存在";
-                    return;
-                }
-
-                // Try to enumerate the directory to check access
-                Directory.GetDirectories(path).Take(1).ToList();
-
-                _navigationUtils.AddToHistory(CurrentPath);
-                CurrentPath = path;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                StatusText = "访问被拒绝: 没有权限访问此目录";
-            }
-            catch (Exception ex)
-            {
-                StatusText = $"导航错误: {ex.Message}";
-            }
+            _navigationService.NavigateToPath(path);
         }
 
         [RelayCommand]
         private void Back()
         {
-            var newPath = _navigationUtils.GoBack(CurrentPath);
-            if (newPath != null)
-            {
-                CurrentPath = newPath;
-            }
-        }
-
-        [RelayCommand]
-        private void Forward()
-        {
-            var newPath = _navigationUtils.GoForward(CurrentPath);
-            if (newPath != null)
-            {
-                CurrentPath = newPath;
-            }
+            _navigationService.Back();
         }
 
         [RelayCommand]
         private void Up()
         {
-            var parentPath = NavigationUtils.GoUp(CurrentPath);
-            if (parentPath != null)
-            {
-                NavigateToPath(parentPath);
-            }
+            _navigationService.Up();
         }
 
         [RelayCommand]
@@ -811,9 +770,8 @@ namespace FileSpace.ViewModels
             _fileOperationCancellationTokenSource?.Dispose();
         }
 
-        public bool CanBack => _navigationUtils.CanGoBack;
-        public bool CanForward => _navigationUtils.CanGoForward;
-        public bool CanUp => NavigationUtils.CanGoUp(CurrentPath);
+        public bool CanBack => _navigationService.CanBack;
+        public bool CanUp => _navigationService.CanUp;
         public bool CanPaste => ClipboardService.Instance.CanPaste();
         public bool CanDelete => SelectedFiles.Any();
         public bool CanCopy => SelectedFiles.Any();

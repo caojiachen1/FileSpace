@@ -85,11 +85,6 @@ namespace FileSpace.Views
             ViewModel.BackCommand.Execute(null);
         }
 
-        private void ForwardButton_Click(object sender, RoutedEventArgs e)
-        {
-            ViewModel.ForwardCommand.Execute(null);
-        }
-
         private void UpButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.UpCommand.Execute(null);
