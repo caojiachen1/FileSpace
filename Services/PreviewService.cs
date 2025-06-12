@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using FileSpace.ViewModels;
 using FileSpace.Utils;
 using magika;
+using System.Windows.Media;
 
 namespace FileSpace.Services
 {
@@ -32,21 +33,48 @@ namespace FileSpace.Services
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemViewModel file, CancellationToken cancellationToken)
         {
             string extension = Path.GetExtension(file.FullPath).ToLower();
-            long fileSize = file.Size;
-
-            // Check file size limits
-            if (FileUtils.IsTextFile(extension) && fileSize > 10 * 1024 * 1024)
-            {
-                return PreviewUIHelper.CreateInfoPanel("文件过大", "文本文件超过10MB，无法预览");
-            }
-
-            if (FileUtils.IsImageFile(extension) && fileSize > 50 * 1024 * 1024)
-            {
-                return PreviewUIHelper.CreateInfoPanel("文件过大", "图片文件超过50MB，无法预览");
-            }
-
+            var fileInfo = new FileInfo(file.FullPath);
             var fileType = FilePreviewUtils.DetermineFileType(extension);
+
+            // Early performance check
+            if (FileUtils.ShouldSkipPreview(fileInfo, fileType))
+            {
+                return await GenerateFileInfoOnlyAsync(file, fileType, "文件过大，仅显示文件信息", cancellationToken);
+            }
+
             return await GenerateFileInfoAndPreviewAsync(file, fileType, cancellationToken);
+        }
+
+        private async Task<StackPanel> GenerateFileInfoOnlyAsync(FileItemViewModel file, FilePreviewType fileType, string reason, CancellationToken cancellationToken)
+        {
+            var fileInfo = new FileInfo(file.FullPath);
+            var panel = new StackPanel();
+
+            // Add warning
+            var warningBlock = PreviewUIHelper.CreateInfoTextBlock($"⚠️ {reason}");
+            warningBlock.Foreground = Brushes.Orange;
+            warningBlock.FontWeight = FontWeights.Bold;
+            panel.Children.Add(warningBlock);
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
+
+            // Add common file information
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件类型: {file.Type}"));
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+
+            // Add file type specific information
+            await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
+
+            // Add instruction
+            var instructionBlock = PreviewUIHelper.CreateInfoTextBlock("双击文件使用默认程序打开");
+            instructionBlock.Foreground = Brushes.LightBlue;
+            instructionBlock.FontStyle = FontStyles.Italic;
+            panel.Children.Add(instructionBlock);
+
+            return panel;
         }
 
         private async Task<StackPanel> GenerateFileInfoAndPreviewAsync(FileItemViewModel file, FilePreviewType fileType, CancellationToken cancellationToken)

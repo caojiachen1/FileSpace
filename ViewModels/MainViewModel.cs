@@ -182,8 +182,22 @@ namespace FileSpace.ViewModels
                 PreviewStatus = "正在加载预览...";
                 PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
 
+                // Add timeout for large files
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+                // Check file size and show early warning for large files
+                if (!SelectedFile.IsDirectory)
+                {
+                    var fileInfo = new FileInfo(SelectedFile.FullPath);
+                    if (fileInfo.Length > 100 * 1024 * 1024) // 100MB
+                    {
+                        PreviewStatus = "大文件加载中，请稍候...";
+                    }
+                }
+
                 // Generate preview using the service
-                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(SelectedFile, cancellationToken);
+                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(SelectedFile, combinedCts.Token);
                 
                 PreviewContent = previewContent;
                 PreviewStatus = GetPreviewStatusForFile(SelectedFile);
@@ -206,10 +220,16 @@ namespace FileSpace.ViewModels
                     SizeCalculationProgress = "";
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 PreviewContent = null;
                 PreviewStatus = "预览已取消";
+                IsPreviewLoading = false;
+            }
+            catch (OperationCanceledException) // Timeout
+            {
+                PreviewContent = PreviewUIHelper.CreateErrorPanel("预览超时", "文件过大，预览超时。请双击文件直接打开。");
+                PreviewStatus = "预览超时";
                 IsPreviewLoading = false;
             }
             catch (Exception ex)

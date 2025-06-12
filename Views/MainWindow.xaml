@@ -436,12 +436,14 @@
                         <Grid>
                             <ContentPresenter Content="{Binding PreviewContent}"/>
                             
-                            <!-- Loading Indicator -->
+                            <!-- Loading Indicator with better styling -->
                             <Border Background="#80000000" 
-                                    Visibility="{Binding IsPreviewLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    Visibility="{Binding IsPreviewLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    CornerRadius="5">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <ui:ProgressRing IsIndeterminate="True" Width="40" Height="40" Margin="0,0,0,10"/>
-                                    <TextBlock Text="正在加载预览..." Foreground="White" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="正在加载预览..." Foreground="White" HorizontalAlignment="Center" FontSize="14"/>
+                                    <TextBlock Text="大文件可能需要较长时间..." Foreground="LightGray" HorizontalAlignment="Center" FontSize="11" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Border>
                         </Grid>

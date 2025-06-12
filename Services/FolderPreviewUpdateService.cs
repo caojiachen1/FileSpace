@@ -96,7 +96,13 @@ namespace FileSpace.Services
             {
                 currentPath = $"...{currentPath.Substring(currentPath.Length - 50)}";
             }
-            return $"正在扫描: {Path.GetFileName(currentPath)} ({processedFiles} 文件)";
+            
+            // Format large numbers better
+            string fileCountText = processedFiles > 10000 ? 
+                $"{processedFiles / 1000}K+" : 
+                processedFiles.ToString("N0");
+            
+            return $"正在扫描: {Path.GetFileName(currentPath)} ({fileCountText} 文件)";
         }
     }
 }
