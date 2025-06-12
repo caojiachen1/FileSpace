@@ -51,7 +51,6 @@ dotnet run
 
 ### Navigation
 - **Back**: Return to previous directory
-- **Forward**: Go to next directory
 - **Up**: Enter parent directory
 - **Refresh**: Reload current directory contents
 
