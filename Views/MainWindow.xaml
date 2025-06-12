@@ -348,7 +348,11 @@
                                                            Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                                     <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
                                                                    Foreground="{Binding IconColor}"/>
-                                                    <TextBlock Text="{Binding Name}"/>
+                                                    <TextBlock Text="{Binding Name}" 
+                                                               TextTrimming="CharacterEllipsis"
+                                                               TextAlignment="Left"
+                                                               HorizontalAlignment="Left"
+                                                               ToolTip="{Binding Name}"/>
                                                 </StackPanel>
                                                 
                                                 <!-- Rename mode -->
@@ -358,7 +362,11 @@
                                                                    Foreground="{Binding IconColor}"/>
                                                     <Grid>
                                                         <!-- Show original name if not the item being renamed -->
-                                                        <TextBlock Text="{Binding Name}">
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextAlignment="Left"
+                                                                   HorizontalAlignment="Left"
+                                                                   ToolTip="{Binding Name}">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Setter Property="Visibility" Value="Visible"/>

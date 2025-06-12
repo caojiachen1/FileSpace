@@ -22,6 +22,73 @@ namespace FileSpace.Utils
             };
         }
 
+        public static Grid CreatePropertyValueRow(string property, string value)
+        {
+            var grid = new Grid
+            {
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var propertyBlock = new TextBlock
+            {
+                Text = property,
+                FontWeight = FontWeights.Normal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+
+            var valueBlock = new TextBlock
+            {
+                Text = value,
+                FontWeight = FontWeights.Normal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Left,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap,
+                ToolTip = value, // Show full value in tooltip
+                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+            };
+
+            Grid.SetColumn(propertyBlock, 0);
+            Grid.SetColumn(valueBlock, 1);
+
+            grid.Children.Add(propertyBlock);
+            grid.Children.Add(valueBlock);
+
+            return grid;
+        }
+
+        public static Grid CreatePropertyValueRowWithTooltip(string property, string value, string fullValue = null)
+        {
+            var grid = CreatePropertyValueRow(property, value);
+            
+            if (!string.IsNullOrEmpty(fullValue) && fullValue != value)
+            {
+                var valueBlock = grid.Children[1] as TextBlock;
+                if (valueBlock != null)
+                {
+                    valueBlock.ToolTip = fullValue;
+                }
+            }
+            else
+            {
+                // Ensure tooltip shows full value even if not explicitly provided
+                var valueBlock = grid.Children[1] as TextBlock;
+                if (valueBlock != null && string.IsNullOrEmpty(valueBlock.ToolTip as string))
+                {
+                    valueBlock.ToolTip = value;
+                }
+            }
+
+            return grid;
+        }
+
         public static StackPanel CreateLoadingIndicator()
         {
             var panel = new StackPanel();

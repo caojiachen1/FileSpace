@@ -57,13 +57,15 @@ namespace FileSpace.Services
             panel.Children.Add(warningBlock);
             panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
 
-            // Add common file information
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件类型: {file.Type}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            // Add common file information using property-value rows
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件名:", fileInfo.Name, fileInfo.Name));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径:", 
+                TruncatePathForDisplay(fileInfo.FullName), 
+                fileInfo.FullName));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件大小:", FileUtils.FormatFileSize(fileInfo.Length)));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件类型:", file.Type));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间:", fileInfo.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间:", fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
 
             // Add file type specific information
             await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
@@ -82,19 +84,21 @@ namespace FileSpace.Services
             var fileInfo = new FileInfo(file.FullPath);
             var panel = new StackPanel();
 
-            // Add common file information
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件名: {fileInfo.Name}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"完整路径: {fileInfo.FullName}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件类型: {file.Type}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"创建时间: {fileInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"修改时间: {fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            // Add common file information using property-value rows
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件名:", fileInfo.Name, fileInfo.Name));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径:", 
+                TruncatePathForDisplay(fileInfo.FullName), 
+                fileInfo.FullName));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件大小:", FileUtils.FormatFileSize(fileInfo.Length)));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件类型:", file.Type));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间:", fileInfo.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间:", fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
 
             // Add file type specific information
             await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
 
-            var aiDetectionBlock = PreviewUIHelper.CreateInfoTextBlock("AI检测文件类型: 正在检测...");
-            panel.Children.Add(aiDetectionBlock);
+            var aiDetectionRow = PreviewUIHelper.CreatePropertyValueRow("AI检测类型:", "正在检测...");
+            panel.Children.Add(aiDetectionRow);
             panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
 
             // Add preview content
@@ -108,7 +112,11 @@ namespace FileSpace.Services
                 {
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        aiDetectionBlock.Text = $"AI检测文件类型: {aiResult}";
+                        var valueBlock = ((Grid)aiDetectionRow).Children[1] as TextBlock;
+                        if (valueBlock != null)
+                        {
+                            valueBlock.Text = aiResult;
+                        }
                     }
                 });
             }, cancellationToken);
@@ -122,7 +130,7 @@ namespace FileSpace.Services
             {
                 case FilePreviewType.Text:
                     var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
-                    panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"编码: {encoding.EncodingName}"));
+                    panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("编码:", encoding.EncodingName));
                     break;
 
                 case FilePreviewType.Image:
@@ -131,7 +139,7 @@ namespace FileSpace.Services
                         var imageInfo = await FilePreviewUtils.GetImageInfoAsync(fileInfo.FullName, cancellationToken);
                         if (imageInfo != null)
                         {
-                            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"图片尺寸: {imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("图片尺寸:", $"{imageInfo.Value.Width} × {imageInfo.Value.Height} 像素"));
                         }
                     }
                     catch { }
@@ -141,14 +149,14 @@ namespace FileSpace.Services
                     try
                     {
                         var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
-                        panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"总行数: {lines.Length:N0}"));
+                        panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总行数:", $"{lines.Length:N0}"));
                     }
                     catch { }
                     break;
 
                 case FilePreviewType.General:
-                    panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"访问时间: {fileInfo.LastAccessTime:yyyy-MM-dd HH:mm:ss}"));
-                    panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"属性: {fileInfo.Attributes}"));
+                    panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("访问时间:", fileInfo.LastAccessTime.ToString("yyyy-MM-dd HH:mm:ss")));
+                    panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("属性:", fileInfo.Attributes.ToString()));
                     break;
             }
         }
@@ -192,10 +200,12 @@ namespace FileSpace.Services
             var dirInfo = new DirectoryInfo(file.FullPath);
             var panel = new StackPanel();
 
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"文件夹: {dirInfo.Name}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"完整路径: {dirInfo.FullName}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"创建时间: {dirInfo.CreationTime:yyyy-MM-dd HH:mm:ss}"));
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock($"修改时间: {dirInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}"));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件夹:", dirInfo.Name, dirInfo.Name));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径:", 
+                TruncatePathForDisplay(dirInfo.FullName), 
+                dirInfo.FullName));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间:", dirInfo.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")));
+            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间:", dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
             panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
 
             // Quick directory count
@@ -224,20 +234,20 @@ namespace FileSpace.Services
             }, cancellationToken);
 
             // Create fixed positions for content info that will be updated in place
-            var fileCountBlock = PreviewUIHelper.CreateInfoTextBlock($"总共包含文件: {quickSummary.FileCount:N0} 个");
-            var dirCountBlock = PreviewUIHelper.CreateInfoTextBlock($"直接包含文件夹: {quickSummary.DirCount:N0} 个");
+            var fileCountRow = PreviewUIHelper.CreatePropertyValueRow("包含文件:", $"{quickSummary.FileCount:N0} 个");
+            var dirCountRow = PreviewUIHelper.CreatePropertyValueRow("包含文件夹:", $"{quickSummary.DirCount:N0} 个");
             
-            panel.Children.Add(fileCountBlock);
-            panel.Children.Add(dirCountBlock);
+            panel.Children.Add(fileCountRow);
+            panel.Children.Add(dirCountRow);
             panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
 
             // Add size calculation section
-            AddSizeCalculationSection(panel, dirInfo.FullName, fileCountBlock, dirCountBlock);
+            AddSizeCalculationSection(panel, dirInfo.FullName, fileCountRow, dirCountRow);
 
             return panel;
         }
 
-        private void AddSizeCalculationSection(StackPanel panel, string folderPath, System.Windows.Controls.TextBlock fileCountBlock, System.Windows.Controls.TextBlock dirCountBlock)
+        private void AddSizeCalculationSection(StackPanel panel, string folderPath, Grid fileCountRow, Grid dirCountRow)
         {
             var sizeHeaderBlock = PreviewUIHelper.CreateInfoTextBlock("总大小计算:");
             sizeHeaderBlock.FontWeight = FontWeights.Bold;
@@ -247,38 +257,88 @@ namespace FileSpace.Services
             var cachedSize = backgroundCalculator.GetCachedSize(folderPath);
             var isActiveCalculation = backgroundCalculator.IsCalculationActive(folderPath);
 
-            var sizeStatusBlock = PreviewUIHelper.CreateInfoTextBlock("");
-            var progressBlock = PreviewUIHelper.CreateInfoTextBlock("");
+            var sizeStatusRow = PreviewUIHelper.CreatePropertyValueRow("总大小:", "");
+            var progressRow = PreviewUIHelper.CreatePropertyValueRow("计算状态:", "");
 
             if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
             {
-                sizeStatusBlock.Text = $"计算失败: {cachedSize.Error}";
+                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, $"计算失败: {cachedSize.Error}");
                 // Keep original quick count display when calculation fails
             }
             else if (cachedSize != null && cachedSize.IsCalculationComplete)
             {
-                sizeStatusBlock.Text = $"总大小: {cachedSize.FormattedSize}";
-                // Update the existing blocks in place with accurate counts
-                fileCountBlock.Text = $"总共包含文件: {cachedSize.FileCount:N0} 个";
-                dirCountBlock.Text = $"直接包含文件夹: {cachedSize.DirectoryCount:N0} 个";
+                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, cachedSize.FormattedSize);
+                // Update the existing rows in place with accurate counts
+                ((Grid)fileCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.FileCount:N0} 个");
+                ((Grid)dirCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.DirectoryCount:N0} 个");
                 if (cachedSize.InaccessibleItems > 0)
                 {
-                    progressBlock.Text = $"无法访问 {cachedSize.InaccessibleItems} 个项目";
+                    ((Grid)progressRow).Children[1].SetValue(TextBlock.TextProperty, $"无法访问 {cachedSize.InaccessibleItems} 个项目");
                 }
             }
             else if (isActiveCalculation)
             {
-                sizeStatusBlock.Text = "正在后台计算...";
+                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, "正在后台计算...");
             }
             else
             {
-                sizeStatusBlock.Text = "准备计算...";
+                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, "准备计算...");
                 backgroundCalculator.QueueFolderSizeCalculation(folderPath,
-                    new { PreviewPanel = panel, StatusBlock = sizeStatusBlock, ProgressBlock = progressBlock, FileCountBlock = fileCountBlock, DirCountBlock = dirCountBlock });
+                    new { PreviewPanel = panel, StatusRow = sizeStatusRow, ProgressRow = progressRow, FileCountRow = fileCountRow, DirCountRow = dirCountRow });
             }
 
-            panel.Children.Add(sizeStatusBlock);
-            panel.Children.Add(progressBlock);
+            panel.Children.Add(sizeStatusRow);
+            panel.Children.Add(progressRow);
+        }
+
+        private static string TruncatePathForDisplay(string fullPath)
+        {
+            const int maxDisplayLength = 60;
+            
+            if (fullPath.Length <= maxDisplayLength)
+                return fullPath;
+            
+            // Try to keep the drive and first few folders, truncate the middle
+            var pathParts = fullPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            
+            if (pathParts.Length <= 3)
+            {
+                // Short path structure, truncate from end
+                return fullPath.Substring(0, maxDisplayLength - 3) + "...";
+            }
+            
+            // Keep first 2 parts (drive + first folder) and last part (filename)
+            var beginning = string.Join(Path.DirectorySeparatorChar.ToString(), pathParts.Take(2));
+            var ending = pathParts.Last();
+            
+            var availableSpace = maxDisplayLength - beginning.Length - ending.Length - 6; // 6 for "...\" + "\
+            
+            if (availableSpace > 0 && pathParts.Length > 3)
+            {
+                // Try to fit some middle parts
+                var middleParts = pathParts.Skip(2).Take(pathParts.Length - 3).ToList();
+                var middleText = "";
+                
+                foreach (var part in middleParts)
+                {
+                    var testText = string.IsNullOrEmpty(middleText) ? part : middleText + Path.DirectorySeparatorChar + part;
+                    if (testText.Length <= availableSpace)
+                    {
+                        middleText = testText;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                
+                if (!string.IsNullOrEmpty(middleText))
+                {
+                    return $"{beginning}{Path.DirectorySeparatorChar}{middleText}{Path.DirectorySeparatorChar}...{Path.DirectorySeparatorChar}{ending}";
+                }
+            }
+            
+            return $"{beginning}{Path.DirectorySeparatorChar}...{Path.DirectorySeparatorChar}{ending}";
         }
     }
 }

@@ -34,6 +34,7 @@
                         PlaceholderText="输入新名称..."
                         Margin="0,0,0,10"
                         MinHeight="32"
+                        HorizontalContentAlignment="Left"
                         KeyDown="NameTextBox_KeyDown"/>
             
             <TextBlock x:Name="ErrorTextBlock"

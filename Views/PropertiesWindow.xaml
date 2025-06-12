@@ -21,6 +21,9 @@
         <Style x:Key="PropertyValueStyle" TargetType="TextBlock">
             <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
         </Style>
     </ui:FluentWindow.Resources>
@@ -70,7 +73,9 @@
                         
                         <TextBlock Text="完整路径:" Style="{StaticResource PropertyLabelStyle}"/>
                         <StackPanel>
-                            <TextBlock Text="{Binding FullPath}" Style="{StaticResource PropertyValueStyle}"/>
+                            <TextBlock Text="{Binding FullPath}" 
+                                       Style="{StaticResource PropertyValueStyle}"
+                                       ToolTip="{Binding FullPath}"/>
                             <ui:Button Content="复制路径" 
                                        Icon="Copy24"
                                        Click="CopyPathButton_Click"

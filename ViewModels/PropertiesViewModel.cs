@@ -315,6 +315,58 @@ namespace FileSpace.ViewModels
             }
         }
 
+        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
+        {
+            return new System.Windows.Controls.TextBlock
+            {
+                Text = text,
+                Margin = new Thickness(0, 2, 0, 2),
+                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+        }
+
+        private System.Windows.Controls.Grid CreatePropertyValueRow(string property, string value)
+        {
+            var grid = new System.Windows.Controls.Grid
+            {
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+
+            grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var propertyBlock = new System.Windows.Controls.TextBlock
+            {
+                Text = property,
+                FontWeight = FontWeights.Normal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            };
+
+            var valueBlock = new System.Windows.Controls.TextBlock
+            {
+                Text = value,
+                FontWeight = FontWeights.Normal,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                TextAlignment = TextAlignment.Left,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap,
+                ToolTip = value, // Show full value in tooltip
+                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+            };
+
+            System.Windows.Controls.Grid.SetColumn(propertyBlock, 0);
+            System.Windows.Controls.Grid.SetColumn(valueBlock, 1);
+
+            grid.Children.Add(propertyBlock);
+            grid.Children.Add(valueBlock);
+
+            return grid;
+        }
+
         private async Task LoadImageInfo(FileInfo fileInfo)
         {
             try
@@ -338,9 +390,9 @@ namespace FileSpace.ViewModels
                 });
                 
                 var panel = new System.Windows.Controls.StackPanel();
-                panel.Children.Add(CreateInfoTextBlock($"尺寸: {imageInfo.Width} × {imageInfo.Height} 像素"));
-                panel.Children.Add(CreateInfoTextBlock($"分辨率: {imageInfo.DpiX:F0} × {imageInfo.DpiY:F0} DPI"));
-                panel.Children.Add(CreateInfoTextBlock($"颜色格式: {imageInfo.Format}"));
+                panel.Children.Add(CreatePropertyValueRow("尺寸:", $"{imageInfo.Width} × {imageInfo.Height} 像素"));
+                panel.Children.Add(CreatePropertyValueRow("分辨率:", $"{imageInfo.DpiX:F0} × {imageInfo.DpiY:F0} DPI"));
+                panel.Children.Add(CreatePropertyValueRow("颜色格式:", imageInfo.Format));
                 
                 AdditionalInfo = panel;
                 HasAdditionalInfo = true;
@@ -366,9 +418,9 @@ namespace FileSpace.ViewModels
                 });
                 
                 var panel = new System.Windows.Controls.StackPanel();
-                panel.Children.Add(CreateInfoTextBlock($"行数: {textInfo.Lines:N0}"));
-                panel.Children.Add(CreateInfoTextBlock($"单词数: {textInfo.Words:N0}"));
-                panel.Children.Add(CreateInfoTextBlock($"字符数: {textInfo.Characters:N0}"));
+                panel.Children.Add(CreatePropertyValueRow("行数:", $"{textInfo.Lines:N0}"));
+                panel.Children.Add(CreatePropertyValueRow("单词数:", $"{textInfo.Words:N0}"));
+                panel.Children.Add(CreatePropertyValueRow("字符数:", $"{textInfo.Characters:N0}"));
                 
                 AdditionalInfo = panel;
                 HasAdditionalInfo = true;
@@ -377,16 +429,6 @@ namespace FileSpace.ViewModels
             {
                 HasAdditionalInfo = false;
             }
-        }
-
-        private System.Windows.Controls.TextBlock CreateInfoTextBlock(string text)
-        {
-            return new System.Windows.Controls.TextBlock
-            {
-                Text = text,
-                Margin = new Thickness(0, 2, 0, 2),
-                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
-            };
         }
 
         // Helper methods (same as in MainViewModel)
