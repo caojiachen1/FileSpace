@@ -487,16 +487,7 @@ namespace FileSpace.ViewModels
                 return;
             }
 
-            var confirmDialog = new ConfirmationDialog(
-                "确认永久删除",
-                $"确定要永久删除选中的 {SelectedFiles.Count} 个项目吗？\n\n此操作无法撤销，文件将不会进入回收站。",
-                "永久删除",
-                "取消")
-            {
-                Owner = Application.Current.MainWindow
-            };
-
-            if (confirmDialog.ShowDialog() != true)
+            if (!DialogService.Instance.ConfirmDelete(SelectedFiles.Count, permanent: true))
                 return;
 
             try
@@ -533,16 +524,7 @@ namespace FileSpace.ViewModels
                 return;
             }
 
-            var confirmDialog = new ConfirmationDialog(
-                "确认删除",
-                $"确定要删除选中的 {SelectedFiles.Count} 个项目吗？\n\n文件将被移动到回收站。",
-                "删除",
-                "取消")
-            {
-                Owner = Application.Current.MainWindow
-            };
-
-            if (confirmDialog.ShowDialog() != true)
+            if (!DialogService.Instance.ConfirmDelete(SelectedFiles.Count, permanent: false))
                 return;
 
             try
@@ -601,24 +583,45 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
+        private void ConfirmRename()
+        {
+            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
+            {
+                var newName = NewFileName.Trim();
+                
+                if (newName != RenamingFile.Name)
+                {
+                    // Check for extension changes on files
+                    if (!RenamingFile.IsDirectory)
+                    {
+                        var originalExt = Path.GetExtension(RenamingFile.Name);
+                        var newExt = Path.GetExtension(newName);
+                        
+                        if (!string.Equals(originalExt, newExt, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (!DialogService.Instance.ConfirmExtensionChange(originalExt, newExt))
+                            {
+                                return; // User cancelled the extension change
+                            }
+                        }
+                    }
+                    
+                    PerformRename(RenamingFile, newName);
+                }
+            }
+            CancelRename();
+        }
+
+        [RelayCommand]
         private void ShowRenameDialog()
         {
             if (SelectedFile != null)
             {
                 try
                 {
-                    var renameWindow = new RenameDialog(SelectedFile.Name, SelectedFile.IsDirectory)
+                    if (DialogService.Instance.ShowRenameDialog(SelectedFile.Name, SelectedFile.IsDirectory, out string newName))
                     {
-                        Owner = Application.Current.MainWindow
-                    };
-
-                    if (renameWindow.ShowDialog() == true)
-                    {
-                        var newName = renameWindow.NewName;
-                        if (!string.IsNullOrWhiteSpace(newName) && newName != SelectedFile.Name)
-                        {
-                            PerformRename(SelectedFile, newName);
-                        }
+                        PerformRename(SelectedFile, newName);
                     }
                 }
                 catch (Exception ex)
@@ -644,54 +647,6 @@ namespace FileSpace.ViewModels
                 // For files, show full name with extension but we'll select only the name part in the UI
                 NewFileName = file.Name;
             }
-        }
-
-        [RelayCommand]
-        private void ConfirmRename()
-        {
-            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
-            {
-                var newName = NewFileName.Trim();
-                
-                if (newName != RenamingFile.Name)
-                {
-                    // Check for extension changes on files
-                    if (!RenamingFile.IsDirectory)
-                    {
-                        var originalExt = Path.GetExtension(RenamingFile.Name);
-                        var newExt = Path.GetExtension(newName);
-                        
-                        if (!string.Equals(originalExt, newExt, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (!ConfirmExtensionChangeInline(originalExt, newExt))
-                            {
-                                return; // User cancelled the extension change
-                            }
-                        }
-                    }
-                    
-                    PerformRename(RenamingFile, newName);
-                }
-            }
-            CancelRename();
-        }
-
-        private bool ConfirmExtensionChangeInline(string originalExt, string newExt)
-        {
-            var message = string.IsNullOrEmpty(newExt) 
-                ? $"您即将移除文件扩展名 '{originalExt}'。\n\n这可能导致文件无法正常打开。确定要继续吗？"
-                : $"您即将将文件扩展名从 '{originalExt}' 更改为 '{newExt}'。\n\n这可能导致文件无法正常打开。确定要继续吗？";
-
-            var warningDialog = new WarningDialog(
-                "扩展名更改警告",
-                message,
-                "继续更改",
-                "取消")
-            {
-                Owner = Application.Current.MainWindow
-            };
-
-            return warningDialog.ShowDialog() == true;
         }
 
         [RelayCommand]
