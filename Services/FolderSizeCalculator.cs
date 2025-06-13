@@ -175,6 +175,7 @@ namespace FileSpace.Services
     public class FolderSizeInfo
     {
         public string FolderPath { get; set; } = string.Empty;
+        public string FolderName => Path.GetFileName(FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? FolderPath;
         public long TotalSize { get; set; }
         public int FileCount { get; set; }
         public int DirectoryCount { get; set; }

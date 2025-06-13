@@ -296,7 +296,7 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem Header="在资源管理器中查看" Command="{Binding OpenInExplorerCommand}" CommandParameter="{Binding IsDirectory}">
+                                <MenuItem Header="在资源管理器中查看" Command="{Binding OpenInExplorerCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="FolderOpen24"/>
                                     </MenuItem.Icon>
@@ -333,6 +333,11 @@
                                 <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="分析文件夹" Command="{Binding AnalyzeFolderCommand}" Visibility="{Binding SelectedFile.IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ChartMultiple24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>

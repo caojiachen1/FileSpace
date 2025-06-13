@@ -781,6 +781,27 @@ namespace FileSpace.ViewModels
             StatusText = statusMessage;
         }
 
+        [RelayCommand]
+        private void AnalyzeFolder()
+        {
+            if (SelectedFile?.IsDirectory == true)
+            {
+                try
+                {
+                    var analysisViewModel = new FolderAnalysisViewModel(SelectedFile.FullPath);
+                    var analysisWindow = new FolderAnalysisWindow(analysisViewModel)
+                    {
+                        Owner = Application.Current.MainWindow
+                    };
+                    analysisWindow.Show();
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"无法分析文件夹: {ex.Message}";
+                }
+            }
+        }
+
         public void Dispose()
         {
             // Unsubscribe from events to prevent memory leaks and null reference exceptions
