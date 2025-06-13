@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Channels;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
@@ -283,42 +284,6 @@ namespace FileSpace.Services
             return type.Name.Contains("AnonymousType") && 
                    type.IsGenericType && 
                    type.Namespace == null;
-        }
-    }
-
-    public class SizeCalculationRequest
-    {
-        public string FolderPath { get; set; } = string.Empty;
-        public object? Context { get; set; }
-        public int Priority { get; set; }
-        public DateTime RequestTime { get; set; }
-    }
-
-    public class FolderSizeCompletedEventArgs : EventArgs
-    {
-        public string FolderPath { get; }
-        public FolderSizeInfo SizeInfo { get; }
-        public object? Context { get; }
-
-        public FolderSizeCompletedEventArgs(string folderPath, FolderSizeInfo sizeInfo, object? context)
-        {
-            FolderPath = folderPath;
-            SizeInfo = sizeInfo;
-            Context = context;
-        }
-    }
-
-    public class FolderSizeProgressEventArgs : EventArgs
-    {
-        public string FolderPath { get; }
-        public FolderSizeProgress Progress { get; }
-        public object? Context { get; }
-
-        public FolderSizeProgressEventArgs(string folderPath, FolderSizeProgress progress, object? context)
-        {
-            FolderPath = folderPath;
-            Progress = progress;
-            Context = context;
         }
     }
 }

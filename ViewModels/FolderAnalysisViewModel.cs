@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using FileSpace.Services;
+using FileSpace.Models;
 
 namespace FileSpace.ViewModels
 {
@@ -76,6 +77,12 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private int _duplicateFiles;
 
+        [ObservableProperty]
+        private ObservableCollection<EmptyFileInfo> _emptyFiles = new();
+
+        [ObservableProperty]
+        private ObservableCollection<DuplicateFileGroup> _duplicateFileGroups = new();
+
         public string WindowTitle => $"文件夹分析 - {FolderName}";
         public string TotalSizeFormatted => IsAnalyzing ? FormatFileSize(ScannedSize) : FormatFileSize(TotalSize);
         public int DisplayFileCount => IsAnalyzing ? ScannedFiles : TotalFiles;
@@ -145,13 +152,30 @@ namespace FileSpace.ViewModels
                 SubfolderSizes.Clear();
                 foreach (var item in result.SubfolderSizes)
                 {
-                    SubfolderSizes.Add(item);
+                    SubfolderSizes.Add(new FolderSizeInfo
+                    {
+                        FolderPath = item.FolderPath,
+                        TotalSize = item.TotalSize,
+                        FileCount = item.FileCount
+                    });
                 }
 
                 ExtensionStats.Clear();
                 foreach (var item in result.ExtensionStats)
                 {
                     ExtensionStats.Add(item);
+                }
+
+                EmptyFiles.Clear();
+                foreach (var item in result.EmptyFiles)
+                {
+                    EmptyFiles.Add(item);
+                }
+
+                DuplicateFileGroups.Clear();
+                foreach (var item in result.DuplicateFileGroups)
+                {
+                    DuplicateFileGroups.Add(item);
                 }
 
                 AnalysisProgress = "分析完成";
@@ -277,85 +301,6 @@ namespace FileSpace.ViewModels
         {
             _ = StartAnalysisAsync();
         }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-            
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-            
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
-    }
-
-    public class FileTypeInfo
-    {
-        public string TypeName { get; set; } = string.Empty;
-        public int Count { get; set; }
-        public long TotalSize { get; set; }
-        public string TotalSizeFormatted => FormatFileSize(TotalSize);
-        public double Percentage { get; set; }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-            
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-            
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
-    }
-
-    public class LargeFileInfo
-    {
-        public string FileName { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
-        public long Size { get; set; }
-        public string SizeFormatted => FormatFileSize(Size);
-        public DateTime ModifiedDate { get; set; }
-        public string RelativePath { get; set; } = string.Empty;
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-            
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-            
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
-    }
-
-    public class FileExtensionInfo
-    {
-        public string Extension { get; set; } = string.Empty;
-        public int Count { get; set; }
-        public long TotalSize { get; set; }
-        public string TotalSizeFormatted => FormatFileSize(TotalSize);
-        public double Percentage { get; set; }
 
         private static string FormatFileSize(long bytes)
         {

@@ -8,6 +8,7 @@ using System.Text;
 using FileSpace.Services;
 using FileSpace.Views;
 using FileSpace.Utils;
+using FileSpace.Models;
 using magika;
 
 namespace FileSpace.ViewModels

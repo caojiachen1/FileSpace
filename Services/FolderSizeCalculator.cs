@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
@@ -170,42 +171,5 @@ namespace FileSpace.Services
                 cts.Dispose();
             }
         }
-    }
-
-    public class FolderSizeInfo
-    {
-        public string FolderPath { get; set; } = string.Empty;
-        public string FolderName => Path.GetFileName(FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? FolderPath;
-        public long TotalSize { get; set; }
-        public int FileCount { get; set; }
-        public int DirectoryCount { get; set; }
-        public int InaccessibleItems { get; set; }
-        public DateTime CalculatedAt { get; set; }
-        public bool IsCalculationComplete { get; set; }
-        public bool IsCalculationCancelled { get; set; }
-        public string Error { get; set; } = string.Empty;
-
-        public string FormattedSize => FormatFileSize(TotalSize);
-
-        private static string FormatFileSize(long bytes)
-        {
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            decimal number = bytes;
-            while (Math.Round(number / 1024) >= 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            return $"{number:n1} {suffixes[counter]}";
-        }
-    }
-
-    public class FolderSizeProgress
-    {
-        public int ProcessedFiles { get; set; }
-        public int ProcessedDirectories { get; set; }
-        public string CurrentPath { get; set; } = string.Empty;
-        public long CurrentSize { get; set; }
     }
 }

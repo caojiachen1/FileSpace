@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using FileSpace.Services;
+using FileSpace.Models;
 
 namespace FileSpace.ViewModels
 {

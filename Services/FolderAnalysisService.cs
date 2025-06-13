@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography;
 using FileSpace.ViewModels;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
@@ -15,6 +16,7 @@ namespace FileSpace.Services
             var allFiles = new ConcurrentBag<FileInfoData>();
             var subfolderSizes = new ConcurrentDictionary<string, long>();
             var fileHashes = new ConcurrentDictionary<string, List<string>>();
+            var emptyFiles = new ConcurrentBag<FileInfoData>();
 
             progress?.Report("开始扫描文件...");
 
@@ -22,7 +24,7 @@ namespace FileSpace.Services
             {
                 try
                 {
-                    ScanDirectory(folderPath, folderPath, result, fileTypeStats, extensionStats, allFiles, subfolderSizes, fileHashes, progress, 0);
+                    ScanDirectory(folderPath, folderPath, result, fileTypeStats, extensionStats, allFiles, subfolderSizes, fileHashes, emptyFiles, progress, 0);
                 }
                 catch (Exception ex)
                 {
@@ -94,7 +96,7 @@ namespace FileSpace.Services
             foreach (var kvp in subfolderSizes.OrderByDescending(kvp => kvp.Value))
             {
                 var folderInfo = new DirectoryInfo(kvp.Key);
-                result.SubfolderSizes.Add(new Services.FolderSizeInfo
+                result.SubfolderSizes.Add(new FolderSizeInfo
                 {
                     FolderPath = kvp.Key,
                     TotalSize = kvp.Value,
@@ -106,6 +108,50 @@ namespace FileSpace.Services
             // Count duplicates
             result.DuplicateFiles = fileHashes.Values.Where(list => list.Count > 1).Sum(list => list.Count - 1);
 
+            // Build duplicate file groups
+            foreach (var kvp in fileHashes.Where(kvp => kvp.Value.Count > 1))
+            {
+                var duplicateGroup = new DuplicateFileGroup
+                {
+                    FileHash = kvp.Key,
+                    FileCount = kvp.Value.Count
+                };
+
+                foreach (var filePath in kvp.Value)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        duplicateGroup.FileSize = fileInfo.Length;
+                        duplicateGroup.Files.Add(new DuplicateFileInfo
+                        {
+                            FileName = fileInfo.Name,
+                            FilePath = filePath,
+                            ModifiedDate = fileInfo.LastWriteTime,
+                            RelativePath = Path.GetRelativePath(folderPath, filePath)
+                        });
+                    }
+                    catch { }
+                }
+
+                if (duplicateGroup.Files.Count > 1)
+                {
+                    result.DuplicateFileGroups.Add(duplicateGroup);
+                }
+            }
+
+            // Add empty files
+            foreach (var emptyFile in emptyFiles)
+            {
+                result.EmptyFiles.Add(new EmptyFileInfo
+                {
+                    FileName = emptyFile.Name,
+                    FilePath = emptyFile.FullPath,
+                    ModifiedDate = emptyFile.ModifiedDate,
+                    RelativePath = emptyFile.RelativePath
+                });
+            }
+
             progress?.Report("分析完成");
             return result;
         }
@@ -116,6 +162,7 @@ namespace FileSpace.Services
             ConcurrentBag<FileInfoData> allFiles,
             ConcurrentDictionary<string, long> subfolderSizes,
             ConcurrentDictionary<string, List<string>> fileHashes,
+            ConcurrentBag<FileInfoData> emptyFiles,
             IProgress<string>? progress,
             int depth)
         {
@@ -135,6 +182,20 @@ namespace FileSpace.Services
                         fileCount++;
                         var fileType = GetFileType(file.Extension);
                         var relativePath = Path.GetRelativePath(rootPath, file.FullName);
+
+                        // Check for empty files
+                        if (file.Length == 0)
+                        {
+                            emptyFiles.Add(new FileInfoData
+                            {
+                                Name = file.Name,
+                                FullPath = file.FullName,
+                                RelativePath = relativePath,
+                                Size = file.Length,
+                                ModifiedDate = file.LastWriteTime,
+                                Depth = depth
+                            });
+                        }
 
                         fileTypeStats.AddOrUpdate(fileType, 
                             new FileTypeStats { Count = 1, TotalSize = file.Length },
@@ -196,7 +257,7 @@ namespace FileSpace.Services
                         result.TotalFolders++;
                         
                         ScanDirectory(subDir.FullName, rootPath, result, fileTypeStats, extensionStats, 
-                                    allFiles, subfolderSizes, fileHashes, progress, depth + 1);
+                                    allFiles, subfolderSizes, fileHashes, emptyFiles, progress, depth + 1);
                         
                         // Add subfolder size for direct children only
                         if (depth == 0)
@@ -261,46 +322,5 @@ namespace FileSpace.Services
             }
             return $"{number:n1} {suffixes[counter]}";
         }
-    }
-
-    public class FolderAnalysisResult
-    {
-        public long TotalSize { get; set; }
-        public int TotalFiles { get; set; }
-        public int TotalFolders { get; set; }
-        public List<FileTypeInfo> FileTypeDistribution { get; set; } = new();
-        public List<LargeFileInfo> LargeFiles { get; set; } = new();
-        public List<Services.FolderSizeInfo> SubfolderSizes { get; set; } = new();
-        public List<FileExtensionInfo> ExtensionStats { get; set; } = new();
-        public DateTime OldestFile { get; set; }
-        public DateTime NewestFile { get; set; }
-        public long AverageFileSize { get; set; }
-        public string LargestFile { get; set; } = string.Empty;
-        public string DeepestPath { get; set; } = string.Empty;
-        public int MaxDepth { get; set; }
-        public int EmptyFolders { get; set; }
-        public int DuplicateFiles { get; set; }
-    }
-
-    public class FileTypeStats
-    {
-        public int Count { get; set; }
-        public long TotalSize { get; set; }
-    }
-
-    public class ExtensionStats
-    {
-        public int Count { get; set; }
-        public long TotalSize { get; set; }
-    }
-
-    public class FileInfoData
-    {
-        public string Name { get; set; } = string.Empty;
-        public string FullPath { get; set; } = string.Empty;
-        public string RelativePath { get; set; } = string.Empty;
-        public long Size { get; set; }
-        public DateTime ModifiedDate { get; set; }
-        public int Depth { get; set; }
     }
 }

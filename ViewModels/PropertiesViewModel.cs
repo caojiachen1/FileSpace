@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using Wpf.Ui.Controls;
 using FileSpace.Services;
+using FileSpace.Models;
 
 namespace FileSpace.ViewModels
 {

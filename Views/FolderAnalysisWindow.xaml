@@ -375,6 +375,94 @@
                         </StackPanel>
                     </ui:CardControl>
                 </TabItem>
+
+                <!-- Empty Files Tab -->
+                <TabItem Header="空文件" Style="{StaticResource DarkTabItemStyle}">
+                    <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
+                        <StackPanel Margin="16">
+                            <TextBlock Text="空文件列表" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid ItemsSource="{Binding EmptyFiles}" 
+                                         IsReadOnly="True"
+                                         VerticalScrollBarVisibility="Visible"
+                                         Style="{StaticResource DarkDataGridStyle}"
+                                         ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
+                                <ui:DataGrid.Columns>
+                                    <DataGridTextColumn Header="文件名" Width="200" Binding="{Binding FileName}"/>
+                                    <DataGridTextColumn Header="修改时间" Width="120" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                    <DataGridTextColumn Header="相对路径" Width="300" Binding="{Binding RelativePath}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <ui:Button Content="打开" 
+                                                               Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
+                                                               CommandParameter="{Binding FilePath}"
+                                                               Margin="2" Padding="8,2" FontSize="11"/>
+                                                    <ui:Button Content="定位" 
+                                                               Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
+                                                               CommandParameter="{Binding FilePath}"
+                                                               Margin="2" Padding="8,2" FontSize="11"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </ui:DataGrid.Columns>
+                            </ui:DataGrid>
+                        </StackPanel>
+                    </ui:CardControl>
+                </TabItem>
+
+                <!-- Duplicate Files Tab -->
+                <TabItem Header="重复文件" Style="{StaticResource DarkTabItemStyle}">
+                    <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
+                        <StackPanel Margin="16">
+                            <TextBlock Text="重复文件组" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid ItemsSource="{Binding DuplicateFileGroups}" 
+                                       IsReadOnly="True"
+                                       VerticalScrollBarVisibility="Visible"
+                                       Style="{StaticResource DarkDataGridStyle}"
+                                       ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
+                                <ui:DataGrid.RowDetailsTemplate>
+                                    <DataTemplate>
+                                        <ui:DataGrid ItemsSource="{Binding Files}" 
+                                                   Margin="20,5" 
+                                                   IsReadOnly="True"
+                                                   Style="{StaticResource DarkDataGridStyle}"
+                                                   Background="#FF252526"
+                                                   ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
+                                            <ui:DataGrid.Columns>
+                                                <DataGridTextColumn Header="文件名" Width="200" Binding="{Binding FileName}"/>
+                                                <DataGridTextColumn Header="修改时间" Width="120" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                                <DataGridTextColumn Header="相对路径" Width="250" Binding="{Binding RelativePath}"/>
+                                                <DataGridTemplateColumn Header="操作" Width="120">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <ui:Button Content="打开" 
+                                                                         Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:FluentWindow}}}"
+                                                                         CommandParameter="{Binding FilePath}"
+                                                                         Margin="2" Padding="8,2" FontSize="11"/>
+                                                                <ui:Button Content="定位" 
+                                                                         Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:FluentWindow}}}"
+                                                                         CommandParameter="{Binding FilePath}"
+                                                                         Margin="2" Padding="8,2" FontSize="11"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </ui:DataGrid.Columns>
+                                        </ui:DataGrid>
+                                    </DataTemplate>
+                                </ui:DataGrid.RowDetailsTemplate>
+                                <ui:DataGrid.Columns>
+                                    <DataGridTextColumn Header="文件大小" Width="100" Binding="{Binding FileSizeFormatted}"/>
+                                    <DataGridTextColumn Header="文件数量" Width="80" Binding="{Binding FileCount}"/>
+                                    <DataGridTextColumn Header="文件哈希" Width="300" Binding="{Binding FileHash}"/>
+                                </ui:DataGrid.Columns>
+                            </ui:DataGrid>
+                        </StackPanel>
+                    </ui:CardControl>
+                </TabItem>
             </TabControl>
         </Grid>
     </Grid>
