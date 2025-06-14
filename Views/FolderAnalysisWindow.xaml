@@ -6,6 +6,7 @@
         Height="800" Width="1200"
         MinHeight="600" MinWidth="900"
         ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterScreen"
         WindowBackdropType="Mica">
 
     <ui:FluentWindow.Resources>
