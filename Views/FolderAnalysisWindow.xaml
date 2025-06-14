@@ -1,15 +1,12 @@
 <ui:FluentWindow x:Class="FileSpace.Views.FolderAnalysisWindow"
-                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-                 Title="{Binding WindowTitle}" 
-                 Height="800" 
-                 Width="1200"
-                 MinHeight="600"
-                 MinWidth="900"
-                 WindowStartupLocation="CenterOwner"
-                 ExtendsContentIntoTitleBar="True"
-                 WindowBackdropType="Mica">
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="{Binding WindowTitle}" 
+        Height="800" Width="1200"
+        MinHeight="600" MinWidth="900"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica">
 
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
