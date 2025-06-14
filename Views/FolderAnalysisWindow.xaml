@@ -85,7 +85,7 @@
             <Setter Property="VerticalScrollBarVisibility" Value="Visible"/>
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
             <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
-            <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="True"/>
+            <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
         </Style>
 
@@ -266,10 +266,13 @@
 
                         <!-- File Type Distribution -->
                         <ui:CardControl Grid.Row="2" Style="{StaticResource DarkCardStyle}">
-                            <StackPanel Margin="16">
-                                <TextBlock Text="文件类型分布" Style="{StaticResource HeaderTextStyle}"/>
-                                <ui:DataGrid ItemsSource="{Binding FileTypeDistribution}" 
-                                             Height="300" 
+                            <Grid Margin="16">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="文件类型分布" Style="{StaticResource HeaderTextStyle}"/>
+                                <ui:DataGrid Grid.Row="1" ItemsSource="{Binding FileTypeDistribution}" 
                                              IsReadOnly="True"
                                              VerticalScrollBarVisibility="Auto"
                                              HorizontalScrollBarVisibility="Auto"
@@ -282,7 +285,7 @@
                                         <DataGridTextColumn Header="占比" Width="80" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
                                     </ui:DataGrid.Columns>
                                 </ui:DataGrid>
-                            </StackPanel>
+                            </Grid>
                         </ui:CardControl>
                     </Grid>
                 </TabItem>
@@ -290,9 +293,13 @@
                 <!-- Large Files Tab -->
                 <TabItem Header="大文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <StackPanel Margin="16">
-                            <TextBlock Text="大文件列表 (前50个)" Style="{StaticResource HeaderTextStyle}"/>
-                            <ui:DataGrid ItemsSource="{Binding LargeFiles}" 
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="大文件列表 (前50个)" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid Grid.Row="1" ItemsSource="{Binding LargeFiles}" 
                                          IsReadOnly="True"
                                          VerticalScrollBarVisibility="Visible"
                                          Style="{StaticResource DarkDataGridStyle}"
@@ -320,16 +327,20 @@
                                     </DataGridTemplateColumn>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
-                        </StackPanel>
+                        </Grid>
                     </ui:CardControl>
                 </TabItem>
 
                 <!-- Subfolder Sizes Tab -->
                 <TabItem Header="子文件夹" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <StackPanel Margin="16">
-                            <TextBlock Text="子文件夹大小排序" Style="{StaticResource HeaderTextStyle}"/>
-                            <ui:DataGrid ItemsSource="{Binding SubfolderSizes}" 
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="子文件夹大小排序" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid Grid.Row="1" ItemsSource="{Binding SubfolderSizes}" 
                                          IsReadOnly="True"
                                          VerticalScrollBarVisibility="Visible"
                                          Style="{StaticResource DarkDataGridStyle}"
@@ -351,16 +362,20 @@
                                     </DataGridTemplateColumn>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
-                        </StackPanel>
+                        </Grid>
                     </ui:CardControl>
                 </TabItem>
 
                 <!-- Extensions Tab -->
                 <TabItem Header="扩展名统计" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <StackPanel Margin="16">
-                            <TextBlock Text="文件扩展名统计" Style="{StaticResource HeaderTextStyle}"/>
-                            <ui:DataGrid ItemsSource="{Binding ExtensionStats}" 
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="文件扩展名统计" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid Grid.Row="1" ItemsSource="{Binding ExtensionStats}" 
                                          IsReadOnly="True"
                                          VerticalScrollBarVisibility="Visible"
                                          Style="{StaticResource DarkDataGridStyle}"
@@ -372,16 +387,20 @@
                                     <DataGridTextColumn Header="占比" Width="80" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
-                        </StackPanel>
+                        </Grid>
                     </ui:CardControl>
                 </TabItem>
 
                 <!-- Empty Files Tab -->
                 <TabItem Header="空文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <StackPanel Margin="16">
-                            <TextBlock Text="空文件列表" Style="{StaticResource HeaderTextStyle}"/>
-                            <ui:DataGrid ItemsSource="{Binding EmptyFiles}" 
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="空文件列表" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid Grid.Row="1" ItemsSource="{Binding EmptyFiles}" 
                                          IsReadOnly="True"
                                          VerticalScrollBarVisibility="Visible"
                                          Style="{StaticResource DarkDataGridStyle}"
@@ -408,16 +427,20 @@
                                     </DataGridTemplateColumn>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
-                        </StackPanel>
+                        </Grid>
                     </ui:CardControl>
                 </TabItem>
 
                 <!-- Duplicate Files Tab -->
                 <TabItem Header="重复文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <StackPanel Margin="16">
-                            <TextBlock Text="重复文件组" Style="{StaticResource HeaderTextStyle}"/>
-                            <ui:DataGrid ItemsSource="{Binding DuplicateFileGroups}" 
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="重复文件组" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:DataGrid Grid.Row="1" ItemsSource="{Binding DuplicateFileGroups}" 
                                        IsReadOnly="True"
                                        VerticalScrollBarVisibility="Visible"
                                        Style="{StaticResource DarkDataGridStyle}"
@@ -460,7 +483,7 @@
                                     <DataGridTextColumn Header="文件哈希" Width="300" Binding="{Binding FileHash}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
-                        </StackPanel>
+                        </Grid>
                     </ui:CardControl>
                 </TabItem>
             </TabControl>
