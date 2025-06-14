@@ -1,14 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.IO;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
-    public enum ClipboardFileOperation
-    {
-        Copy,
-        Move
-    }
-
     public partial class ClipboardService : ObservableObject
     {
         private static readonly Lazy<ClipboardService> _instance = new(() => new ClipboardService());

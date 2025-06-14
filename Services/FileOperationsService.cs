@@ -1,28 +1,8 @@
 using System.IO;
-using System.ComponentModel;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
-    public enum FileOperation
-    {
-        Copy,
-        Move,
-        Delete
-    }
-
-    public class FileOperationEventArgs : EventArgs
-    {
-        public string SourcePath { get; set; } = string.Empty;
-        public string DestinationPath { get; set; } = string.Empty;
-        public FileOperation Operation { get; set; }
-        public bool IsDirectory { get; set; }
-        public long BytesTransferred { get; set; }
-        public long TotalBytes { get; set; }
-        public int FilesCompleted { get; set; }
-        public int TotalFiles { get; set; }
-        public string CurrentFile { get; set; } = string.Empty;
-    }
-
     public class FileOperationsService
     {
         private static readonly Lazy<FileOperationsService> _instance = new(() => new FileOperationsService());

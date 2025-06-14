@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography;
-using FileSpace.ViewModels;
 using FileSpace.Models;
 
 namespace FileSpace.Services

@@ -122,7 +122,7 @@ namespace FileSpace.Models
             return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
         }
     }
-    
+
     public class FileTypeStats
     {
         public int Count { get; set; }
@@ -143,5 +143,31 @@ namespace FileSpace.Models
         public long Size { get; set; }
         public DateTime ModifiedDate { get; set; }
         public int Depth { get; set; }
+    }
+
+    public enum ClipboardFileOperation
+    {
+        Copy,
+        Move
+    }
+
+    public enum FileOperation
+    {
+        Copy,
+        Move,
+        Delete
+    }
+
+    public class FileOperationEventArgs : EventArgs
+    {
+        public string SourcePath { get; set; } = string.Empty;
+        public string DestinationPath { get; set; } = string.Empty;
+        public FileOperation Operation { get; set; }
+        public bool IsDirectory { get; set; }
+        public long BytesTransferred { get; set; }
+        public long TotalBytes { get; set; }
+        public int FilesCompleted { get; set; }
+        public int TotalFiles { get; set; }
+        public string CurrentFile { get; set; } = string.Empty;
     }
 }
