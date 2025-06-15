@@ -212,44 +212,6 @@ namespace FileSpace.ViewModels
             }
         }
 
-        public async Task CalculateSizeAsync(IProgress<FolderSizeProgress>? progress = null, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(FullPath)) return;
-
-            var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
-            
-            // Check if we have cached result
-            var cachedSize = backgroundCalculator.GetCachedSize(FullPath);
-            if (cachedSize != null)
-            {
-                SizeInfo = cachedSize;
-                if (!string.IsNullOrEmpty(cachedSize.Error))
-                {
-                    SizeText = "计算失败";
-                }
-                else
-                {
-                    SizeText = cachedSize.FormattedSize;
-                }
-                IsSizeCalculating = false;
-                return;
-            }
-
-            // Check if calculation is already running
-            if (backgroundCalculator.IsCalculationActive(FullPath))
-            {
-                IsSizeCalculating = true;
-                SizeText = "计算中...";
-                return;
-            }
-
-            // Queue for background calculation
-            IsSizeCalculating = true;
-            SizeText = "排队中...";
-            
-            backgroundCalculator.QueueFolderSizeCalculation(FullPath, this);
-        }
-
         public void UpdateSizeFromBackground(FolderSizeInfo sizeInfo)
         {
             Application.Current.Dispatcher.Invoke(() =>

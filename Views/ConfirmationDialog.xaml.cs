@@ -4,7 +4,7 @@ namespace FileSpace.Views
 {
     public partial class ConfirmationDialog : Wpf.Ui.Controls.FluentWindow
     {
-        public string Title { get; set; } = "";
+        public new string Title { get; set; } = "";
         public string Message { get; set; } = "";
         public string ConfirmButtonText { get; set; } = "确定";
         public string CancelButtonText { get; set; } = "取消";
