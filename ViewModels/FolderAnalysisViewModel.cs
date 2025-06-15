@@ -5,6 +5,7 @@ using System.IO;
 using System.Windows;
 using FileSpace.Services;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.ViewModels
 {
@@ -84,7 +85,7 @@ namespace FileSpace.ViewModels
         private ObservableCollection<DuplicateFileGroup> _duplicateFileGroups = new();
 
         public string WindowTitle => $"文件夹分析 - {FolderName}";
-        public string TotalSizeFormatted => IsAnalyzing ? FormatFileSize(ScannedSize) : FormatFileSize(TotalSize);
+        public string TotalSizeFormatted => IsAnalyzing ? FileUtils.FormatFileSize(ScannedSize) : FileUtils.FormatFileSize(TotalSize);
         public int DisplayFileCount => IsAnalyzing ? ScannedFiles : TotalFiles;
         public int DisplayFolderCount => IsAnalyzing ? ScannedFolders : TotalFolders;
 
@@ -129,7 +130,7 @@ namespace FileSpace.ViewModels
                 TotalFolders = result.TotalFolders;
                 OldestFile = result.OldestFile;
                 NewestFile = result.NewestFile;
-                AverageFileSize = FormatFileSize(result.AverageFileSize);
+                AverageFileSize = FileUtils.FormatFileSize(result.AverageFileSize);
                 LargestFile = result.LargestFile;
                 DeepestPath = result.DeepestPath;
                 MaxDepth = result.MaxDepth;
@@ -300,23 +301,6 @@ namespace FileSpace.ViewModels
         private void RefreshAnalysis()
         {
             _ = StartAnalysisAsync();
-        }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-            
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-            
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
         }
     }
 }

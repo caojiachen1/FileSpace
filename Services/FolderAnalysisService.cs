@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.Services
 {
@@ -45,7 +46,7 @@ namespace FileSpace.Services
                 result.NewestFile = fileList.Max(f => f.ModifiedDate);
                 
                 var largestFileInfo = fileList.OrderByDescending(f => f.Size).First();
-                result.LargestFile = $"{largestFileInfo.Name} ({FormatFileSize(largestFileInfo.Size)})";
+                result.LargestFile = $"{largestFileInfo.Name} ({FileUtils.FormatFileSize(largestFileInfo.Size)})";
                 
                 var deepestFile = fileList.OrderByDescending(f => f.Depth).First();
                 result.DeepestPath = deepestFile.RelativePath;
@@ -307,19 +308,6 @@ namespace FileSpace.Services
                 "" => "无扩展名文件",
                 _ => "其他文件"
             };
-        }
-
-        private static string FormatFileSize(long bytes)
-        {
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            decimal number = bytes;
-            while (Math.Round(number / 1024) >= 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            return $"{number:n1} {suffixes[counter]}";
         }
     }
 }

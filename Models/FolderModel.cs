@@ -1,4 +1,5 @@
 using System.IO;
+using FileSpace.Utils;
 
 namespace FileSpace.Models
 {
@@ -7,7 +8,7 @@ namespace FileSpace.Models
         public string FolderPath { get; set; } = string.Empty;
         public string FolderName => Path.GetFileName(FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? FolderPath;
         public long TotalSize { get; set; }
-        public string FormattedSize => FormatFileSize(TotalSize);
+        public string FormattedSize => FileUtils.FormatFileSize(TotalSize);
         public int FileCount { get; set; }
         public int DirectoryCount { get; set; }
         public int InaccessibleItems { get; set; }
@@ -16,23 +17,6 @@ namespace FileSpace.Models
         public bool IsCalculationCancelled { get; set; }
         public string Error { get; set; } = string.Empty;
         public double Percentage { get; set; }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
     }
 
     public class FolderSizeProgress

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Wpf.Ui.Controls;
+using FileSpace.Utils;
 
 namespace FileSpace.Models
 {
@@ -29,19 +30,6 @@ namespace FileSpace.Models
         [ObservableProperty]
         private string _modifiedTime = string.Empty;
 
-        public string SizeString => IsDirectory ? "" : FormatFileSize(Size);
-
-        private static string FormatFileSize(long bytes)
-        {
-            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-            double len = bytes;
-            int order = 0;
-            while (len >= 1024 && order < sizes.Length - 1)
-            {
-                order++;
-                len = len / 1024;
-            }
-            return $"{len:0.##} {sizes[order]}";
-        }
+        public string SizeString => IsDirectory ? "" : FileUtils.FormatFileSize(Size);
     }
 }

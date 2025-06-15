@@ -4,6 +4,7 @@ using System.Windows;
 using Wpf.Ui.Controls;
 using FileSpace.Services;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.ViewModels
 {
@@ -118,7 +119,7 @@ namespace FileSpace.ViewModels
             IsDirectory = false;
             
             // File size
-            SizeFormatted = FormatFileSize(fileInfo.Length);
+            SizeFormatted = FileUtils.FormatFileSize(fileInfo.Length);
             SizeInBytes = $"{fileInfo.Length:N0} 字节";
             
             // Dates
@@ -430,20 +431,6 @@ namespace FileSpace.ViewModels
             {
                 HasAdditionalInfo = false;
             }
-        }
-
-        // Helper methods (same as in MainViewModel)
-        private static string FormatFileSize(long bytes)
-        {
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            decimal number = bytes;
-            while (Math.Round(number / 1024) >= 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-            return $"{number:n1} {suffixes[counter]}";
         }
 
         private static SymbolRegular GetFileIcon(string extension)

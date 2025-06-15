@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.IO;
+using FileSpace.Utils;
 
 namespace FileSpace.Models
 {
@@ -7,26 +9,9 @@ namespace FileSpace.Models
         public string FileName { get; set; } = string.Empty;
         public string FilePath { get; set; } = string.Empty;
         public long Size { get; set; }
-        public string SizeFormatted => FormatFileSize(Size);
+        public string SizeFormatted => FileUtils.FormatFileSize(Size);
         public DateTime ModifiedDate { get; set; }
         public string RelativePath { get; set; } = string.Empty;
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
     }
 
     public class FileTypeInfo
@@ -34,25 +19,8 @@ namespace FileSpace.Models
         public string TypeName { get; set; } = string.Empty;
         public int Count { get; set; }
         public long TotalSize { get; set; }
-        public string TotalSizeFormatted => FormatFileSize(TotalSize);
+        public string TotalSizeFormatted => FileUtils.FormatFileSize(TotalSize);
         public double Percentage { get; set; }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
     }
 
     public class FileExtensionInfo
@@ -60,25 +28,8 @@ namespace FileSpace.Models
         public string Extension { get; set; } = string.Empty;
         public int Count { get; set; }
         public long TotalSize { get; set; }
-        public string TotalSizeFormatted => FormatFileSize(TotalSize);
+        public string TotalSizeFormatted => FileUtils.FormatFileSize(TotalSize);
         public double Percentage { get; set; }
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
     }
 
     public class EmptyFileInfo
@@ -101,26 +52,9 @@ namespace FileSpace.Models
     {
         public string FileHash { get; set; } = string.Empty;
         public long FileSize { get; set; }
-        public string FileSizeFormatted => FormatFileSize(FileSize);
+        public string FileSizeFormatted => FileUtils.FormatFileSize(FileSize);
         public int FileCount { get; set; }
         public ObservableCollection<DuplicateFileInfo> Files { get; set; } = new();
-
-        private static string FormatFileSize(long bytes)
-        {
-            if (bytes == 0) return "0 B";
-
-            string[] suffixes = { "B", "KB", "MB", "GB", "TB" };
-            int counter = 0;
-            double number = bytes;
-
-            while (number >= 1024 && counter < suffixes.Length - 1)
-            {
-                number /= 1024;
-                counter++;
-            }
-
-            return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
-        }
     }
 
     public class FileTypeStats
