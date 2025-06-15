@@ -1,8 +1,8 @@
 using System.Windows;
-using FileSpace.Services;
 using FileSpace.Models;
+using FileSpace.ViewModels;
 
-namespace FileSpace.ViewModels
+namespace FileSpace.Services
 {
     public class FileOperationEventHandler
     {
