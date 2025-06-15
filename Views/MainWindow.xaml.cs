@@ -25,7 +25,7 @@ namespace FileSpace.Views
 
         private void DirectoryTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if (e.NewValue is DirectoryItemViewModel dirItem)
+            if (e.NewValue is DirectoryItemModel dirItem)
             {
                 ViewModel.DirectorySelectedCommand.Execute(dirItem);
             }

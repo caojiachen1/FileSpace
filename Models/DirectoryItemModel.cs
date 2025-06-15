@@ -3,12 +3,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using FileSpace.Services;
-using FileSpace.Models;
 
-namespace FileSpace.ViewModels
+namespace FileSpace.Models
 {
-    public partial class DirectoryItemViewModel : ObservableObject
+    public partial class DirectoryItemModel : ObservableObject
     {
+        // ...existing code from DirectoryItemViewModel...
         [ObservableProperty]
         private string _name = string.Empty;
 
@@ -16,7 +16,7 @@ namespace FileSpace.ViewModels
         private string _fullPath = string.Empty;
 
         [ObservableProperty]
-        private ObservableCollection<DirectoryItemViewModel> _subDirectories = new();
+        private ObservableCollection<DirectoryItemModel> _subDirectories = new();
 
         [ObservableProperty]
         private bool _isExpanded;
@@ -48,7 +48,7 @@ namespace FileSpace.ViewModels
         private bool _hasLoadedChildren = false;
         private readonly SemaphoreSlim _loadingSemaphore = new(1, 1);
 
-        public DirectoryItemViewModel(string fullPath)
+        public DirectoryItemModel(string fullPath)
         {
             FullPath = fullPath;
             Name = Path.GetFileName(fullPath);
@@ -126,7 +126,7 @@ namespace FileSpace.ViewModels
                 {
                     foreach (var dir in directories.OrderBy(d => Path.GetFileName(d)))
                     {
-                        SubDirectories.Add(new DirectoryItemViewModel(dir));
+                        SubDirectories.Add(new DirectoryItemModel(dir));
                     }
                     
                     _hasLoadedChildren = true;

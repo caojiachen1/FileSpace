@@ -59,13 +59,13 @@ namespace FileSpace.Services
             }
         }
 
-        public void UpdateDirectoryTreeItemSize(ObservableCollection<DirectoryItemViewModel> directoryTree, string folderPath, FolderSizeInfo sizeInfo)
+        public void UpdateDirectoryTreeItemSize(ObservableCollection<DirectoryItemModel> directoryTree, string folderPath, FolderSizeInfo sizeInfo)
         {
             // Update directory tree items recursively
             UpdateDirectoryTreeItemSizeRecursive(directoryTree, folderPath, sizeInfo);
         }
 
-        private void UpdateDirectoryTreeItemSizeRecursive(ObservableCollection<DirectoryItemViewModel> items, string folderPath, FolderSizeInfo sizeInfo)
+        private void UpdateDirectoryTreeItemSizeRecursive(ObservableCollection<DirectoryItemModel> items, string folderPath, FolderSizeInfo sizeInfo)
         {
             foreach (var item in items)
             {

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using FileSpace.ViewModels;
+using FileSpace.Models;
 
 namespace FileSpace.Services
 {
@@ -11,9 +11,9 @@ namespace FileSpace.Services
 
         private DriveService() { }
 
-        public async Task<(ObservableCollection<DirectoryItemViewModel> DirectoryTree, string InitialPath, string StatusMessage)> LoadInitialDataAsync()
+        public async Task<(ObservableCollection<DirectoryItemModel> DirectoryTree, string InitialPath, string StatusMessage)> LoadInitialDataAsync()
         {
-            var directoryTree = new ObservableCollection<DirectoryItemViewModel>();
+            var directoryTree = new ObservableCollection<DirectoryItemModel>();
             string statusMessage;
             string initialPath;
 
@@ -53,7 +53,7 @@ namespace FileSpace.Services
                 // Add drives to the tree
                 foreach (var drive in drives)
                 {
-                    directoryTree.Add(new DirectoryItemViewModel(drive));
+                    directoryTree.Add(new DirectoryItemModel(drive));
                 }
 
                 // Set initial path
@@ -74,7 +74,7 @@ namespace FileSpace.Services
             return (directoryTree, initialPath, statusMessage);
         }
 
-        public async Task<string> RefreshDirectoryTreeAsync(ObservableCollection<DirectoryItemViewModel> directoryTree)
+        public async Task<string> RefreshDirectoryTreeAsync(ObservableCollection<DirectoryItemModel> directoryTree)
         {
             try
             {

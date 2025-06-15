@@ -123,8 +123,8 @@ namespace FileSpace.Services
             // Cache the result
             _sizeCache[request.FolderPath] = result;
             
-            // Update context object if it's a DirectoryItemViewModel
-            if (request.Context is ViewModels.DirectoryItemViewModel dirItem)
+            // Update context object if it's a DirectoryItemModel
+            if (request.Context is DirectoryItemModel dirItem)
             {
                 dirItem.UpdateSizeFromBackground(result);
             }

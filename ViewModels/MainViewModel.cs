@@ -3,13 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
-using System.Threading;
-using System.Text;
 using FileSpace.Services;
 using FileSpace.Views;
 using FileSpace.Utils;
 using FileSpace.Models;
-using magika;
 
 namespace FileSpace.ViewModels
 {
@@ -19,7 +16,7 @@ namespace FileSpace.ViewModels
         private string _currentPath = string.Empty;
 
         [ObservableProperty]
-        private ObservableCollection<DirectoryItemViewModel> _directoryTree = new();
+        private ObservableCollection<DirectoryItemModel> _directoryTree = new();
 
         [ObservableProperty]
         private ObservableCollection<FileItemModel> _files = new();
@@ -337,7 +334,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private void DirectorySelected(DirectoryItemViewModel? directory)
+        private void DirectorySelected(DirectoryItemModel? directory)
         {
             if (directory != null && Directory.Exists(directory.FullPath))
             {
