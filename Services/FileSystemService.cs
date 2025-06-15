@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using FileSpace.ViewModels;
+using FileSpace.Models;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
@@ -12,9 +12,9 @@ namespace FileSpace.Services
 
         private FileSystemService() { }
 
-        public async Task<(ObservableCollection<FileItemViewModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
+        public async Task<(ObservableCollection<FileItemModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
         {
-            var files = new ObservableCollection<FileItemViewModel>();
+            var files = new ObservableCollection<FileItemModel>();
             string statusMessage;
 
             try
@@ -34,7 +34,7 @@ namespace FileSpace.Services
                             try
                             {
                                 var dirInfo = new DirectoryInfo(dir);
-                                var fileItem = new FileItemViewModel
+                                var fileItem = new FileItemModel
                                 {
                                     Name = dirInfo.Name,
                                     FullPath = dirInfo.FullName,
@@ -72,7 +72,7 @@ namespace FileSpace.Services
                             try
                             {
                                 var fileInfo = new FileInfo(file);
-                                var fileItem = new FileItemViewModel
+                                var fileItem = new FileItemModel
                                 {
                                     Name = fileInfo.Name,
                                     FullPath = fileInfo.FullName,

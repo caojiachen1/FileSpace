@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using FileSpace.ViewModels;
+using FileSpace.Models;
 using FileSpace.Utils;
 using magika;
 using System.Windows.Media;
@@ -18,7 +18,7 @@ namespace FileSpace.Services
 
         private PreviewService() { }
 
-        public async Task<object?> GeneratePreviewAsync(FileItemViewModel file, CancellationToken cancellationToken)
+        public async Task<object?> GeneratePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             if (file == null) return null;
 
@@ -30,7 +30,7 @@ namespace FileSpace.Services
             return await GenerateFilePreviewAsync(file, cancellationToken);
         }
 
-        private async Task<StackPanel> GenerateFilePreviewAsync(FileItemViewModel file, CancellationToken cancellationToken)
+        private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             string extension = Path.GetExtension(file.FullPath).ToLower();
             var fileInfo = new FileInfo(file.FullPath);
@@ -45,7 +45,7 @@ namespace FileSpace.Services
             return await GenerateFileInfoAndPreviewAsync(file, fileType, cancellationToken);
         }
 
-        private async Task<StackPanel> GenerateFileInfoOnlyAsync(FileItemViewModel file, FilePreviewType fileType, string reason, CancellationToken cancellationToken)
+        private async Task<StackPanel> GenerateFileInfoOnlyAsync(FileItemModel file, FilePreviewType fileType, string reason, CancellationToken cancellationToken)
         {
             var fileInfo = new FileInfo(file.FullPath);
             var panel = new StackPanel();
@@ -79,7 +79,7 @@ namespace FileSpace.Services
             return panel;
         }
 
-        private async Task<StackPanel> GenerateFileInfoAndPreviewAsync(FileItemViewModel file, FilePreviewType fileType, CancellationToken cancellationToken)
+        private async Task<StackPanel> GenerateFileInfoAndPreviewAsync(FileItemModel file, FilePreviewType fileType, CancellationToken cancellationToken)
         {
             var fileInfo = new FileInfo(file.FullPath);
             var panel = new StackPanel();
@@ -195,7 +195,7 @@ namespace FileSpace.Services
             }
         }
 
-        private async Task<StackPanel> GenerateDirectoryPreviewAsync(FileItemViewModel file, CancellationToken cancellationToken)
+        private async Task<StackPanel> GenerateDirectoryPreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             var dirInfo = new DirectoryInfo(file.FullPath);
             var panel = new StackPanel();

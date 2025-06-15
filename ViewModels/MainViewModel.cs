@@ -22,10 +22,10 @@ namespace FileSpace.ViewModels
         private ObservableCollection<DirectoryItemViewModel> _directoryTree = new();
 
         [ObservableProperty]
-        private ObservableCollection<FileItemViewModel> _files = new();
+        private ObservableCollection<FileItemModel> _files = new();
 
         [ObservableProperty]
-        private FileItemViewModel? _selectedFile;
+        private FileItemModel? _selectedFile;
 
         [ObservableProperty]
         private string _statusText = "就绪";
@@ -46,7 +46,7 @@ namespace FileSpace.ViewModels
         private string _sizeCalculationProgress = string.Empty;
 
         [ObservableProperty]
-        private ObservableCollection<FileItemViewModel> _selectedFiles = new();
+        private ObservableCollection<FileItemModel> _selectedFiles = new();
 
         [ObservableProperty]
         private bool _isFileOperationInProgress;
@@ -61,7 +61,7 @@ namespace FileSpace.ViewModels
         private bool _isRenaming;
 
         [ObservableProperty]
-        private FileItemViewModel? _renamingFile;
+        private FileItemModel? _renamingFile;
 
         [ObservableProperty]
         private string _newFileName = string.Empty;
@@ -102,7 +102,7 @@ namespace FileSpace.ViewModels
             LoadFiles();
         }
 
-        partial void OnSelectedFileChanged(FileItemViewModel? value)
+        partial void OnSelectedFileChanged(FileItemModel? value)
         {
             // Clear progress when switching files
             if (value?.IsDirectory != true || value.FullPath != _currentPreviewFolderPath)
@@ -245,7 +245,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        private string GetPreviewStatusForFile(FileItemViewModel file)
+        private string GetPreviewStatusForFile(FileItemModel file)
         {
             if (file.IsDirectory)
             {
@@ -355,7 +355,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private void FileDoubleClick(FileItemViewModel? file)
+        private void FileDoubleClick(FileItemModel? file)
         {
             if (file == null) return;
 
@@ -611,7 +611,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        public void StartInPlaceRename(FileItemViewModel file)
+        public void StartInPlaceRename(FileItemModel file)
         {
             if (IsRenaming) return;
 
@@ -637,7 +637,7 @@ namespace FileSpace.ViewModels
             NewFileName = string.Empty;
         }
 
-        private async void PerformRename(FileItemViewModel file, string newName)
+        private async void PerformRename(FileItemModel file, string newName)
         {
             try
             {

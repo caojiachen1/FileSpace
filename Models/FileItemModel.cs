@@ -1,9 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Wpf.Ui.Controls;
 
-namespace FileSpace.ViewModels
+namespace FileSpace.Models
 {
-    public partial class FileItemViewModel : ObservableObject
+    public partial class FileItemModel : ObservableObject
     {
         [ObservableProperty]
         private string _name = string.Empty;

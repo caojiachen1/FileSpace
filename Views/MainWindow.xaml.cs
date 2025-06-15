@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Wpf.Ui.Controls;
 using FileSpace.ViewModels;
+using FileSpace.Models;
 using System.IO;
 
 namespace FileSpace.Views
@@ -100,7 +101,7 @@ namespace FileSpace.Views
             if (DataContext is MainViewModel viewModel)
             {
                 viewModel.SelectedFiles.Clear();
-                foreach (FileItemViewModel item in FileListView.SelectedItems)
+                foreach (FileItemModel item in FileListView.SelectedItems)
                 {
                     viewModel.SelectedFiles.Add(item);
                 }
