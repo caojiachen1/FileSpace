@@ -108,10 +108,11 @@
             <Setter Property="CanUserSortColumns" Value="True"/>
             <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
             <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
             <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="ColumnWidth" Value="*"/>
         </Style>
 
         <!-- Enhanced Dark Mode DataGridColumnHeader Style -->
@@ -123,8 +124,22 @@
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Height" Value="40"/>
+        </Style>
+        
+        <!-- Center Aligned DataGridCell Style -->
+        <Style x:Key="CenterAlignedCellStyle" TargetType="DataGridCell">
+            <Setter Property="TextBlock.TextAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        
+        <!-- Left Aligned DataGridCell Style for text content -->
+        <Style x:Key="LeftAlignedCellStyle" TargetType="DataGridCell">
+            <Setter Property="TextBlock.TextAlignment" Value="Left"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <!-- Enhanced Styles -->
@@ -360,11 +375,10 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
-                                    <TextBlock Text="📊" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="文件类型分布" Style="{StaticResource SectionHeaderStyle}"/>
-                                </StackPanel>
+                                </Grid.RowDefinitions>                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
+                                <TextBlock Text="📊" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="文件类型分布" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
+                            </StackPanel>
                                 <ui:DataGrid Grid.Row="1" ItemsSource="{Binding FileTypeDistribution}" 
                                              IsReadOnly="True"
                                              VerticalScrollBarVisibility="Auto"
@@ -372,10 +386,10 @@
                                              Style="{StaticResource DarkDataGridStyle}"
                                              ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                     <ui:DataGrid.Columns>
-                                        <DataGridTextColumn Header="类型" Width="140" Binding="{Binding TypeName}"/>
-                                        <DataGridTextColumn Header="数量" Width="100" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
-                                        <DataGridTextColumn Header="大小" Width="120" Binding="{Binding TotalSizeFormatted}"/>
-                                        <DataGridTextColumn Header="占比" Width="100" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
+                                        <DataGridTextColumn Header="类型" Width="*" Binding="{Binding TypeName}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                        <DataGridTextColumn Header="数量" Width="*" Binding="{Binding Count, StringFormat='{}{0:N0}'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                        <DataGridTextColumn Header="大小" Width="*" Binding="{Binding TotalSizeFormatted}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                        <DataGridTextColumn Header="占比" Width="*" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
                                     </ui:DataGrid.Columns>
                                 </ui:DataGrid>
                             </Grid>
@@ -391,9 +405,9 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
                                 <TextBlock Text="📈" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="大文件列表 (前50个)" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="大文件列表 (前50个)" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding LargeFiles}" 
                                          IsReadOnly="True"
@@ -401,14 +415,14 @@
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
-                                    <DataGridTextColumn Header="大小" Width="120" Binding="{Binding SizeFormatted}"/>
-                                    <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                    <DataGridTextColumn Header="相对路径" Width="320" Binding="{Binding RelativePath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="140">
+                                    <DataGridTextColumn Header="文件名" Width="2*" Binding="{Binding FileName}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="大小" Width="*" Binding="{Binding SizeFormatted}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="修改时间" Width="*" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="相对路径" Width="2*" Binding="{Binding RelativePath}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="*">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                     <ui:Button Content="🔍 打开" 
                                                                Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
@@ -435,9 +449,9 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
                                 <TextBlock Text="📁" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="子文件夹大小排序" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="子文件夹大小排序" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding SubfolderSizes}" 
                                          IsReadOnly="True"
@@ -445,17 +459,19 @@
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件夹名" Width="280" Binding="{Binding FolderName}"/>
-                                    <DataGridTextColumn Header="大小" Width="120" Binding="{Binding FormattedSize}"/>
-                                    <DataGridTextColumn Header="文件数" Width="100" Binding="{Binding FileCount, StringFormat='{}{0:N0}'}"/>
-                                    <DataGridTextColumn Header="完整路径" Width="420" Binding="{Binding FolderPath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="100">
+                                    <DataGridTextColumn Header="文件夹名" Width="2*" Binding="{Binding FolderName}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="大小" Width="*" Binding="{Binding FormattedSize}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="文件数" Width="*" Binding="{Binding FileCount, StringFormat='{}{0:N0}'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="完整路径" Width="3*" Binding="{Binding FolderPath}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="*">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <ui:Button Content="📂 打开" 
-                                                           Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
-                                                           CommandParameter="{Binding FolderPath}"
-                                                           Margin="2" Padding="8,4" FontSize="11"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <ui:Button Content="📂 打开" 
+                                                               Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
+                                                               CommandParameter="{Binding FolderPath}"
+                                                               Margin="2" Padding="8,4" FontSize="11"/>
+                                                </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
@@ -473,9 +489,9 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
                                 <TextBlock Text="🎯" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="文件扩展名统计" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="文件扩展名统计" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding ExtensionStats}" 
                                          IsReadOnly="True"
@@ -483,10 +499,10 @@
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="扩展名" Width="140" Binding="{Binding Extension}"/>
-                                    <DataGridTextColumn Header="数量" Width="100" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
-                                    <DataGridTextColumn Header="总大小" Width="120" Binding="{Binding TotalSizeFormatted}"/>
-                                    <DataGridTextColumn Header="占比" Width="100" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
+                                    <DataGridTextColumn Header="扩展名" Width="*" Binding="{Binding Extension}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="数量" Width="*" Binding="{Binding Count, StringFormat='{}{0:N0}'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="总大小" Width="*" Binding="{Binding TotalSizeFormatted}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="占比" Width="*" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
                         </Grid>
@@ -501,9 +517,9 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
                                 <TextBlock Text="📄" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="空文件列表" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="空文件列表" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding EmptyFiles}" 
                                          IsReadOnly="True"
@@ -511,13 +527,13 @@
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
-                                    <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                    <DataGridTextColumn Header="相对路径" Width="320" Binding="{Binding RelativePath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="140">
+                                    <DataGridTextColumn Header="文件名" Width="2*" Binding="{Binding FileName}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="修改时间" Width="*" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="相对路径" Width="3*" Binding="{Binding RelativePath}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="*">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                     <ui:Button Content="🔍 打开" 
                                                                Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
@@ -544,9 +560,9 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16" HorizontalAlignment="Center">
                                 <TextBlock Text="🔄" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="重复文件组" Style="{StaticResource SectionHeaderStyle}"/>
+                                <TextBlock Text="重复文件组" Style="{StaticResource SectionHeaderStyle}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding DuplicateFileGroups}" 
                                        IsReadOnly="True"
@@ -562,13 +578,13 @@
                                                    Background="#FF252526"
                                                    ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                             <ui:DataGrid.Columns>
-                                                <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
-                                                <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                                <DataGridTextColumn Header="相对路径" Width="280" Binding="{Binding RelativePath}"/>
-                                                <DataGridTemplateColumn Header="操作" Width="140">
+                                                <DataGridTextColumn Header="文件名" Width="2*" Binding="{Binding FileName}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                                <DataGridTextColumn Header="修改时间" Width="*" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                                <DataGridTextColumn Header="相对路径" Width="3*" Binding="{Binding RelativePath}" CellStyle="{StaticResource LeftAlignedCellStyle}"/>
+                                                <DataGridTemplateColumn Header="操作" Width="*">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <StackPanel Orientation="Horizontal">
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                                 <ui:Button Content="🔍 打开" 
                                                                          Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:FluentWindow}}}"
                                                                          CommandParameter="{Binding FilePath}"
@@ -586,9 +602,9 @@
                                     </DataTemplate>
                                 </ui:DataGrid.RowDetailsTemplate>
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件大小" Width="120" Binding="{Binding FileSizeFormatted}"/>
-                                    <DataGridTextColumn Header="文件数量" Width="100" Binding="{Binding FileCount}"/>
-                                    <DataGridTextColumn Header="文件哈希" Width="320" Binding="{Binding FileHash}"/>
+                                    <DataGridTextColumn Header="文件大小" Width="*" Binding="{Binding FileSizeFormatted}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="文件数量" Width="*" Binding="{Binding FileCount}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
+                                    <DataGridTextColumn Header="文件哈希" Width="3*" Binding="{Binding FileHash}" CellStyle="{StaticResource CenterAlignedCellStyle}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
                         </Grid>
