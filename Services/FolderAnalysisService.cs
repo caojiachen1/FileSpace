@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.IO;
-using System.Security.Cryptography;
 using FileSpace.Models;
 using FileSpace.Utils;
 
@@ -8,36 +7,32 @@ namespace FileSpace.Services
 {
     public class FolderAnalysisService
     {
+        private readonly HighPerformanceDuplicateDetectionService _duplicateDetectionService;
+        private readonly ParallelFolderScanService _parallelScanService;
+
+        public FolderAnalysisService()
+        {
+            _duplicateDetectionService = new HighPerformanceDuplicateDetectionService();
+            _parallelScanService = new ParallelFolderScanService();
+        }
+
         public async Task<FolderAnalysisResult> AnalyzeFolderAsync(string folderPath, IProgress<string>? progress = null)
         {
             var result = new FolderAnalysisResult();
-            var fileTypeStats = new ConcurrentDictionary<string, FileTypeStats>();
-            var extensionStats = new ConcurrentDictionary<string, ExtensionStats>();
-            var allFiles = new ConcurrentBag<FileInfoData>();
-            var subfolderSizes = new ConcurrentDictionary<string, long>();
-            var fileHashes = new ConcurrentDictionary<string, List<string>>();
-            var emptyFiles = new ConcurrentBag<FileInfoData>();
 
-            progress?.Report("开始扫描文件...");
+            progress?.Report("开始高效扫描文件...");
 
-            await Task.Run(() =>
-            {
-                try
-                {
-                    ScanDirectory(folderPath, folderPath, result, fileTypeStats, extensionStats, allFiles, subfolderSizes, fileHashes, emptyFiles, progress, 0);
-                }
-                catch (Exception ex)
-                {
-                    progress?.Report($"扫描错误: {ex.Message}");
-                }
-            });
-
+            // 使用并行扫描服务
+            var scanResult = await _parallelScanService.ScanFolderAsync(folderPath, progress);
+            
             progress?.Report("正在分析数据...");
 
-            // Calculate statistics
-            var fileList = allFiles.ToList();
+            // 转换扫描结果
+            var fileList = scanResult.AllFiles.ToList();
             result.TotalFiles = fileList.Count;
             result.TotalSize = fileList.Sum(f => f.Size);
+            result.TotalFolders = scanResult.TotalFolderCount;
+            result.EmptyFolders = scanResult.EmptyFolderCount;
 
             if (fileList.Any())
             {
@@ -53,8 +48,8 @@ namespace FileSpace.Services
                 result.MaxDepth = deepestFile.Depth;
             }
 
-            // File type distribution
-            foreach (var kvp in fileTypeStats)
+            // 文件类型分布
+            foreach (var kvp in scanResult.FileTypeStats)
             {
                 var stats = kvp.Value;
                 result.FileTypeDistribution.Add(new FileTypeInfo
@@ -62,12 +57,12 @@ namespace FileSpace.Services
                     TypeName = kvp.Key,
                     Count = stats.Count,
                     TotalSize = stats.TotalSize,
-                    Percentage = (double)stats.TotalSize / result.TotalSize * 100
+                    Percentage = result.TotalSize > 0 ? (double)stats.TotalSize / result.TotalSize * 100 : 0
                 });
             }
 
-            // Extension statistics
-            foreach (var kvp in extensionStats)
+            // 扩展名统计
+            foreach (var kvp in scanResult.ExtensionStats)
             {
                 var stats = kvp.Value;
                 result.ExtensionStats.Add(new FileExtensionInfo
@@ -75,11 +70,11 @@ namespace FileSpace.Services
                     Extension = kvp.Key,
                     Count = stats.Count,
                     TotalSize = stats.TotalSize,
-                    Percentage = (double)stats.TotalSize / result.TotalSize * 100
+                    Percentage = result.TotalSize > 0 ? (double)stats.TotalSize / result.TotalSize * 100 : 0
                 });
             }
 
-            // Large files (top 50)
+            // 大文件列表 (前50个)
             result.LargeFiles.AddRange(
                 fileList.OrderByDescending(f => f.Size)
                         .Take(50)
@@ -92,8 +87,8 @@ namespace FileSpace.Services
                             RelativePath = f.RelativePath
                         }));
 
-            // Subfolder sizes
-            foreach (var kvp in subfolderSizes.OrderByDescending(kvp => kvp.Value))
+            // 子文件夹大小
+            foreach (var kvp in scanResult.SubfolderSizes.OrderByDescending(kvp => kvp.Value))
             {
                 var folderInfo = new DirectoryInfo(kvp.Key);
                 result.SubfolderSizes.Add(new FolderSizeInfo
@@ -101,47 +96,18 @@ namespace FileSpace.Services
                     FolderPath = kvp.Key,
                     TotalSize = kvp.Value,
                     DirectoryCount = 1,
-                    FileCount = Directory.EnumerateFiles(kvp.Key, "*", SearchOption.AllDirectories).Count()
+                    FileCount = fileList.Count(f => f.FullPath.StartsWith(kvp.Key))
                 });
             }
 
-            // Count duplicates
-            result.DuplicateFiles = fileHashes.Values.Where(list => list.Count > 1).Sum(list => list.Count - 1);
+            // 使用优化的重复文件检测
+            progress?.Report("正在进行重复文件检测...");
+            var duplicateGroups = await _duplicateDetectionService.DetectDuplicatesAsync(fileList, progress);
+            result.DuplicateFiles = duplicateGroups.Sum(g => g.FileCount - 1);
+            result.DuplicateFileGroups.AddRange(duplicateGroups);
 
-            // Build duplicate file groups
-            foreach (var kvp in fileHashes.Where(kvp => kvp.Value.Count > 1))
-            {
-                var duplicateGroup = new DuplicateFileGroup
-                {
-                    FileHash = kvp.Key,
-                    FileCount = kvp.Value.Count
-                };
-
-                foreach (var filePath in kvp.Value)
-                {
-                    try
-                    {
-                        var fileInfo = new FileInfo(filePath);
-                        duplicateGroup.FileSize = fileInfo.Length;
-                        duplicateGroup.Files.Add(new DuplicateFileInfo
-                        {
-                            FileName = fileInfo.Name,
-                            FilePath = filePath,
-                            ModifiedDate = fileInfo.LastWriteTime,
-                            RelativePath = Path.GetRelativePath(folderPath, filePath)
-                        });
-                    }
-                    catch { }
-                }
-
-                if (duplicateGroup.Files.Count > 1)
-                {
-                    result.DuplicateFileGroups.Add(duplicateGroup);
-                }
-            }
-
-            // Add empty files
-            foreach (var emptyFile in emptyFiles)
+            // 空文件
+            foreach (var emptyFile in scanResult.EmptyFiles)
             {
                 result.EmptyFiles.Add(new EmptyFileInfo
                 {
@@ -154,143 +120,6 @@ namespace FileSpace.Services
 
             progress?.Report("分析完成");
             return result;
-        }
-
-        private void ScanDirectory(string currentPath, string rootPath, FolderAnalysisResult result, 
-            ConcurrentDictionary<string, FileTypeStats> fileTypeStats,
-            ConcurrentDictionary<string, ExtensionStats> extensionStats,
-            ConcurrentBag<FileInfoData> allFiles,
-            ConcurrentDictionary<string, long> subfolderSizes,
-            ConcurrentDictionary<string, List<string>> fileHashes,
-            ConcurrentBag<FileInfoData> emptyFiles,
-            IProgress<string>? progress,
-            int depth)
-        {
-            try
-            {
-                var dirInfo = new DirectoryInfo(currentPath);
-                long currentFolderSize = 0;
-                bool isEmpty = true;
-                int fileCount = 0;
-
-                // Process files
-                foreach (var file in dirInfo.EnumerateFiles())
-                {
-                    try
-                    {
-                        isEmpty = false;
-                        fileCount++;
-                        var fileType = GetFileType(file.Extension);
-                        var relativePath = Path.GetRelativePath(rootPath, file.FullName);
-
-                        // Check for empty files
-                        if (file.Length == 0)
-                        {
-                            emptyFiles.Add(new FileInfoData
-                            {
-                                Name = file.Name,
-                                FullPath = file.FullName,
-                                RelativePath = relativePath,
-                                Size = file.Length,
-                                ModifiedDate = file.LastWriteTime,
-                                Depth = depth
-                            });
-                        }
-
-                        fileTypeStats.AddOrUpdate(fileType, 
-                            new FileTypeStats { Count = 1, TotalSize = file.Length },
-                            (key, existing) => new FileTypeStats 
-                            { 
-                                Count = existing.Count + 1, 
-                                TotalSize = existing.TotalSize + file.Length 
-                            });
-
-                        var extension = string.IsNullOrEmpty(file.Extension) ? "(无扩展名)" : file.Extension.ToLower();
-                        extensionStats.AddOrUpdate(extension,
-                            new ExtensionStats { Count = 1, TotalSize = file.Length },
-                            (key, existing) => new ExtensionStats 
-                            { 
-                                Count = existing.Count + 1, 
-                                TotalSize = existing.TotalSize + file.Length 
-                            });
-
-                        allFiles.Add(new FileInfoData
-                        {
-                            Name = file.Name,
-                            FullPath = file.FullName,
-                            RelativePath = relativePath,
-                            Size = file.Length,
-                            ModifiedDate = file.LastWriteTime,
-                            Depth = depth
-                        });
-
-                        currentFolderSize += file.Length;
-
-                        // Calculate file hash for duplicate detection (only for files > 1MB)
-                        if (file.Length > 1024 * 1024)
-                        {
-                            try
-                            {
-                                var hash = CalculateFileHash(file.FullName);
-                                fileHashes.AddOrUpdate(hash,
-                                    new List<string> { file.FullName },
-                                    (key, existing) => { existing.Add(file.FullName); return existing; });
-                            }
-                            catch { /* Ignore hash calculation errors */ }
-                        }
-
-                        if (fileCount % 100 == 0)
-                        {
-                            progress?.Report($"正在扫描... {relativePath}");
-                        }
-                    }
-                    catch (UnauthorizedAccessException) { }
-                    catch (Exception) { }
-                }
-
-                // Process subdirectories
-                foreach (var subDir in dirInfo.EnumerateDirectories())
-                {
-                    try
-                    {
-                        isEmpty = false;
-                        result.TotalFolders++;
-                        
-                        ScanDirectory(subDir.FullName, rootPath, result, fileTypeStats, extensionStats, 
-                                    allFiles, subfolderSizes, fileHashes, emptyFiles, progress, depth + 1);
-                        
-                        // Add subfolder size for direct children only
-                        if (depth == 0)
-                        {
-                            var subfolderSize = Directory.EnumerateFiles(subDir.FullName, "*", SearchOption.AllDirectories)
-                                                        .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0; } });
-                            subfolderSizes.TryAdd(subDir.FullName, subfolderSize);
-                        }
-                    }
-                    catch (UnauthorizedAccessException) { }
-                    catch (Exception) { }
-                }
-
-                if (isEmpty && depth > 0)
-                {
-                    result.EmptyFolders++;
-                }
-            }
-            catch (UnauthorizedAccessException) { }
-            catch (Exception) { }
-        }
-
-        private string CalculateFileHash(string filePath)
-        {
-            using var md5 = MD5.Create();
-            using var stream = File.OpenRead(filePath);
-            
-            // Only hash first 64KB for performance
-            var buffer = new byte[Math.Min(65536, stream.Length)];
-            stream.Read(buffer, 0, buffer.Length);
-            
-            var hash = md5.ComputeHash(buffer);
-            return Convert.ToBase64String(hash);
         }
 
         private string GetFileType(string extension)
