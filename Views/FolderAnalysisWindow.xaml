@@ -12,19 +12,41 @@
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <!-- Dark Mode Color Resources -->
+        <!-- Enhanced Dark Mode Color Resources -->
         <SolidColorBrush x:Key="DarkBackgroundBrush" Color="#FF1E1E1E"/>
         <SolidColorBrush x:Key="DarkCardBackgroundBrush" Color="#FF2D2D30"/>
+        <SolidColorBrush x:Key="DarkElevatedCardBackgroundBrush" Color="#FF363636"/>
         <SolidColorBrush x:Key="DarkTextPrimaryBrush" Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="DarkTextSecondaryBrush" Color="#FFB0B0B0"/>
+        <SolidColorBrush x:Key="DarkTextMutedBrush" Color="#FF8C8C8C"/>
         <SolidColorBrush x:Key="DarkBorderBrush" Color="#FF404040"/>
         <SolidColorBrush x:Key="DarkHoverBrush" Color="#FF3A3A3A"/>
-        <SolidColorBrush x:Key="DarkAccentGreenBrush" Color="#FF66BB6A"/>
-        <SolidColorBrush x:Key="DarkAccentBlueBrush" Color="#FF42A5F5"/>
-        <SolidColorBrush x:Key="DarkAccentOrangeBrush" Color="#FFFFA726"/>
-        <SolidColorBrush x:Key="DarkAccentPurpleBrush" Color="#FFAB47BC"/>
+        <SolidColorBrush x:Key="DarkAccentGreenBrush" Color="#FF4CAF50"/>
+        <SolidColorBrush x:Key="DarkAccentBlueBrush" Color="#FF2196F3"/>
+        <SolidColorBrush x:Key="DarkAccentOrangeBrush" Color="#FFFF9800"/>
+        <SolidColorBrush x:Key="DarkAccentPurpleBrush" Color="#FF9C27B0"/>
+        <SolidColorBrush x:Key="DarkAccentRedBrush" Color="#FFF44336"/>
+        <SolidColorBrush x:Key="DarkAccentCyanBrush" Color="#FF00BCD4"/>
+        
+        <!-- Gradient Brushes for Cards -->
+        <LinearGradientBrush x:Key="GreenGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF4CAF50" Offset="0"/>
+            <GradientStop Color="#FF388E3C" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="BlueGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF2196F3" Offset="0"/>
+            <GradientStop Color="#FF1976D2" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="OrangeGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FFFF9800" Offset="0"/>
+            <GradientStop Color="#FFF57C00" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="PurpleGradientBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF9C27B0" Offset="0"/>
+            <GradientStop Color="#FF7B1FA2" Offset="1"/>
+        </LinearGradientBrush>
 
-        <!-- Dark Mode TabControl Style -->
+        <!-- Enhanced Dark Mode TabControl Style -->
         <Style x:Key="DarkTabControlStyle" TargetType="TabControl">
             <Setter Property="Background" Value="{StaticResource DarkBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}"/>
@@ -32,13 +54,13 @@
             <Setter Property="Padding" Value="0"/>
         </Style>
 
-        <!-- Dark Mode TabItem Style -->
+        <!-- Enhanced Dark Mode TabItem Style -->
         <Style x:Key="DarkTabItemStyle" TargetType="TabItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource DarkTextSecondaryBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+            <Setter Property="Padding" Value="20,12"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Template">
@@ -47,16 +69,21 @@
                         <Border Name="Border" Background="{TemplateBinding Background}" 
                                 BorderBrush="{TemplateBinding BorderBrush}" 
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="8,8,0,0">
+                            <ContentPresenter ContentSource="Header" 
+                                            HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource DarkAccentBlueBrush}"/>
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource DarkElevatedCardBackgroundBrush}"/>
                                 <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Border" Property="Background" Value="{StaticResource DarkHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -64,7 +91,7 @@
             </Setter>
         </Style>
 
-        <!-- Dark Mode DataGrid Style -->
+        <!-- Enhanced Dark Mode DataGrid Style -->
         <Style x:Key="DarkDataGridStyle" TargetType="ui:DataGrid">
             <Setter Property="Background" Value="{StaticResource DarkCardBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
@@ -72,7 +99,7 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource DarkBorderBrush}"/>
-            <Setter Property="VerticalGridLinesBrush" Value="{StaticResource DarkBorderBrush}"/>
+            <Setter Property="VerticalGridLinesBrush" Value="Transparent"/>
             <Setter Property="RowBackground" Value="Transparent"/>
             <Setter Property="AlternatingRowBackground" Value="#FF252526"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
@@ -80,54 +107,105 @@
             <Setter Property="CanUserResizeColumns" Value="True"/>
             <Setter Property="CanUserSortColumns" Value="True"/>
             <Setter Property="AutoGenerateColumns" Value="False"/>
-            <Setter Property="VerticalScrollBarVisibility" Value="Visible"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
             <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
             <Setter Property="ScrollViewer.IsDeferredScrollingEnabled" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
         </Style>
 
-        <!-- Dark Mode DataGridColumnHeader Style -->
+        <!-- Enhanced Dark Mode DataGridColumnHeader Style -->
         <Style x:Key="DarkDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="{StaticResource DarkCardBackgroundBrush}"/>
+            <Setter Property="Background" Value="{StaticResource DarkElevatedCardBackgroundBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="12,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Height" Value="40"/>
         </Style>
 
+        <!-- Enhanced Styles -->
         <Style x:Key="StatsTextStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="5,2"/>
-            <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkTextSecondaryBrush}"/>
         </Style>
 
         <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
+        </Style>
+
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
             <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
         </Style>
 
-        <!-- Dark Mode Card Style -->
+        <!-- Enhanced Dark Mode Card Style -->
         <Style x:Key="DarkCardStyle" TargetType="ui:CardControl">
             <Setter Property="Background" Value="{StaticResource DarkCardBackgroundBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" Opacity="0.2" BlurRadius="8" ShadowDepth="2"/>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Dark Mode Stats Value Style -->
+        <!-- Enhanced Stats Card Style -->
+        <Style x:Key="StatsCardStyle" TargetType="ui:CardControl">
+            <Setter Property="BorderBrush" Value="{StaticResource DarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" Opacity="0.3" BlurRadius="10" ShadowDepth="3"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Enhanced Dark Mode Stats Value Style -->
         <Style x:Key="StatsValueStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontSize" Value="28"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="{StaticResource DarkTextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
         </Style>
 
-        <!-- Dark Mode ScrollViewer Style -->
+        <!-- Stats Label Style -->
+        <Style x:Key="StatsLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkTextMutedBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <!-- Enhanced Dark Mode ScrollViewer Style -->
         <Style x:Key="DarkScrollViewerStyle" TargetType="ScrollViewer">
             <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <!-- Icon Style -->
+        <Style x:Key="IconStyle" TargetType="ui:SymbolIcon">
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <!-- Progress Ring Style -->
+        <Style x:Key="ProgressRingStyle" TargetType="ui:ProgressRing">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
     </ui:FluentWindow.Resources>
 
@@ -141,39 +219,46 @@
         <ui:TitleBar Grid.Row="0" Title="{Binding WindowTitle}" ShowMinimize="True" ShowMaximize="True" ShowClose="True"/>
 
         <!-- Main Content -->
-        <Grid Grid.Row="1" Margin="8" Background="{StaticResource DarkBackgroundBrush}">
+        <Grid Grid.Row="1" Margin="16" Background="{StaticResource DarkBackgroundBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Progress Indicator -->
-            <StackPanel Grid.Row="0" 
-                        Orientation="Horizontal" 
-                        Margin="0,0,0,12"
-                        Visibility="{Binding IsAnalyzing, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <ui:ProgressRing Width="20" Height="20" IsIndeterminate="True" Margin="0,0,8,0"/>
-                <TextBlock Text="{Binding AnalysisProgress}" 
-                           VerticalAlignment="Center" 
-                           Foreground="{StaticResource DarkTextPrimaryBrush}"/>
-                <TextBlock VerticalAlignment="Center" 
-                           Foreground="{StaticResource DarkTextSecondaryBrush}"
-                           Margin="16,0,0,0">
-                    <Run Text=" - 已扫描: "/>
-                    <Run Text="{Binding ScannedFiles, StringFormat='{}{0:N0}'}" FontWeight="SemiBold"/>
-                    <Run Text=" 个文件, "/>
-                    <Run Text="{Binding ScannedFolders, StringFormat='{}{0:N0}'}" FontWeight="SemiBold"/>
-                    <Run Text=" 个文件夹"/>
-                </TextBlock>
-            </StackPanel>
+            <!-- Enhanced Progress Indicator -->
+            <ui:CardControl Grid.Row="0" 
+                           Visibility="{Binding IsAnalyzing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           Style="{StaticResource DarkCardStyle}"
+                           Background="{StaticResource DarkAccentBlueBrush}"
+                           Margin="0,0,0,16">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:ProgressRing IsIndeterminate="True" Style="{StaticResource ProgressRingStyle}"/>
+                        <TextBlock Text="{Binding AnalysisProgress}" 
+                                   VerticalAlignment="Center" 
+                                   FontSize="16"
+                                   FontWeight="Medium"
+                                   Foreground="White"/>
+                    </StackPanel>
+                    <TextBlock VerticalAlignment="Center" 
+                               Foreground="#E0FFFFFF"
+                               FontSize="14">
+                        <Run Text="已扫描: "/>
+                        <Run Text="{Binding ScannedFiles, StringFormat='{}{0:N0}'}" FontWeight="SemiBold"/>
+                        <Run Text=" 个文件, "/>
+                        <Run Text="{Binding ScannedFolders, StringFormat='{}{0:N0}'}" FontWeight="SemiBold"/>
+                        <Run Text=" 个文件夹"/>
+                    </TextBlock>
+                </StackPanel>
+            </ui:CardControl>
 
             <!-- TabControl for Navigation -->
             <TabControl Grid.Row="1" 
                         Style="{StaticResource DarkTabControlStyle}"
                         Background="{StaticResource DarkBackgroundBrush}">
 
-                <!-- Overview Tab -->
-                <TabItem Header="概览" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Overview Tab -->
+                <TabItem Header="📊 概览" Style="{StaticResource DarkTabItemStyle}">
                     <Grid Margin="0,8,0,0" Background="{StaticResource DarkBackgroundBrush}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -181,95 +266,105 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Quick Stats Cards -->
-                        <UniformGrid Grid.Row="0" Columns="4" Margin="0,0,0,16">
-                            <ui:CardControl Margin="4" Style="{StaticResource DarkCardStyle}">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="总大小" Style="{StaticResource HeaderTextStyle}"/>
+                        <!-- Enhanced Quick Stats Cards -->
+                        <UniformGrid Grid.Row="0" Columns="4" Margin="0,0,0,20">
+                            <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource GreenGradientBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="💾" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="总大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
                                     <TextBlock Text="{Binding TotalSizeFormatted}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="{StaticResource DarkAccentGreenBrush}"/>
+                                               Foreground="White"/>
                                 </StackPanel>
                             </ui:CardControl>
-                            <ui:CardControl Margin="4" Style="{StaticResource DarkCardStyle}">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="文件数量" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource BlueGradientBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="📄" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="文件数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
                                     <TextBlock Text="{Binding DisplayFileCount, StringFormat='{}{0:N0}'}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="{StaticResource DarkAccentBlueBrush}"/>
+                                               Foreground="White"/>
                                 </StackPanel>
                             </ui:CardControl>
-                            <ui:CardControl Margin="4" Style="{StaticResource DarkCardStyle}">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="文件夹数量" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource OrangeGradientBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="📂" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="文件夹数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
                                     <TextBlock Text="{Binding DisplayFolderCount, StringFormat='{}{0:N0}'}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="{StaticResource DarkAccentOrangeBrush}"/>
+                                               Foreground="White"/>
                                 </StackPanel>
                             </ui:CardControl>
-                            <ui:CardControl Margin="4" Style="{StaticResource DarkCardStyle}">
-                                <StackPanel Margin="12">
-                                    <TextBlock Text="平均文件大小" Style="{StaticResource HeaderTextStyle}"/>
+                            <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource PurpleGradientBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="⚖️" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="平均文件大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
                                     <TextBlock Text="{Binding AverageFileSize}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="{StaticResource DarkAccentPurpleBrush}"/>
+                                               Foreground="White"/>
                                 </StackPanel>
                             </ui:CardControl>
                         </UniformGrid>
 
-                        <!-- Additional Stats -->
-                        <ui:CardControl Grid.Row="1" Margin="0,0,0,16" Style="{StaticResource DarkCardStyle}">
-                            <StackPanel Margin="16">
-                                <TextBlock Text="详细信息" Style="{StaticResource HeaderTextStyle}"/>
+                        <!-- Enhanced Additional Stats -->
+                        <ui:CardControl Grid.Row="1" Margin="0,0,0,20" Style="{StaticResource DarkCardStyle}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <TextBlock Text="ℹ️" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="详细信息" Style="{StaticResource SectionHeaderStyle}"/>
+                                </StackPanel>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="最大文件: "/>
-                                            <Run Text="{Binding LargestFile}" FontWeight="SemiBold"/>
+                                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                        <TextBlock Style="{StaticResource StatsTextStyle}" Margin="0,0,0,8">
+                                            <Run Text="📈 最大文件: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding LargestFile}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource StatsTextStyle}" Margin="0,0,0,8">
+                                            <Run Text="📁 最深路径: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding DeepestPath}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
                                         </TextBlock>
                                         <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="最深路径: "/>
-                                            <Run Text="{Binding DeepestPath}" FontWeight="SemiBold"/>
-                                        </TextBlock>
-                                        <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="最大深度: "/>
-                                            <Run Text="{Binding MaxDepth}" FontWeight="SemiBold"/>
+                                            <Run Text="📊 最大深度: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding MaxDepth}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
                                         </TextBlock>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="空文件夹: "/>
-                                            <Run Text="{Binding EmptyFolders}" FontWeight="SemiBold"/>
+                                        <TextBlock Style="{StaticResource StatsTextStyle}" Margin="0,0,0,8">
+                                            <Run Text="📂 空文件夹: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding EmptyFolders}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource StatsTextStyle}" Margin="0,0,0,8">
+                                            <Run Text="📄 重复文件: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding DuplicateFiles}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
                                         </TextBlock>
                                         <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="重复文件: "/>
-                                            <Run Text="{Binding DuplicateFiles}" FontWeight="SemiBold"/>
-                                        </TextBlock>
-                                        <TextBlock Style="{StaticResource StatsTextStyle}">
-                                            <Run Text="时间跨度: "/>
-                                            <Run Text="{Binding OldestFile, StringFormat='yyyy-MM-dd'}" FontWeight="SemiBold"/>
-                                            <Run Text=" 到 "/>
-                                            <Run Text="{Binding NewestFile, StringFormat='yyyy-MM-dd'}" FontWeight="SemiBold"/>
+                                            <Run Text="📅 时间跨度: " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding OldestFile, StringFormat='yyyy-MM-dd'}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
+                                            <Run Text=" 到 " Foreground="{StaticResource DarkTextMutedBrush}"/>
+                                            <Run Text="{Binding NewestFile, StringFormat='yyyy-MM-dd'}" FontWeight="SemiBold" Foreground="{StaticResource DarkTextPrimaryBrush}"/>
                                         </TextBlock>
                                     </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </ui:CardControl>
 
-                        <!-- File Type Distribution -->
+                        <!-- Enhanced File Type Distribution -->
                         <ui:CardControl Grid.Row="2" Style="{StaticResource DarkCardStyle}">
-                            <Grid Margin="16">
+                            <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Text="文件类型分布" Style="{StaticResource HeaderTextStyle}"/>
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                    <TextBlock Text="📊" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="文件类型分布" Style="{StaticResource SectionHeaderStyle}"/>
+                                </StackPanel>
                                 <ui:DataGrid Grid.Row="1" ItemsSource="{Binding FileTypeDistribution}" 
                                              IsReadOnly="True"
                                              VerticalScrollBarVisibility="Auto"
@@ -277,10 +372,10 @@
                                              Style="{StaticResource DarkDataGridStyle}"
                                              ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                     <ui:DataGrid.Columns>
-                                        <DataGridTextColumn Header="类型" Width="120" Binding="{Binding TypeName}"/>
-                                        <DataGridTextColumn Header="数量" Width="80" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
-                                        <DataGridTextColumn Header="大小" Width="100" Binding="{Binding TotalSizeFormatted}"/>
-                                        <DataGridTextColumn Header="占比" Width="80" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
+                                        <DataGridTextColumn Header="类型" Width="140" Binding="{Binding TypeName}"/>
+                                        <DataGridTextColumn Header="数量" Width="100" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
+                                        <DataGridTextColumn Header="大小" Width="120" Binding="{Binding TotalSizeFormatted}"/>
+                                        <DataGridTextColumn Header="占比" Width="100" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
                                     </ui:DataGrid.Columns>
                                 </ui:DataGrid>
                             </Grid>
@@ -288,37 +383,40 @@
                     </Grid>
                 </TabItem>
 
-                <!-- Large Files Tab -->
-                <TabItem Header="大文件" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Large Files Tab -->
+                <TabItem Header="📁 大文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <Grid Margin="16">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="大文件列表 (前50个)" Style="{StaticResource HeaderTextStyle}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="📈" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="大文件列表 (前50个)" Style="{StaticResource SectionHeaderStyle}"/>
+                            </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding LargeFiles}" 
                                          IsReadOnly="True"
-                                         VerticalScrollBarVisibility="Visible"
+                                         VerticalScrollBarVisibility="Auto"
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件名" Width="200" Binding="{Binding FileName}"/>
-                                    <DataGridTextColumn Header="大小" Width="100" Binding="{Binding SizeFormatted}"/>
-                                    <DataGridTextColumn Header="修改时间" Width="120" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                    <DataGridTextColumn Header="相对路径" Width="300" Binding="{Binding RelativePath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="120">
+                                    <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
+                                    <DataGridTextColumn Header="大小" Width="120" Binding="{Binding SizeFormatted}"/>
+                                    <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                    <DataGridTextColumn Header="相对路径" Width="320" Binding="{Binding RelativePath}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="140">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <ui:Button Content="打开" 
+                                                    <ui:Button Content="🔍 打开" 
                                                                Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
-                                                               Margin="2" Padding="8,2" FontSize="11"/>
-                                                    <ui:Button Content="定位" 
+                                                               Margin="2" Padding="8,4" FontSize="11"/>
+                                                    <ui:Button Content="📂 定位" 
                                                                Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
-                                                               Margin="2" Padding="8,2" FontSize="11"/>
+                                                               Margin="2" Padding="8,4" FontSize="11"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -329,32 +427,35 @@
                     </ui:CardControl>
                 </TabItem>
 
-                <!-- Subfolder Sizes Tab -->
-                <TabItem Header="子文件夹" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Subfolder Sizes Tab -->
+                <TabItem Header="📂 子文件夹" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <Grid Margin="16">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="子文件夹大小排序" Style="{StaticResource HeaderTextStyle}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="📁" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="子文件夹大小排序" Style="{StaticResource SectionHeaderStyle}"/>
+                            </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding SubfolderSizes}" 
                                          IsReadOnly="True"
-                                         VerticalScrollBarVisibility="Visible"
+                                         VerticalScrollBarVisibility="Auto"
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件夹名" Width="250" Binding="{Binding FolderName}"/>
-                                    <DataGridTextColumn Header="大小" Width="100" Binding="{Binding FormattedSize}"/>
-                                    <DataGridTextColumn Header="文件数" Width="80" Binding="{Binding FileCount, StringFormat='{}{0:N0}'}"/>
-                                    <DataGridTextColumn Header="完整路径" Width="400" Binding="{Binding FolderPath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="80">
+                                    <DataGridTextColumn Header="文件夹名" Width="280" Binding="{Binding FolderName}"/>
+                                    <DataGridTextColumn Header="大小" Width="120" Binding="{Binding FormattedSize}"/>
+                                    <DataGridTextColumn Header="文件数" Width="100" Binding="{Binding FileCount, StringFormat='{}{0:N0}'}"/>
+                                    <DataGridTextColumn Header="完整路径" Width="420" Binding="{Binding FolderPath}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <ui:Button Content="打开" 
+                                                <ui:Button Content="📂 打开" 
                                                            Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                            CommandParameter="{Binding FolderPath}"
-                                                           Margin="2" Padding="8,2" FontSize="11"/>
+                                                           Margin="2" Padding="8,4" FontSize="11"/>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
@@ -364,61 +465,67 @@
                     </ui:CardControl>
                 </TabItem>
 
-                <!-- Extensions Tab -->
-                <TabItem Header="扩展名统计" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Extensions Tab -->
+                <TabItem Header="🎯 扩展名统计" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <Grid Margin="16">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="文件扩展名统计" Style="{StaticResource HeaderTextStyle}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="🎯" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="文件扩展名统计" Style="{StaticResource SectionHeaderStyle}"/>
+                            </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding ExtensionStats}" 
                                          IsReadOnly="True"
-                                         VerticalScrollBarVisibility="Visible"
+                                         VerticalScrollBarVisibility="Auto"
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="扩展名" Width="120" Binding="{Binding Extension}"/>
-                                    <DataGridTextColumn Header="数量" Width="80" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
-                                    <DataGridTextColumn Header="总大小" Width="100" Binding="{Binding TotalSizeFormatted}"/>
-                                    <DataGridTextColumn Header="占比" Width="80" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
+                                    <DataGridTextColumn Header="扩展名" Width="140" Binding="{Binding Extension}"/>
+                                    <DataGridTextColumn Header="数量" Width="100" Binding="{Binding Count, StringFormat='{}{0:N0}'}"/>
+                                    <DataGridTextColumn Header="总大小" Width="120" Binding="{Binding TotalSizeFormatted}"/>
+                                    <DataGridTextColumn Header="占比" Width="100" Binding="{Binding Percentage, StringFormat='{}{0:F1}%'}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
                         </Grid>
                     </ui:CardControl>
                 </TabItem>
 
-                <!-- Empty Files Tab -->
-                <TabItem Header="空文件" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Empty Files Tab -->
+                <TabItem Header="📄 空文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <Grid Margin="16">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="空文件列表" Style="{StaticResource HeaderTextStyle}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="📄" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="空文件列表" Style="{StaticResource SectionHeaderStyle}"/>
+                            </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding EmptyFiles}" 
                                          IsReadOnly="True"
-                                         VerticalScrollBarVisibility="Visible"
+                                         VerticalScrollBarVisibility="Auto"
                                          Style="{StaticResource DarkDataGridStyle}"
                                          ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件名" Width="200" Binding="{Binding FileName}"/>
-                                    <DataGridTextColumn Header="修改时间" Width="120" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                    <DataGridTextColumn Header="相对路径" Width="300" Binding="{Binding RelativePath}"/>
-                                    <DataGridTemplateColumn Header="操作" Width="120">
+                                    <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
+                                    <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                    <DataGridTextColumn Header="相对路径" Width="320" Binding="{Binding RelativePath}"/>
+                                    <DataGridTemplateColumn Header="操作" Width="140">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <ui:Button Content="打开" 
+                                                    <ui:Button Content="🔍 打开" 
                                                                Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
-                                                               Margin="2" Padding="8,2" FontSize="11"/>
-                                                    <ui:Button Content="定位" 
+                                                               Margin="2" Padding="8,4" FontSize="11"/>
+                                                    <ui:Button Content="📂 定位" 
                                                                Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource AncestorType=ui:DataGrid}}"
                                                                CommandParameter="{Binding FilePath}"
-                                                               Margin="2" Padding="8,2" FontSize="11"/>
+                                                               Margin="2" Padding="8,4" FontSize="11"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -429,44 +536,47 @@
                     </ui:CardControl>
                 </TabItem>
 
-                <!-- Duplicate Files Tab -->
-                <TabItem Header="重复文件" Style="{StaticResource DarkTabItemStyle}">
+                <!-- Enhanced Duplicate Files Tab -->
+                <TabItem Header="🔄 重复文件" Style="{StaticResource DarkTabItemStyle}">
                     <ui:CardControl Margin="0,8,0,0" Style="{StaticResource DarkCardStyle}">
-                        <Grid Margin="16">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="重复文件组" Style="{StaticResource HeaderTextStyle}"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="🔄" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="重复文件组" Style="{StaticResource SectionHeaderStyle}"/>
+                            </StackPanel>
                             <ui:DataGrid Grid.Row="1" ItemsSource="{Binding DuplicateFileGroups}" 
                                        IsReadOnly="True"
-                                       VerticalScrollBarVisibility="Visible"
+                                       VerticalScrollBarVisibility="Auto"
                                        Style="{StaticResource DarkDataGridStyle}"
                                        ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                 <ui:DataGrid.RowDetailsTemplate>
                                     <DataTemplate>
                                         <ui:DataGrid ItemsSource="{Binding Files}" 
-                                                   Margin="20,5" 
+                                                   Margin="24,8" 
                                                    IsReadOnly="True"
                                                    Style="{StaticResource DarkDataGridStyle}"
                                                    Background="#FF252526"
                                                    ColumnHeaderStyle="{StaticResource DarkDataGridColumnHeaderStyle}">
                                             <ui:DataGrid.Columns>
-                                                <DataGridTextColumn Header="文件名" Width="200" Binding="{Binding FileName}"/>
-                                                <DataGridTextColumn Header="修改时间" Width="120" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
-                                                <DataGridTextColumn Header="相对路径" Width="250" Binding="{Binding RelativePath}"/>
-                                                <DataGridTemplateColumn Header="操作" Width="120">
+                                                <DataGridTextColumn Header="文件名" Width="220" Binding="{Binding FileName}"/>
+                                                <DataGridTextColumn Header="修改时间" Width="140" Binding="{Binding ModifiedDate, StringFormat='yyyy-MM-dd HH:mm'}"/>
+                                                <DataGridTextColumn Header="相对路径" Width="280" Binding="{Binding RelativePath}"/>
+                                                <DataGridTemplateColumn Header="操作" Width="140">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Orientation="Horizontal">
-                                                                <ui:Button Content="打开" 
+                                                                <ui:Button Content="🔍 打开" 
                                                                          Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:FluentWindow}}}"
                                                                          CommandParameter="{Binding FilePath}"
-                                                                         Margin="2" Padding="8,2" FontSize="11"/>
-                                                                <ui:Button Content="定位" 
+                                                                         Margin="2" Padding="6,3" FontSize="10"/>
+                                                                <ui:Button Content="📂 定位" 
                                                                          Command="{Binding DataContext.ShowInExplorerCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ui:FluentWindow}}}"
                                                                          CommandParameter="{Binding FilePath}"
-                                                                         Margin="2" Padding="8,2" FontSize="11"/>
+                                                                         Margin="2" Padding="6,3" FontSize="10"/>
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </DataGridTemplateColumn.CellTemplate>
@@ -476,9 +586,9 @@
                                     </DataTemplate>
                                 </ui:DataGrid.RowDetailsTemplate>
                                 <ui:DataGrid.Columns>
-                                    <DataGridTextColumn Header="文件大小" Width="100" Binding="{Binding FileSizeFormatted}"/>
-                                    <DataGridTextColumn Header="文件数量" Width="80" Binding="{Binding FileCount}"/>
-                                    <DataGridTextColumn Header="文件哈希" Width="300" Binding="{Binding FileHash}"/>
+                                    <DataGridTextColumn Header="文件大小" Width="120" Binding="{Binding FileSizeFormatted}"/>
+                                    <DataGridTextColumn Header="文件数量" Width="100" Binding="{Binding FileCount}"/>
+                                    <DataGridTextColumn Header="文件哈希" Width="320" Binding="{Binding FileHash}"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
                         </Grid>

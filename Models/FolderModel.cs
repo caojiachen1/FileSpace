@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO;
 using FileSpace.Utils;
 
@@ -75,4 +76,21 @@ namespace FileSpace.Models
         public List<EmptyFileInfo> EmptyFiles { get; set; } = new();
         public List<DuplicateFileGroup> DuplicateFileGroups { get; set; } = new();
     }
+
+    /// <summary>
+    /// 并行扫描结果
+    /// </summary>
+    public class ParallelScanResult
+    {
+        public ConcurrentBag<FileInfoData> AllFiles { get; } = new();
+        public ConcurrentDictionary<string, FileTypeStats> FileTypeStats { get; } = new();
+        public ConcurrentDictionary<string, ExtensionStats> ExtensionStats { get; } = new();
+        public ConcurrentBag<FileInfoData> EmptyFiles { get; } = new();
+        public ConcurrentDictionary<string, long> SubfolderSizes { get; } = new();
+        
+        public int TotalFolderCount;
+        public int EmptyFolderCount;
+    }
+    
+
 }

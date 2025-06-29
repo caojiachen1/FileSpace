@@ -11,7 +11,9 @@ namespace FileSpace.Services
     public class ParallelFolderScanService
     {
         private static readonly int MAX_CONCURRENT_TASKS = Math.Max(2, Environment.ProcessorCount);
-        private const int PROGRESS_UPDATE_INTERVAL = 500; // 每500个文件更新一次进度
+        private const int PROGRESS_UPDATE_INTERVAL = 100; // 每100个文件更新一次进度
+        private int _processedFileCount = 0;
+        private int _processedFolderCount = 0;
         
         /// <summary>
         /// 并行扫描文件夹
@@ -19,14 +21,16 @@ namespace FileSpace.Services
         public async Task<ParallelScanResult> ScanFolderAsync(string folderPath, IProgress<string>? progress = null)
         {
             var result = new ParallelScanResult();
-            var processedFileCount = 0;
+            _processedFileCount = 0;
+            _processedFolderCount = 0;
             
             progress?.Report("开始并行扫描文件夹...");
             
             try
             {
-                await ScanDirectoryAsync(folderPath, folderPath, result, progress, 0, processedFileCount);
-                progress?.Report($"扫描完成，共处理 {result.AllFiles.Count} 个文件");
+                // 使用ConfigureAwait(false)避免死锁，确保异步执行
+                await ScanDirectoryAsync(folderPath, folderPath, result, progress, 0).ConfigureAwait(false);
+                progress?.Report($"扫描完成，共处理 {result.AllFiles.Count} 个文件, {result.TotalFolderCount} 个文件夹");
             }
             catch (Exception ex)
             {
@@ -45,8 +49,7 @@ namespace FileSpace.Services
             string rootPath, 
             ParallelScanResult result,
             IProgress<string>? progress,
-            int depth,
-            int processedFileCount)
+            int depth)
         {
             try
             {
@@ -54,13 +57,20 @@ namespace FileSpace.Services
                 var isEmpty = true;
                 var subTasks = new List<Task>();
                 
+                // 更新进度
+                var currentFolderCount = Interlocked.Increment(ref _processedFolderCount);
+                if (currentFolderCount % 10 == 0) // 每10个文件夹更新一次进度
+                {
+                    progress?.Report($"正在扫描第 {currentFolderCount} 个文件夹: {Path.GetFileName(currentPath)}");
+                }
+                
                 // 检查是否有文件
                 var hasFiles = dirInfo.EnumerateFiles().Any();
                 if (hasFiles)
                 {
                     isEmpty = false;
-                    // 并行处理文件
-                    await ProcessFilesAsync(dirInfo, rootPath, result, depth, progress);
+                    // 异步处理文件
+                    await ProcessFilesAsync(dirInfo, rootPath, result, depth, progress).ConfigureAwait(false);
                 }
                 
                 // 处理子目录
@@ -73,7 +83,7 @@ namespace FileSpace.Services
                         Interlocked.Increment(ref result.TotalFolderCount);
                         
                         var subDirTask = ScanDirectoryAsync(subDir.FullName, rootPath, result,
-                            progress, depth + 1, processedFileCount);
+                            progress, depth + 1);
                         subTasks.Add(subDirTask);
                     }
                     catch (UnauthorizedAccessException) { }
@@ -86,24 +96,24 @@ namespace FileSpace.Services
                     var semaphore = new SemaphoreSlim(MAX_CONCURRENT_TASKS, MAX_CONCURRENT_TASKS);
                     var wrappedTasks = subTasks.Select(async task =>
                     {
-                        await semaphore.WaitAsync();
+                        await semaphore.WaitAsync().ConfigureAwait(false);
                         try
                         {
-                            await task;
+                            await task.ConfigureAwait(false);
                         }
                         finally
                         {
                             semaphore.Release();
                         }
                     });
-                    await Task.WhenAll(wrappedTasks);
+                    await Task.WhenAll(wrappedTasks).ConfigureAwait(false);
                     semaphore.Dispose();
                 }
                 
                 // 如果是根目录的直接子目录，记录其大小
                 if (depth == 1)
                 {
-                    var subfolderSize = await CalculateSubfolderSizeAsync(currentPath);
+                    var subfolderSize = await CalculateSubfolderSizeAsync(currentPath).ConfigureAwait(false);
                     result.SubfolderSizes.TryAdd(currentPath, subfolderSize);
                 }
                 
@@ -196,7 +206,8 @@ namespace FileSpace.Services
                             var currentProcessed = Interlocked.Increment(ref processedCount);
                             if (currentProcessed % PROGRESS_UPDATE_INTERVAL == 0)
                             {
-                                progress?.Report($"已处理 {result.AllFiles.Count} 个文件... {relativePath}");
+                                var totalProcessed = Interlocked.Add(ref _processedFileCount, PROGRESS_UPDATE_INTERVAL);
+                                progress?.Report($"已处理 {totalProcessed} 个文件... {Path.GetFileName(file.FullName)}");
                             }
                         }
                         catch (UnauthorizedAccessException) { }
@@ -204,7 +215,7 @@ namespace FileSpace.Services
                     });
                 }
                 catch (Exception) { }
-            });
+            }).ConfigureAwait(false);
         }
         
         /// <summary>
@@ -234,7 +245,7 @@ namespace FileSpace.Services
                 {
                     return 0L;
                 }
-            });
+            }).ConfigureAwait(false);
         }
         
         /// <summary>
@@ -256,19 +267,5 @@ namespace FileSpace.Services
                 _ => "其他文件"
             };
         }
-    }
-    
-    /// <summary>
-    /// 并行扫描结果
-    /// </summary>
-    public class ParallelScanResult
-    {
-        public ConcurrentBag<FileInfoData> AllFiles { get; } = new();
-        public ConcurrentBag<FileInfoData> EmptyFiles { get; } = new();
-        public ConcurrentDictionary<string, FileTypeStats> FileTypeStats { get; } = new();
-        public ConcurrentDictionary<string, ExtensionStats> ExtensionStats { get; } = new();
-        public ConcurrentDictionary<string, long> SubfolderSizes { get; } = new();
-        public int TotalFolderCount = 0;
-        public int EmptyFolderCount = 0;
     }
 }

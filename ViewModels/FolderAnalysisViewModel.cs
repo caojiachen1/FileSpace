@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using FileSpace.Services;
 using FileSpace.Models;
 using FileSpace.Utils;
@@ -100,101 +101,123 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                IsAnalyzing = true;
-                AnalysisProgress = "正在扫描文件...";
-                
-                // Reset intermediate progress
-                ScannedFiles = 0;
-                ScannedFolders = 0;
-                ScannedSize = 0;
-
-                // Trigger property change notifications
-                OnPropertyChanged(nameof(TotalSizeFormatted));
-                OnPropertyChanged(nameof(DisplayFileCount));
-                OnPropertyChanged(nameof(DisplayFolderCount));
-
-                // Start a quick pre-scan to show progress
-                _ = Task.Run(async () =>
+                // 确保UI更新在主线程上执行
+                await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    await SimulateProgressAsync();
+                    IsAnalyzing = true;
+                    AnalysisProgress = "正在扫描文件...";
+                    
+                    // Reset intermediate progress
+                    ScannedFiles = 0;
+                    ScannedFolders = 0;
+                    ScannedSize = 0;
+
+                    // Trigger property change notifications
+                    OnPropertyChanged(nameof(TotalSizeFormatted));
+                    OnPropertyChanged(nameof(DisplayFileCount));
+                    OnPropertyChanged(nameof(DisplayFolderCount));
                 });
 
-                var analysisService = new FolderAnalysisService();
-                var progress = new Progress<string>(status => AnalysisProgress = status);
-
-                var result = await analysisService.AnalyzeFolderAsync(FolderPath, progress);
-
-                // Update final stats
-                TotalSize = result.TotalSize;
-                TotalFiles = result.TotalFiles;
-                TotalFolders = result.TotalFolders;
-                OldestFile = result.OldestFile;
-                NewestFile = result.NewestFile;
-                AverageFileSize = FileUtils.FormatFileSize(result.AverageFileSize);
-                LargestFile = result.LargestFile;
-                DeepestPath = result.DeepestPath;
-                MaxDepth = result.MaxDepth;
-                EmptyFolders = result.EmptyFolders;
-                DuplicateFiles = result.DuplicateFiles;
-
-                // Update collections
-                FileTypeDistribution.Clear();
-                foreach (var item in result.FileTypeDistribution)
+                // 在后台线程中执行分析
+                await Task.Run(async () =>
                 {
-                    FileTypeDistribution.Add(item);
-                }
-
-                LargeFiles.Clear();
-                foreach (var item in result.LargeFiles)
-                {
-                    LargeFiles.Add(item);
-                }
-
-                SubfolderSizes.Clear();
-                foreach (var item in result.SubfolderSizes)
-                {
-                    SubfolderSizes.Add(new FolderSizeInfo
+                    var analysisService = new FolderAnalysisService();
+                    
+                    // 创建进度报告器，确保进度更新在主线程上执行
+                    var progress = new Progress<string>(status => 
                     {
-                        FolderPath = item.FolderPath,
-                        TotalSize = item.TotalSize,
-                        FileCount = item.FileCount
+                        Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            AnalysisProgress = status;
+                        });
                     });
-                }
 
-                ExtensionStats.Clear();
-                foreach (var item in result.ExtensionStats)
-                {
-                    ExtensionStats.Add(item);
-                }
+                    var result = await analysisService.AnalyzeFolderAsync(FolderPath, progress);
 
-                EmptyFiles.Clear();
-                foreach (var item in result.EmptyFiles)
-                {
-                    EmptyFiles.Add(item);
-                }
-
-                DuplicateFileGroups.Clear();
-                foreach (var item in result.DuplicateFileGroups)
-                {
-                    DuplicateFileGroups.Add(item);
-                }
-
-                AnalysisProgress = "分析完成";
-                IsAnalyzing = false;
-
-                // Trigger property change notifications for final values
-                OnPropertyChanged(nameof(TotalSizeFormatted));
-                OnPropertyChanged(nameof(DisplayFileCount));
-                OnPropertyChanged(nameof(DisplayFolderCount));
+                    // 在主线程上更新UI
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        UpdateUIWithResults(result);
+                    });
+                });
             }
             catch (Exception ex)
             {
-                AnalysisProgress = $"分析失败: {ex.Message}";
-                IsAnalyzing = false;
-                OnPropertyChanged(nameof(TotalSizeFormatted));
-                OnPropertyChanged(nameof(DisplayFileCount));
-                OnPropertyChanged(nameof(DisplayFolderCount));
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    AnalysisProgress = $"分析失败: {ex.Message}";
+                    IsAnalyzing = false;
+                    OnPropertyChanged(nameof(TotalSizeFormatted));
+                    OnPropertyChanged(nameof(DisplayFileCount));
+                    OnPropertyChanged(nameof(DisplayFolderCount));
+                });
             }
+        }
+
+        private void UpdateUIWithResults(FolderAnalysisResult result)
+        {
+            // Update final stats
+            TotalSize = result.TotalSize;
+            TotalFiles = result.TotalFiles;
+            TotalFolders = result.TotalFolders;
+            OldestFile = result.OldestFile;
+            NewestFile = result.NewestFile;
+            AverageFileSize = FileUtils.FormatFileSize(result.AverageFileSize);
+            LargestFile = result.LargestFile;
+            DeepestPath = result.DeepestPath;
+            MaxDepth = result.MaxDepth;
+            EmptyFolders = result.EmptyFolders;
+            DuplicateFiles = result.DuplicateFiles;
+
+            // Update collections
+            FileTypeDistribution.Clear();
+            foreach (var item in result.FileTypeDistribution)
+            {
+                FileTypeDistribution.Add(item);
+            }
+
+            LargeFiles.Clear();
+            foreach (var item in result.LargeFiles)
+            {
+                LargeFiles.Add(item);
+            }
+
+            SubfolderSizes.Clear();
+            foreach (var item in result.SubfolderSizes)
+            {
+                SubfolderSizes.Add(new FolderSizeInfo
+                {
+                    FolderPath = item.FolderPath,
+                    TotalSize = item.TotalSize,
+                    FileCount = item.FileCount
+                });
+            }
+
+            ExtensionStats.Clear();
+            foreach (var item in result.ExtensionStats)
+            {
+                ExtensionStats.Add(item);
+            }
+
+            EmptyFiles.Clear();
+            foreach (var item in result.EmptyFiles)
+            {
+                EmptyFiles.Add(item);
+            }
+
+            DuplicateFileGroups.Clear();
+            foreach (var item in result.DuplicateFileGroups)
+            {
+                DuplicateFileGroups.Add(item);
+            }
+
+            AnalysisProgress = "分析完成";
+            IsAnalyzing = false;
+
+            // Trigger property change notifications for final values
+            OnPropertyChanged(nameof(TotalSizeFormatted));
+            OnPropertyChanged(nameof(DisplayFileCount));
+            OnPropertyChanged(nameof(DisplayFolderCount));
         }
 
         private async Task SimulateProgressAsync()
