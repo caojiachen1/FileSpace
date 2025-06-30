@@ -299,37 +299,37 @@
                             <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource GreenGradientBrush}">
                                 <StackPanel>
                                     <TextBlock Text="💾" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="总大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
+                                    <TextBlock Text="总大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding TotalSizeFormatted}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="White"/>
+                                               Foreground="White" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </ui:CardControl>
                             <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource BlueGradientBrush}">
                                 <StackPanel>
                                     <TextBlock Text="📄" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="文件数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
+                                    <TextBlock Text="文件数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding DisplayFileCount, StringFormat='{}{0:N0}'}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="White"/>
+                                               Foreground="White" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </ui:CardControl>
                             <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource OrangeGradientBrush}">
                                 <StackPanel>
                                     <TextBlock Text="📂" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="文件夹数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
+                                    <TextBlock Text="文件夹数量" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding DisplayFolderCount, StringFormat='{}{0:N0}'}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="White"/>
+                                               Foreground="White" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </ui:CardControl>
                             <ui:CardControl Margin="6" Style="{StaticResource StatsCardStyle}" Background="{StaticResource PurpleGradientBrush}">
                                 <StackPanel>
                                     <TextBlock Text="⚖️" FontSize="32" Margin="0,0,0,8" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="平均文件大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF"/>
+                                    <TextBlock Text="平均文件大小" Style="{StaticResource StatsLabelStyle}" Foreground="#E0FFFFFF" HorizontalAlignment="Center"/>
                                     <TextBlock Text="{Binding AverageFileSize}" 
                                                Style="{StaticResource StatsValueStyle}"
-                                               Foreground="White"/>
+                                               Foreground="White" HorizontalAlignment="Center"/>
                                 </StackPanel>
                             </ui:CardControl>
                         </UniformGrid>
