@@ -75,9 +75,11 @@ namespace FileSpace.ViewModels
         private FileOperationEventHandler _fileOperationEventHandler;
         private FolderPreviewUpdateService _folderPreviewUpdateService;
         private NavigationService _navigationService;
+        private readonly SettingsService _settingsService;
 
         public MainViewModel()
         {
+            _settingsService = SettingsService.Instance;
             _navigationUtils = new NavigationUtils(_backHistory);
             _fileOperationEventHandler = new FileOperationEventHandler(this);
             _folderPreviewUpdateService = new FolderPreviewUpdateService();
@@ -708,15 +710,6 @@ namespace FileSpace.ViewModels
                 SelectedFiles.Add(file);
             }
             
-            // Update UI selection
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is MainWindow mainWindow)
-                {
-                    mainWindow.FileListView.SelectAll();
-                }
-            });
-            
             StatusText = $"已选择 {SelectedFiles.Count} 个项目";
         }
 
@@ -734,19 +727,6 @@ namespace FileSpace.ViewModels
                 }
             }
             
-            // Update UI selection
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is MainWindow mainWindow)
-                {
-                    mainWindow.FileListView.SelectedItems.Clear();
-                    foreach (var file in SelectedFiles)
-                    {
-                        mainWindow.FileListView.SelectedItems.Add(file);
-                    }
-                }
-            });
-            
             StatusText = $"已选择 {SelectedFiles.Count} 个项目";
         }
 
@@ -755,15 +735,6 @@ namespace FileSpace.ViewModels
         {
             SelectedFiles.Clear();
             SelectedFile = null;
-            
-            // Update UI selection
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                if (Application.Current.MainWindow is MainWindow mainWindow)
-                {
-                    mainWindow.FileListView.SelectedItems.Clear();
-                }
-            });
             
             StatusText = "已清除选择";
         }
@@ -797,6 +768,90 @@ namespace FileSpace.ViewModels
                 {
                     StatusText = $"无法分析文件夹: {ex.Message}";
                 }
+            }
+        }
+
+        [RelayCommand]
+        private void ShowSearchWindow()
+        {
+            try
+            {
+                var searchViewModel = new SearchViewModel(CurrentPath);
+                var searchWindow = new SearchWindow(searchViewModel)
+                {
+                    Owner = Application.Current.MainWindow
+                };
+                
+                // 订阅搜索结果选择事件
+                searchViewModel.ResultSelected += OnSearchResultSelected;
+                
+                searchWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"无法打开搜索窗口: {ex.Message}";
+            }
+        }
+
+        private void OnSearchResultSelected(object? sender, SearchResultSelectedEventArgs e)
+        {
+            try
+            {
+                switch (e.Action)
+                {
+                    case SearchResultAction.Navigate:
+                        if (e.Result.IsDirectory)
+                        {
+                            NavigateToPath(e.Result.FullPath);
+                        }
+                        else
+                        {
+                            // 导航到文件所在目录并选中文件
+                            var parentPath = Path.GetDirectoryName(e.Result.FullPath);
+                            if (!string.IsNullOrEmpty(parentPath))
+                            {
+                                NavigateToPath(parentPath);
+                                // 等待文件加载完成后选中文件
+                                Application.Current.Dispatcher.BeginInvoke(() =>
+                                {
+                                    var fileToSelect = Files.FirstOrDefault(f => f.FullPath == e.Result.FullPath);
+                                    if (fileToSelect != null)
+                                    {
+                                        SelectedFile = fileToSelect;
+                                        SelectedFiles.Clear();
+                                        SelectedFiles.Add(fileToSelect);
+                                    }
+                                });
+                            }
+                        }
+                        break;
+                        
+                    case SearchResultAction.ShowInMainWindow:
+                        var parentDirectory = e.Result.IsDirectory 
+                            ? Path.GetDirectoryName(e.Result.FullPath)
+                            : Path.GetDirectoryName(e.Result.FullPath);
+                        
+                        if (!string.IsNullOrEmpty(parentDirectory))
+                        {
+                            NavigateToPath(parentDirectory);
+                            // 选中文件/文件夹
+                            Application.Current.Dispatcher.BeginInvoke(() =>
+                            {
+                                var itemToSelect = Files.FirstOrDefault(f => f.FullPath == e.Result.FullPath);
+                                if (itemToSelect != null)
+                                {
+                                    SelectedFile = itemToSelect;
+                                    SelectedFiles.Clear();
+                                    SelectedFiles.Add(itemToSelect);
+                                }
+                            });
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"处理搜索结果失败: {ex.Message}";
             }
         }
 

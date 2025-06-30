@@ -4,22 +4,23 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileSpace.Views"
+        xmlns:converters="clr-namespace:FileSpace.Converters"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
         Title="FileSpace - 文件管理器" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
-    
+
     <ui:FluentWindow.Resources>
         <!-- Add missing converters -->
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         
         <!-- Add inverse boolean to visibility converter -->
-        <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
         
         <!-- Add equality converter for comparing objects -->
-        <local:EqualityConverter x:Key="EqualityConverter"/>
+        <converters:EqualityConverter x:Key="EqualityConverter"/>
         
         <!-- Custom expand/collapse toggle style with down arrow -->
         <Style x:Key="ExpandCollapseToggleStyle" TargetType="ToggleButton">
@@ -170,6 +171,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -177,8 +179,68 @@
         <!-- Title Bar -->
         <ui:TitleBar Grid.Row="0" Title="FileSpace" ShowMinimize="True" ShowMaximize="True" ShowClose="True"/>
 
+        <!-- Menu Bar -->
+        <Menu Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="10,0">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="搜索..." Command="{Binding ShowSearchWindowCommand}" InputGestureText="Ctrl+F">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Search24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="退出" Click="Exit_Click" InputGestureText="Alt+F4">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Dismiss24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="编辑(_E)">
+                <MenuItem Header="复制" Command="{Binding CopyFilesCommand}" InputGestureText="Ctrl+C">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Copy24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="剪切" Command="{Binding CutFilesCommand}" InputGestureText="Ctrl+X">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Cut24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}" InputGestureText="Ctrl+V">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="ClipboardPaste24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="全选" Command="{Binding SelectAllCommand}" InputGestureText="Ctrl+A">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Apps24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="查看(_V)">
+                <MenuItem Header="刷新" Command="{Binding RefreshCommand}" InputGestureText="F5">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="ArrowClockwise24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="工具(_T)">
+                <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Folder24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="设置..." Click="Settings_Click">
+                    <MenuItem.Icon>
+                        <ui:SymbolIcon Symbol="Settings24"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
         <!-- Main Content -->
-        <Grid Grid.Row="1" Margin="10">
+        <Grid Grid.Row="2" Margin="10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250"/>
                 <ColumnDefinition Width="5"/>
@@ -266,6 +328,11 @@
                         <ui:Button Content="上级" Icon="ArrowUp24" Click="UpButton_Click" Margin="0,0,5,0"/>
                         <ui:Button Content="刷新" Icon="ArrowClockwise24" Click="RefreshButton_Click" Margin="0,0,5,0"/>
                         
+                        <!-- Search button -->
+                        <Separator Margin="5,0"/>
+                        <ui:Button Content="搜索" Icon="Search24" Command="{Binding ShowSearchWindowCommand}" 
+                                   Margin="0,0,5,0" ToolTip="搜索文件和文件夹 (Ctrl+F)"/>
+                        
                         <!-- File operation buttons with keyboard shortcuts -->
                         <Separator Margin="5,0"/>
                         <ui:Button Content="复制" Icon="Copy24" Command="{Binding CopyFilesCommand}" 
@@ -304,7 +371,7 @@
                                 <Separator/>
                                 <MenuItem Header="重命名" Command="{Binding ShowRenameDialogCommand}">
                                     <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Rename24"/>
+                                        <ui:SymbolIcon Symbol="Edit24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
@@ -337,7 +404,7 @@
                                 </MenuItem>
                                 <MenuItem Header="分析文件夹" Command="{Binding AnalyzeFolderCommand}" Visibility="{Binding SelectedFile.IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="ChartMultiple24"/>
+                                        <ui:SymbolIcon Symbol="Folder24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
@@ -472,7 +539,7 @@
         </Grid>
 
         <!-- Status Bar -->
-        <Border Grid.Row="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+        <Border Grid.Row="3" Background="{DynamicResource ApplicationBackgroundBrush}" 
                 BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
                 BorderThickness="0,1,0,0" Height="30">
             <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Margin="10,0" 

@@ -5,6 +5,7 @@ using System.Windows.Media;
 using Wpf.Ui.Controls;
 using FileSpace.ViewModels;
 using FileSpace.Models;
+using FileSpace.Services;
 using System.IO;
 
 namespace FileSpace.Views
@@ -251,6 +252,36 @@ namespace FileSpace.Views
                 // For directories or files without extensions, select all
                 textBox.SelectAll();
             }
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.Owner = this;
+            settingsWindow.ShowDialog();
+        }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            // 保存窗口设置
+            SettingsService.Instance.UpdateWindowSettings(this);
+            
+            // 关闭应用程序
+            Application.Current.Shutdown();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            // 保存窗口设置
+            SettingsService.Instance.UpdateWindowSettings(this);
+            base.OnClosing(e);
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            // 应用窗口设置
+            SettingsService.Instance.ApplyWindowSettings(this);
         }
     }
 }

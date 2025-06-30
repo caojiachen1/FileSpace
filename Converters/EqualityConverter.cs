@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Windows.Data;
 
-namespace FileSpace.Views
+namespace FileSpace.Converters
 {
     public class EqualityConverter : IMultiValueConverter
     {
