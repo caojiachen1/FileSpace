@@ -138,33 +138,30 @@
             </Setter>
         </Style>
         
-        <Style x:Key="FileListViewItemStyle" TargetType="ListViewItem">
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Padding" Value="5,2"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+        <Style x:Key="FileDataGridRowStyle" TargetType="DataGridRow">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListViewItem">
-                        <Border x:Name="Border" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <GridViewRowPresenter Content="{TemplateBinding Content}"
-                                                Columns="{TemplateBinding GridView.ColumnCollection}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#FF404040"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#FF606060"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FF404040"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#FF606060"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="FileDataGridCellStyle" TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </ui:FluentWindow.Resources>
     
@@ -346,16 +343,28 @@
                     </StackPanel>
 
                     <!-- File List -->
-                    <ListView Grid.Row="2" x:Name="FileListView" 
-                              ItemsSource="{Binding Files}"
-                              SelectedItem="{Binding SelectedFile}"
-                              Background="Transparent" BorderThickness="0"
-                              MouseDoubleClick="FileListView_MouseDoubleClick"
-                              MouseDown="FileListView_MouseDown"
-                              SelectionChanged="FileListView_SelectionChanged"
-                              KeyDown="FileListView_KeyDown"
-                              ItemContainerStyle="{StaticResource FileListViewItemStyle}">
-                        <ListView.ContextMenu>
+                    <ui:DataGrid Grid.Row="2" x:Name="FileDataGrid" 
+                                 ItemsSource="{Binding Files}"
+                                 SelectedItem="{Binding SelectedFile}"
+                                 Background="Transparent" BorderThickness="0"
+                                 Margin="10,5,10,10"
+                                 MouseDoubleClick="FileListView_MouseDoubleClick"
+                                 MouseDown="FileListView_MouseDown"
+                                 SelectionChanged="FileListView_SelectionChanged"
+                                 KeyDown="FileListView_KeyDown"
+                                 AutoGenerateColumns="False"
+                                 HeadersVisibility="Column"
+                                 GridLinesVisibility="None"
+                                 CanUserAddRows="False"
+                                 CanUserDeleteRows="False"
+                                 CanUserReorderColumns="True"
+                                 CanUserResizeColumns="True"
+                                 CanUserResizeRows="False"
+                                 CanUserSortColumns="True"
+                                 IsReadOnly="True"
+                                 RowStyle="{StaticResource FileDataGridRowStyle}"
+                                 CellStyle="{StaticResource FileDataGridCellStyle}">
+                        <ui:DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
                                     <MenuItem.Icon>
@@ -408,90 +417,90 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
-                        </ListView.ContextMenu>
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="名称" Width="200">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Grid>
-                                                <!-- Normal display -->
-                                                <StackPanel Orientation="Horizontal" 
-                                                           Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
-                                                                   Foreground="{Binding IconColor}"/>
-                                                    <TextBlock Text="{Binding Name}" 
+                        </ui:DataGrid.ContextMenu>
+                        <ui:DataGrid.Columns>
+                            <DataGridTemplateColumn Header="名称" Width="200" SortMemberPath="Name">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <!-- Normal display -->
+                                            <StackPanel Orientation="Horizontal" Margin="5,0,0,0"
+                                                       Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
+                                                               Foreground="{Binding IconColor}"/>
+                                                <TextBlock Text="{Binding Name}" 
+                                                           TextTrimming="CharacterEllipsis"
+                                                           TextAlignment="Left"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip="{Binding Name}"/>
+                                            </StackPanel>
+                                            
+                                            <!-- Rename mode -->
+                                            <StackPanel Orientation="Horizontal" Margin="5,0,0,0"
+                                                       Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
+                                                               Foreground="{Binding IconColor}"/>
+                                                <Grid>
+                                                    <!-- Show original name if not the item being renamed -->
+                                                    <TextBlock Text="{Binding Name}"
                                                                TextTrimming="CharacterEllipsis"
                                                                TextAlignment="Left"
                                                                HorizontalAlignment="Left"
-                                                               ToolTip="{Binding Name}"/>
-                                                </StackPanel>
-                                                
-                                                <!-- Rename mode -->
-                                                <StackPanel Orientation="Horizontal" 
-                                                           Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
-                                                                   Foreground="{Binding IconColor}"/>
-                                                    <Grid>
-                                                        <!-- Show original name if not the item being renamed -->
-                                                        <TextBlock Text="{Binding Name}"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   TextAlignment="Left"
-                                                                   HorizontalAlignment="Left"
-                                                                   ToolTip="{Binding Name}">
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Value="True">
-                                                                            <DataTrigger.Binding>
-                                                                                <MultiBinding Converter="{StaticResource EqualityConverter}">
-                                                                                    <Binding/>
-                                                                                    <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
-                                                                                </MultiBinding>
-                                                                            </DataTrigger.Binding>
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
-                                                        </TextBlock>
-                                                        
-                                                        <!-- Show textbox for the item being renamed -->
-                                                        <ui:TextBox x:Name="RenameTextBox" 
-                                                                   Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
-                                                                   KeyDown="RenameTextBox_KeyDown"
-                                                                   LostFocus="RenameTextBox_LostFocus"
-                                                                   Loaded="RenameTextBox_Loaded">
-                                                            <ui:TextBox.Style>
-                                                                <Style TargetType="ui:TextBox">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Value="True">
-                                                                            <DataTrigger.Binding>
-                                                                                <MultiBinding Converter="{StaticResource EqualityConverter}">
-                                                                                    <Binding/>
-                                                                                    <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
-                                                                                </MultiBinding>
-                                                                            </DataTrigger.Binding>
-                                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </ui:TextBox.Style>
-                                                        </ui:TextBox>
-                                                    </Grid>
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
-                                <GridViewColumn Header="大小" Width="100" DisplayMemberBinding="{Binding SizeString}"/>
-                                <GridViewColumn Header="类型" Width="100" DisplayMemberBinding="{Binding Type}"/>
-                                <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding ModifiedTime}"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
+                                                               VerticalAlignment="Center"
+                                                               ToolTip="{Binding Name}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Value="True">
+                                                                        <DataTrigger.Binding>
+                                                                            <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                                <Binding/>
+                                                                                <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ui:DataGrid}"/>
+                                                                            </MultiBinding>
+                                                                        </DataTrigger.Binding>
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    
+                                                    <!-- Show textbox for the item being renamed -->
+                                                    <ui:TextBox x:Name="RenameTextBox" 
+                                                               Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, UpdateSourceTrigger=PropertyChanged}"
+                                                               KeyDown="RenameTextBox_KeyDown"
+                                                               LostFocus="RenameTextBox_LostFocus"
+                                                               Loaded="RenameTextBox_Loaded">
+                                                        <ui:TextBox.Style>
+                                                            <Style TargetType="ui:TextBox">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Value="True">
+                                                                        <DataTrigger.Binding>
+                                                                            <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                                <Binding/>
+                                                                                <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ui:DataGrid}"/>
+                                                                            </MultiBinding>
+                                                                        </DataTrigger.Binding>
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ui:TextBox.Style>
+                                                    </ui:TextBox>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="大小" Width="100" Binding="{Binding SizeString}" SortMemberPath="Size"/>
+                            <DataGridTextColumn Header="类型" Width="100" Binding="{Binding Type}" SortMemberPath="Type"/>
+                            <DataGridTextColumn Header="修改时间" Width="150" Binding="{Binding ModifiedTime}" SortMemberPath="ModifiedTime"/>
+                        </ui:DataGrid.Columns>
+                    </ui:DataGrid>
                 </Grid>
             </Border>
 

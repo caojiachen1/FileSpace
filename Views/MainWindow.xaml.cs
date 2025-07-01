@@ -39,22 +39,22 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Check if click is on empty area (not on a ListViewItem)
-            var hitTest = VisualTreeHelper.HitTest(FileListView, e.GetPosition(FileListView));
+            // Check if click is on empty area (not on a DataGridRow)
+            var hitTest = VisualTreeHelper.HitTest(FileDataGrid, e.GetPosition(FileDataGrid));
             if (hitTest != null)
             {
-                var listViewItem = FindAncestor<Wpf.Ui.Controls.ListViewItem>(hitTest.VisualHit);
-                if (listViewItem == null)
+                var dataGridRow = FindAncestor<DataGridRow>(hitTest.VisualHit);
+                if (dataGridRow == null)
                 {
                     // Clicked on empty area, clear selection
-                    FileListView.SelectedItems.Clear();
+                    FileDataGrid.SelectedItems.Clear();
                     if (DataContext is MainViewModel viewModel)
                     {
                         viewModel.SelectedFiles.Clear();
                     }
                     
-                    // Ensure the ListView gets focus for keyboard shortcuts
-                    FileListView.Focus();
+                    // Ensure the DataGrid gets focus for keyboard shortcuts
+                    FileDataGrid.Focus();
                 }
             }
         }
@@ -102,7 +102,7 @@ namespace FileSpace.Views
             if (DataContext is MainViewModel viewModel)
             {
                 viewModel.SelectedFiles.Clear();
-                foreach (FileItemModel item in FileListView.SelectedItems)
+                foreach (FileItemModel item in FileDataGrid.SelectedItems)
                 {
                     viewModel.SelectedFiles.Add(item);
                 }
@@ -146,7 +146,7 @@ namespace FileSpace.Views
                         else
                         {
                             // Clear selection on Escape when not renaming
-                            FileListView.SelectedItems.Clear();
+                            FileDataGrid.SelectedItems.Clear();
                             viewModel.SelectedFiles.Clear();
                             e.Handled = true;
                         }
