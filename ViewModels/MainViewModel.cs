@@ -12,6 +12,9 @@ namespace FileSpace.ViewModels
 {
     public partial class MainViewModel : ObservableObject, IDisposable
     {
+        // Event to notify UI to select all items in DataGrid
+        public event EventHandler? SelectAllRequested;
+        
         [ObservableProperty]
         private string _currentPath = string.Empty;
 
@@ -727,6 +730,10 @@ namespace FileSpace.ViewModels
             {
                 SelectedFiles.Add(file);
             }
+            
+            // 通知 UI 更新 DataGrid 选择状态
+            OnPropertyChanged(nameof(SelectedFiles));
+            SelectAllRequested?.Invoke(this, EventArgs.Empty);
             
             StatusText = $"已选择 {SelectedFiles.Count} 个项目";
         }

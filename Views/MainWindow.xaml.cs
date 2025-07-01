@@ -22,6 +22,9 @@ namespace FileSpace.Views
             InitializeComponent();
             ViewModel = new MainViewModel();
             DataContext = ViewModel;
+            
+            // 订阅全选事件
+            ViewModel.SelectAllRequested += OnSelectAllRequested;
         }
 
         private void DirectoryTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -282,6 +285,12 @@ namespace FileSpace.Views
             base.OnSourceInitialized(e);
             // 应用窗口设置
             SettingsService.Instance.ApplyWindowSettings(this);
+        }
+
+        private void OnSelectAllRequested(object? sender, EventArgs e)
+        {
+            // 选择 DataGrid 中的所有项目
+            FileDataGrid.SelectAll();
         }
     }
 }
