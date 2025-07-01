@@ -406,6 +406,21 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
+                                <MenuItem Command="{Binding CopyFilePathCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Link24"/>
+                                    </MenuItem.Icon>
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Header" Value="复制文件地址"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedFile.IsDirectory}" Value="True">
+                                                    <Setter Property="Header" Value="复制文件夹地址"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                </MenuItem>
                                 <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Settings24"/>

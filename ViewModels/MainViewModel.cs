@@ -408,6 +408,24 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
+        private void CopyFilePath()
+        {
+            if (SelectedFile != null)
+            {
+                try
+                {
+                    System.Windows.Clipboard.SetText(SelectedFile.FullPath);
+                    var itemType = SelectedFile.IsDirectory ? "文件夹" : "文件";
+                    StatusText = $"已复制{itemType}路径: {SelectedFile.FullPath}";
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"复制路径失败: {ex.Message}";
+                }
+            }
+        }
+
+        [RelayCommand]
         private async Task PasteFiles()
         {
             if (!ClipboardService.Instance.CanPaste())
@@ -887,5 +905,6 @@ namespace FileSpace.ViewModels
         public bool CanDeletePermanently => SelectedFiles.Any();
         public bool CanClearSelection => SelectedFiles.Any();
         public bool CanOpenInExplorer => ExplorerService.Instance.CanOpenInExplorer(CurrentPath);
+        public bool CanCopyPath => SelectedFile != null;
     }
 }
