@@ -50,19 +50,22 @@ namespace FileSpace.Views
 
         private void OK_Click(object sender, RoutedEventArgs e)
         {
-            // Update settings from UI - controls will be enabled after fixing XAML compilation
-            // var settings = _settingsService.Settings;
+            // Update settings from UI
+            var settings = _settingsService.Settings;
             
-            // settings.UISettings.ShowHiddenFiles = ShowHiddenFilesCheckBox.IsChecked ?? false;
-            // settings.UISettings.ShowSystemFiles = ShowSystemFilesCheckBox.IsChecked ?? false;
-            // settings.UISettings.ShowFileExtensions = ShowFileExtensionsCheckBox.IsChecked ?? true;
+            // UI Settings
+            settings.UISettings.ShowHiddenFiles = ShowHiddenFilesCheckBox.IsChecked ?? false;
+            settings.UISettings.ShowSystemFiles = ShowSystemFilesCheckBox.IsChecked ?? false;
+            settings.UISettings.ShowFileExtensions = ShowFileExtensionsCheckBox.IsChecked ?? true;
             
-            // settings.PerformanceSettings.EnableBackgroundSizeCalculation = EnableBackgroundSizeCalculationCheckBox.IsChecked ?? true;
-            // settings.PerformanceSettings.EnableVirtualization = EnableVirtualizationCheckBox.IsChecked ?? true;
-            // settings.PerformanceSettings.EnableFileWatching = EnableFileWatchingCheckBox.IsChecked ?? true;
+            // Performance Settings
+            settings.PerformanceSettings.EnableBackgroundSizeCalculation = EnableBackgroundSizeCalculationCheckBox.IsChecked ?? true;
+            settings.PerformanceSettings.EnableVirtualization = EnableVirtualizationCheckBox.IsChecked ?? true;
+            settings.PerformanceSettings.EnableFileWatching = EnableFileWatchingCheckBox.IsChecked ?? true;
             
-            // settings.PreviewSettings.EnablePreview = EnablePreviewCheckBox.IsChecked ?? true;
-            // settings.PreviewSettings.AutoPreview = AutoPreviewCheckBox.IsChecked ?? true;
+            // Preview Settings
+            settings.PreviewSettings.EnablePreview = EnablePreviewCheckBox.IsChecked ?? true;
+            settings.PreviewSettings.AutoPreview = AutoPreviewCheckBox.IsChecked ?? true;
             
             _settingsService.SaveSettings();
             DialogResult = true;

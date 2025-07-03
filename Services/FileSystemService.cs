@@ -9,8 +9,13 @@ namespace FileSpace.Services
     {
         private static readonly Lazy<FileSystemService> _instance = new(() => new FileSystemService());
         public static FileSystemService Instance => _instance.Value;
+        
+        private readonly SettingsService _settingsService;
 
-        private FileSystemService() { }
+        private FileSystemService() 
+        {
+            _settingsService = SettingsService.Instance;
+        }
 
         public async Task<(ObservableCollection<FileItemModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
         {
@@ -34,6 +39,13 @@ namespace FileSpace.Services
                             try
                             {
                                 var dirInfo = new DirectoryInfo(dir);
+                                
+                                // 检查是否应该显示此目录
+                                if (!ShouldShowItem(dirInfo.Attributes))
+                                {
+                                    continue;
+                                }
+                                
                                 var fileItem = new FileItemModel
                                 {
                                     Name = dirInfo.Name,
@@ -72,6 +84,13 @@ namespace FileSpace.Services
                             try
                             {
                                 var fileInfo = new FileInfo(file);
+                                
+                                // 检查是否应该显示此文件
+                                if (!ShouldShowItem(fileInfo.Attributes))
+                                {
+                                    continue;
+                                }
+                                
                                 var fileItem = new FileItemModel
                                 {
                                     Name = fileInfo.Name,
@@ -120,6 +139,28 @@ namespace FileSpace.Services
             }
 
             return (files, statusMessage);
+        }
+
+        /// <summary>
+        /// 检查文件或文件夹是否应该显示
+        /// </summary>
+        private bool ShouldShowItem(FileAttributes attributes)
+        {
+            var settings = _settingsService.Settings.UISettings;
+            
+            // 检查隐藏文件
+            if (attributes.HasFlag(FileAttributes.Hidden) && !settings.ShowHiddenFiles)
+            {
+                return false;
+            }
+            
+            // 检查系统文件
+            if (attributes.HasFlag(FileAttributes.System) && !settings.ShowSystemFiles)
+            {
+                return false;
+            }
+            
+            return true;
         }
 
         private static SymbolRegular GetFileIcon(string extension)

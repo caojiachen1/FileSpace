@@ -261,7 +261,22 @@ namespace FileSpace.Views
         {
             var settingsWindow = new SettingsWindow();
             settingsWindow.Owner = this;
-            settingsWindow.ShowDialog();
+            
+            if (settingsWindow.ShowDialog() == true)
+            {
+                // Settings were changed, refresh the file list and notify DisplayName property changes
+                if (DataContext is MainViewModel viewModel)
+                {
+                    // Refresh file list to apply visibility filters
+                    viewModel.RefreshCommand.Execute(null);
+                    
+                    // Force update DisplayName for all files to reflect extension settings
+                    foreach (var file in viewModel.Files)
+                    {
+                        file.RefreshDisplayName();
+                    }
+                }
+            }
         }
 
         private void Exit_Click(object sender, RoutedEventArgs e)

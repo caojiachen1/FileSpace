@@ -443,7 +443,7 @@
                                                        Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                                 <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" 
                                                                Foreground="{Binding IconColor}"/>
-                                                <TextBlock Text="{Binding Name}" 
+                                                <TextBlock Text="{Binding DisplayName}" 
                                                            TextTrimming="CharacterEllipsis"
                                                            TextAlignment="Left"
                                                            HorizontalAlignment="Left"
@@ -458,7 +458,7 @@
                                                                Foreground="{Binding IconColor}"/>
                                                 <Grid>
                                                     <!-- Show original name if not the item being renamed -->
-                                                    <TextBlock Text="{Binding Name}"
+                                                    <TextBlock Text="{Binding DisplayName}"
                                                                TextTrimming="CharacterEllipsis"
                                                                TextAlignment="Left"
                                                                HorizontalAlignment="Left"

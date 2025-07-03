@@ -31,5 +31,32 @@ namespace FileSpace.Models
         private string _modifiedTime = string.Empty;
 
         public string SizeString => IsDirectory ? "" : FileUtils.FormatFileSize(Size);
+        
+        public string DisplayName
+        {
+            get
+            {
+                if (IsDirectory)
+                {
+                    return Name;
+                }
+                
+                var settings = Services.SettingsService.Instance.Settings.UISettings;
+                if (!settings.ShowFileExtensions)
+                {
+                    return System.IO.Path.GetFileNameWithoutExtension(Name);
+                }
+                
+                return Name;
+            }
+        }
+        
+        /// <summary>
+        /// 刷新DisplayName属性通知
+        /// </summary>
+        public void RefreshDisplayName()
+        {
+            OnPropertyChanged(nameof(DisplayName));
+        }
     }
 }
