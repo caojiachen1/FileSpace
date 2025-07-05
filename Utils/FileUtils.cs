@@ -69,18 +69,20 @@ namespace FileSpace.Utils
         public static PreviewSizeCategory GetPreviewSizeCategory(FileInfo fileInfo, FilePreviewType fileType)
         {
             var size = fileInfo.Length;
+            var settings = Services.SettingsService.Instance.Settings.PreviewSettings;
+            var maxSizeBytes = settings.MaxPreviewFileSize * 1024 * 1024; // Convert MB to bytes
             
             return fileType switch
             {
                 FilePreviewType.Text => size switch
                 {
                     <= MAX_TEXT_PREVIEW_SIZE => PreviewSizeCategory.Small,
-                    <= MAX_TEXT_QUICK_PREVIEW_SIZE => PreviewSizeCategory.Medium,
-                    _ => PreviewSizeCategory.Large
+                    <= MAX_TEXT_QUICK_PREVIEW_SIZE when size <= maxSizeBytes => PreviewSizeCategory.Medium,
+                    _ => size <= maxSizeBytes ? PreviewSizeCategory.Medium : PreviewSizeCategory.Large
                 },
-                FilePreviewType.Image => size <= MAX_IMAGE_PREVIEW_SIZE ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
-                FilePreviewType.Csv => size <= MAX_CSV_PREVIEW_SIZE ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
-                _ => PreviewSizeCategory.Small
+                FilePreviewType.Image => size <= Math.Min(MAX_IMAGE_PREVIEW_SIZE, maxSizeBytes) ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
+                FilePreviewType.Csv => size <= Math.Min(MAX_CSV_PREVIEW_SIZE, maxSizeBytes) ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
+                _ => size <= maxSizeBytes ? PreviewSizeCategory.Small : PreviewSizeCategory.Large
             };
         }
 

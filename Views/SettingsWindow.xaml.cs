@@ -75,6 +75,18 @@ namespace FileSpace.Views
             MoveToRecycleBinCheckBox.IsChecked = settings.FileOperationSettings.MoveToRecycleBin;
             RememberWindowPositionCheckBox.IsChecked = settings.WindowSettings.RememberWindowPosition;
             ShowProgressDialogCheckBox.IsChecked = settings.FileOperationSettings.ShowProgressDialog;
+            
+            // Update control states based on dependencies
+            UpdateControlStates();
+        }
+
+        private void UpdateControlStates()
+        {
+            // Enable/disable preview-related controls based on preview checkbox
+            var previewEnabled = EnablePreviewCheckBox.IsChecked == true;
+            AutoPreviewCheckBox.IsEnabled = previewEnabled;
+            MaxPreviewSizeSlider.IsEnabled = previewEnabled;
+            ImageQualityComboBox.IsEnabled = previewEnabled;
         }
 
         private AppSettings CloneSettings(AppSettings original)
@@ -279,6 +291,48 @@ namespace FileSpace.Views
                         System.Windows.MessageBoxImage.Error);
                 }
             }
+        }
+
+        private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            // Real-time font preview
+            if (IsLoaded)
+            {
+                var newSize = e.NewValue;
+                FontSize = newSize;
+            }
+        }
+
+        private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Real-time theme preview
+            if (IsLoaded && ThemeComboBox.SelectedItem is ComboBoxItem item)
+            {
+                var theme = item.Tag?.ToString() ?? "Dark";
+                App.ChangeTheme(theme);
+            }
+        }
+
+        private void EnablePreviewCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            // Enable/disable dependent controls
+            if (AutoPreviewCheckBox != null)
+            {
+                AutoPreviewCheckBox.IsEnabled = EnablePreviewCheckBox.IsChecked == true;
+            }
+            if (MaxPreviewSizeSlider != null)
+            {
+                MaxPreviewSizeSlider.IsEnabled = EnablePreviewCheckBox.IsChecked == true;
+            }
+            if (ImageQualityComboBox != null)
+            {
+                ImageQualityComboBox.IsEnabled = EnablePreviewCheckBox.IsChecked == true;
+            }
+        }
+
+        private void EnablePreviewCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            EnablePreviewCheckBox_Checked(sender, e); // Use same logic
         }
     }
 }

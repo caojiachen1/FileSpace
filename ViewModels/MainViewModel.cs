@@ -179,6 +179,16 @@ namespace FileSpace.ViewModels
 
         private async Task ShowPreviewAsync()
         {
+            // Check if auto preview is enabled
+            var settings = _settingsService.Settings.PreviewSettings;
+            if (!settings.AutoPreview)
+            {
+                PreviewContent = null;
+                PreviewStatus = "";
+                IsPreviewLoading = false;
+                return;
+            }
+
             // Cancel any ongoing preview operation
             _previewCancellationTokenSource?.Cancel();
             _previewCancellationTokenSource = new CancellationTokenSource();

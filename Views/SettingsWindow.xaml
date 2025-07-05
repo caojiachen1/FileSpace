@@ -46,7 +46,8 @@
                                 <ColumnDefinition Width="80"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="主题:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <ComboBox x:Name="ThemeComboBox" Grid.Column="1" Margin="0,0,10,0">
+                            <ComboBox x:Name="ThemeComboBox" Grid.Column="1" Margin="0,0,10,0" 
+                                      SelectionChanged="ThemeComboBox_SelectionChanged">
                                 <ComboBoxItem Content="深色主题" Tag="Dark"/>
                                 <ComboBoxItem Content="浅色主题" Tag="Light"/>
                                 <ComboBoxItem Content="跟随系统" Tag="Auto"/>
@@ -61,7 +62,8 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="字体大小:" VerticalAlignment="Center" Margin="0,0,10,0"/>
                             <Slider x:Name="FontSizeSlider" Grid.Column="1" Minimum="10" Maximum="18" 
-                                    Value="12" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
+                                    Value="12" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,10,0"
+                                    ValueChanged="FontSizeSlider_ValueChanged"/>
                             <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider, StringFormat={}{0:F0}pt}" 
                                        VerticalAlignment="Center"/>
                         </Grid>
@@ -112,7 +114,8 @@
                 <ui:CardExpander Icon="Eye24" Header="预览设置" Margin="0,0,0,10">
                     <StackPanel Margin="20,15">
                         <CheckBox x:Name="EnablePreviewCheckBox" Content="启用文件预览" Margin="0,5"
-                                  ToolTip="在右侧面板显示文件预览"/>
+                                  ToolTip="在右侧面板显示文件预览"
+                                  Checked="EnablePreviewCheckBox_Checked" Unchecked="EnablePreviewCheckBox_Unchecked"/>
                         <CheckBox x:Name="AutoPreviewCheckBox" Content="自动预览选中文件" Margin="0,5"
                                   ToolTip="选中文件时自动显示预览"/>
                         

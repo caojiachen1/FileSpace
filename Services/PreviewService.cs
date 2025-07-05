@@ -22,6 +22,13 @@ namespace FileSpace.Services
         {
             if (file == null) return null;
 
+            // Check if preview is enabled
+            var settings = SettingsService.Instance.Settings.PreviewSettings;
+            if (!settings.EnablePreview)
+            {
+                return PreviewUIHelper.CreateInfoPanel("预览已禁用", "在设置中启用预览功能以查看文件内容");
+            }
+
             if (file.IsDirectory)
             {
                 return await GenerateDirectoryPreviewAsync(file, cancellationToken);

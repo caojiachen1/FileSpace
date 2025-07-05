@@ -41,6 +41,13 @@ namespace FileSpace.Services
 
         public void QueueFolderSizeCalculation(string folderPath, object? context = null, bool highPriority = false)
         {
+            // Check if background size calculation is enabled
+            var settings = SettingsService.Instance.Settings.PerformanceSettings;
+            if (!settings.EnableBackgroundSizeCalculation)
+            {
+                return;
+            }
+
             var normalizedPath = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar);
             
             // Check cache first

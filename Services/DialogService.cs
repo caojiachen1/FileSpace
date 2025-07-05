@@ -30,6 +30,13 @@ namespace FileSpace.Services
 
         public bool ConfirmDelete(int itemCount, bool permanent = false)
         {
+            // Check if confirmation is enabled in settings
+            var settings = SettingsService.Instance.Settings.FileOperationSettings;
+            if (!settings.ConfirmDelete)
+            {
+                return true; // Skip confirmation if disabled
+            }
+
             var title = permanent ? "确认永久删除" : "确认删除";
             var actionText = permanent ? "永久删除" : "删除";
             var warningText = permanent 

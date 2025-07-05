@@ -267,10 +267,8 @@ namespace FileSpace.Views
                 // Settings were changed, apply them immediately
                 if (DataContext is MainViewModel viewModel)
                 {
-                    // Apply font settings to main window
-                    SettingsService.Instance.ApplyFontSettings(this);
-                    
-                    // Apply theme settings
+                    // Apply font and theme settings globally
+                    SettingsService.Instance.ApplyFontSettings();
                     SettingsService.Instance.ApplyThemeSettings();
                     
                     // Refresh file list to apply visibility filters
@@ -281,30 +279,22 @@ namespace FileSpace.Views
                     {
                         file.RefreshDisplayName();
                     }
-                    
-                    // Update UI with new settings
-                    UpdateUIFromSettings();
                 }
             }
         }
 
         private void UpdateUIFromSettings()
         {
+            // Font settings are now applied globally through App.xaml
+            // No need for manual font updates here
+            
+            // Apply other UI-specific settings if needed
             var settings = SettingsService.Instance.Settings;
             
-            // Update font settings
-            FontFamily = new System.Windows.Media.FontFamily(settings.UISettings.FontFamily);
-            FontSize = settings.UISettings.FontSize;
-            
-            // Apply to child controls if needed
-            if (DirectoryTreeView != null)
+            // Example: Apply window-specific settings
+            if (settings.WindowSettings.RememberWindowPosition)
             {
-                DirectoryTreeView.FontSize = settings.UISettings.FontSize;
-            }
-            
-            if (FileDataGrid != null)
-            {
-                FileDataGrid.FontSize = settings.UISettings.FontSize;
+                SettingsService.Instance.ApplyWindowSettings(this);
             }
         }
 

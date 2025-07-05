@@ -140,32 +140,16 @@ namespace FileSpace.Services
         public void ApplyThemeSettings()
         {
             var theme = _settings.UISettings.Theme;
-            
-            // Apply theme using the App class method
-            try
-            {
-                var appType = Type.GetType("FileSpace.App");
-                var changeThemeMethod = appType?.GetMethod("ChangeTheme", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                changeThemeMethod?.Invoke(null, new object[] { theme });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to apply theme: {ex.Message}");
-            }
+            App.ChangeTheme(theme);
         }
 
         /// <summary>
         /// 应用字体设置
         /// </summary>
-        public void ApplyFontSettings(Window window)
+        public void ApplyFontSettings()
         {
-            if (window == null) return;
-            
             var fontSettings = _settings.UISettings;
-            
-            // Apply font family and size
-            window.FontFamily = new System.Windows.Media.FontFamily(fontSettings.FontFamily);
-            window.FontSize = fontSettings.FontSize;
+            App.UpdateGlobalFont(fontSettings.FontFamily, fontSettings.FontSize);
         }
 
         /// <summary>
