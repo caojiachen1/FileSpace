@@ -66,6 +66,13 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private string _newFileName = string.Empty;
 
+        // Panel visibility properties for VS Code-like experience
+        [ObservableProperty]
+        private bool _isLeftPanelVisible = true;
+
+        [ObservableProperty]
+        private bool _isRightPanelVisible = true;
+
         private CancellationTokenSource? _previewCancellationTokenSource;
         private CancellationTokenSource? _fileOperationCancellationTokenSource;
         private readonly SemaphoreSlim _previewSemaphore = new(1, 1);
@@ -87,6 +94,10 @@ namespace FileSpace.ViewModels
             _fileOperationEventHandler = new FileOperationEventHandler(this);
             _folderPreviewUpdateService = new FolderPreviewUpdateService();
             _navigationService = new NavigationService(this);
+            
+            // Load panel visibility settings
+            LoadPanelSettings();
+            
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -97,6 +108,17 @@ namespace FileSpace.ViewModels
             FileOperationsService.Instance.OperationProgress += _fileOperationEventHandler.OnFileOperationProgress;
             FileOperationsService.Instance.OperationCompleted += _fileOperationEventHandler.OnFileOperationCompleted;
             FileOperationsService.Instance.OperationFailed += _fileOperationEventHandler.OnFileOperationFailed;
+        }
+
+        /// <summary>
+        /// 从设置加载面板可见性状态
+        /// </summary>
+        private void LoadPanelSettings()
+        {
+            var uiSettings = _settingsService.Settings.UISettings;
+            IsLeftPanelVisible = uiSettings.IsLeftPanelVisible;
+            IsRightPanelVisible = uiSettings.IsRightPanelVisible;
+            // Center panel is always visible
         }
 
         partial void OnCurrentPathChanged(string value)
@@ -344,6 +366,23 @@ namespace FileSpace.ViewModels
         private void Up()
         {
             _navigationService.Up();
+        }
+
+        // Panel toggle commands for VS Code-like experience
+        [RelayCommand]
+        private void ToggleLeftPanel()
+        {
+            IsLeftPanelVisible = !IsLeftPanelVisible;
+            _settingsService.Settings.UISettings.IsLeftPanelVisible = IsLeftPanelVisible;
+            _settingsService.SaveSettings();
+        }
+
+        [RelayCommand]
+        private void ToggleRightPanel()
+        {
+            IsRightPanelVisible = !IsRightPanelVisible;
+            _settingsService.Settings.UISettings.IsRightPanelVisible = IsRightPanelVisible;
+            _settingsService.SaveSettings();
         }
 
         [RelayCommand]
@@ -731,14 +770,9 @@ namespace FileSpace.ViewModels
                 // Refresh the current directory
                 LoadFiles();
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                StatusText = "重命名失败: 没有权限";
-                IsFileOperationInProgress = false;
-            }
-            catch (IOException ex)
-            {
-                StatusText = $"重命名失败: {ex.Message}";
+                StatusText = $"重命名失败: 没有权限 - {ex.Message}";
                 IsFileOperationInProgress = false;
             }
             catch (Exception ex)

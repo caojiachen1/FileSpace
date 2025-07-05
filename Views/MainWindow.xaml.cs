@@ -25,6 +25,27 @@ namespace FileSpace.Views
             
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
+            
+            // 设置键盘快捷键
+            SetupKeyboardShortcuts();
+        }
+
+        /// <summary>
+        /// 设置键盘快捷键
+        /// </summary>
+        private void SetupKeyboardShortcuts()
+        {
+            // Alt+1: 切换左侧面板
+            var toggleLeftPanelGesture = new KeyGesture(Key.D1, ModifierKeys.Alt);
+            var toggleLeftPanelCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(toggleLeftPanelCommand, (s, e) => ViewModel.ToggleLeftPanelCommand.Execute(null)));
+            InputBindings.Add(new InputBinding(toggleLeftPanelCommand, toggleLeftPanelGesture));
+
+            // Alt+2: 切换右侧面板（预览面板）
+            var toggleRightPanelGesture = new KeyGesture(Key.D2, ModifierKeys.Alt);
+            var toggleRightPanelCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(toggleRightPanelCommand, (s, e) => ViewModel.ToggleRightPanelCommand.Execute(null)));
+            InputBindings.Add(new InputBinding(toggleRightPanelCommand, toggleRightPanelGesture));
         }
 
         private void DirectoryTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)

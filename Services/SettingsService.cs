@@ -368,6 +368,21 @@ namespace FileSpace.Services
         /// 主题设置
         /// </summary>
         public string Theme { get; set; } = "Dark";
+
+        /// <summary>
+        /// 左侧面板可见性（文件夹树）
+        /// </summary>
+        public bool IsLeftPanelVisible { get; set; } = true;
+
+        /// <summary>
+        /// 中央面板可见性（文件列表）
+        /// </summary>
+        public bool IsCenterPanelVisible { get; set; } = true;
+
+        /// <summary>
+        /// 右侧面板可见性（文件预览）
+        /// </summary>
+        public bool IsRightPanelVisible { get; set; } = true;
     }
 
     /// <summary>
