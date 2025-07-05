@@ -264,9 +264,15 @@ namespace FileSpace.Views
             
             if (settingsWindow.ShowDialog() == true)
             {
-                // Settings were changed, refresh the file list and notify DisplayName property changes
+                // Settings were changed, apply them immediately
                 if (DataContext is MainViewModel viewModel)
                 {
+                    // Apply font settings to main window
+                    SettingsService.Instance.ApplyFontSettings(this);
+                    
+                    // Apply theme settings
+                    SettingsService.Instance.ApplyThemeSettings();
+                    
                     // Refresh file list to apply visibility filters
                     viewModel.RefreshCommand.Execute(null);
                     
@@ -275,7 +281,30 @@ namespace FileSpace.Views
                     {
                         file.RefreshDisplayName();
                     }
+                    
+                    // Update UI with new settings
+                    UpdateUIFromSettings();
                 }
+            }
+        }
+
+        private void UpdateUIFromSettings()
+        {
+            var settings = SettingsService.Instance.Settings;
+            
+            // Update font settings
+            FontFamily = new System.Windows.Media.FontFamily(settings.UISettings.FontFamily);
+            FontSize = settings.UISettings.FontSize;
+            
+            // Apply to child controls if needed
+            if (DirectoryTreeView != null)
+            {
+                DirectoryTreeView.FontSize = settings.UISettings.FontSize;
+            }
+            
+            if (FileDataGrid != null)
+            {
+                FileDataGrid.FontSize = settings.UISettings.FontSize;
             }
         }
 

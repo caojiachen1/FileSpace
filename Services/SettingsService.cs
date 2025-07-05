@@ -21,6 +21,12 @@ namespace FileSpace.Services
             Directory.CreateDirectory(appDataPath);
             _settingsFilePath = Path.Combine(appDataPath, "settings.json");
             _settings = LoadSettings();
+            
+            // Validate and fix any invalid settings
+            if (!ValidateSettings())
+            {
+                SaveSettings(); // Save corrected settings
+            }
         }
 
         /// <summary>
@@ -127,6 +133,162 @@ namespace FileSpace.Services
                 window.WindowState = settings.WindowState;
             }
         }
+
+        /// <summary>
+        /// 应用主题设置
+        /// </summary>
+        public void ApplyThemeSettings()
+        {
+            var theme = _settings.UISettings.Theme;
+            
+            // Apply theme using the App class method
+            try
+            {
+                var appType = Type.GetType("FileSpace.App");
+                var changeThemeMethod = appType?.GetMethod("ChangeTheme", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                changeThemeMethod?.Invoke(null, new object[] { theme });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply theme: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 应用字体设置
+        /// </summary>
+        public void ApplyFontSettings(Window window)
+        {
+            if (window == null) return;
+            
+            var fontSettings = _settings.UISettings;
+            
+            // Apply font family and size
+            window.FontFamily = new System.Windows.Media.FontFamily(fontSettings.FontFamily);
+            window.FontSize = fontSettings.FontSize;
+        }
+
+        /// <summary>
+        /// 获取最近路径列表
+        /// </summary>
+        public List<string> GetRecentPaths()
+        {
+            return _settings.RecentPaths.Take(10).ToList();
+        }
+
+        /// <summary>
+        /// 添加最近访问路径
+        /// </summary>
+        public void AddRecentPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+            
+            // Remove if already exists
+            _settings.RecentPaths.Remove(path);
+            
+            // Add to beginning
+            _settings.RecentPaths.Insert(0, path);
+            
+            // Keep only last 10
+            if (_settings.RecentPaths.Count > 10)
+            {
+                _settings.RecentPaths.RemoveRange(10, _settings.RecentPaths.Count - 10);
+            }
+            
+            SaveSettings();
+        }
+
+        /// <summary>
+        /// 验证设置的有效性
+        /// </summary>
+        public bool ValidateSettings()
+        {
+            try
+            {
+                var settings = _settings;
+                
+                // 验证字体大小
+                if (settings.UISettings.FontSize < 8 || settings.UISettings.FontSize > 24)
+                {
+                    settings.UISettings.FontSize = 12;
+                }
+                
+                // 验证缓存大小
+                if (settings.PerformanceSettings.ThumbnailCacheSize < 10 || settings.PerformanceSettings.ThumbnailCacheSize > 1000)
+                {
+                    settings.PerformanceSettings.ThumbnailCacheSize = 200;
+                }
+                
+                // 验证线程数
+                if (settings.PerformanceSettings.MaxConcurrentThreads < 1 || settings.PerformanceSettings.MaxConcurrentThreads > 32)
+                {
+                    settings.PerformanceSettings.MaxConcurrentThreads = Environment.ProcessorCount;
+                }
+                
+                // 验证预览文件大小
+                if (settings.PreviewSettings.MaxPreviewFileSize < 1 || settings.PreviewSettings.MaxPreviewFileSize > 1000)
+                {
+                    settings.PreviewSettings.MaxPreviewFileSize = 100;
+                }
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Settings validation failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 备份当前设置
+        /// </summary>
+        public bool BackupSettings()
+        {
+            try
+            {
+                var backupPath = Path.ChangeExtension(_settingsFilePath, ".backup");
+                var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                File.WriteAllText(backupPath, json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Settings backup failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 恢复备份设置
+        /// </summary>
+        public bool RestoreBackup()
+        {
+            try
+            {
+                var backupPath = Path.ChangeExtension(_settingsFilePath, ".backup");
+                if (File.Exists(backupPath))
+                {
+                    var json = File.ReadAllText(backupPath);
+                    var backupSettings = JsonSerializer.Deserialize<AppSettings>(json);
+                    if (backupSettings != null)
+                    {
+                        _settings = backupSettings;
+                        SaveSettings();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Settings restore failed: {ex.Message}");
+                return false;
+            }
+        }
     }
 
     /// <summary>
@@ -153,6 +315,11 @@ namespace FileSpace.Services
         /// 性能设置
         /// </summary>
         public PerformanceSettings PerformanceSettings { get; set; } = new();
+
+        /// <summary>
+        /// 文件操作设置
+        /// </summary>
+        public FileOperationSettings FileOperationSettings { get; set; } = new();
 
         /// <summary>
         /// 最近访问的路径
@@ -324,5 +491,36 @@ namespace FileSpace.Services
         /// 文件加载批次大小
         /// </summary>
         public int FileBatchSize { get; set; } = 1000;
+    }
+
+    /// <summary>
+    /// 文件操作设置
+    /// </summary>
+    public class FileOperationSettings
+    {
+        /// <summary>
+        /// 删除文件时显示确认对话框
+        /// </summary>
+        public bool ConfirmDelete { get; set; } = true;
+
+        /// <summary>
+        /// 删除时移动到回收站
+        /// </summary>
+        public bool MoveToRecycleBin { get; set; } = true;
+
+        /// <summary>
+        /// 显示文件操作进度对话框
+        /// </summary>
+        public bool ShowProgressDialog { get; set; } = true;
+
+        /// <summary>
+        /// 自动重试失败的操作
+        /// </summary>
+        public bool AutoRetryFailedOperations { get; set; } = true;
+
+        /// <summary>
+        /// 默认复制缓冲区大小 (KB)
+        /// </summary>
+        public int CopyBufferSize { get; set; } = 1024;
     }
 }

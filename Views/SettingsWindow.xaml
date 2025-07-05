@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
-        Title="设置" Height="400" Width="500"
+        Title="设置" Height="600" Width="650"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         ExtendsContentIntoTitleBar="True"
@@ -22,36 +22,174 @@
         <ui:TitleBar Grid.Row="0" Title="设置" ShowMinimize="False" ShowMaximize="False" ShowClose="True"/>
 
         <!-- Main Content -->
-        <StackPanel Grid.Row="1" Margin="30">
-            <TextBlock Text="设置" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
-            
-            <TextBlock Text="界面设置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
-            
-            <CheckBox x:Name="ShowHiddenFilesCheckBox" Content="显示隐藏文件" Margin="0,5"/>
-            <CheckBox x:Name="ShowSystemFilesCheckBox" Content="显示系统文件" Margin="0,5"/>
-            <CheckBox x:Name="ShowFileExtensionsCheckBox" Content="显示文件扩展名" Margin="0,5"/>
-            
-            <TextBlock Text="性能设置" FontSize="16" FontWeight="SemiBold" Margin="0,20,0,10"/>
-            
-            <CheckBox x:Name="EnableBackgroundSizeCalculationCheckBox" Content="启用后台文件夹大小计算" Margin="0,5"/>
-            <CheckBox x:Name="EnableVirtualizationCheckBox" Content="启用文件列表虚拟化" Margin="0,5"/>
-            <CheckBox x:Name="EnableFileWatchingCheckBox" Content="启用文件监视" Margin="0,5"/>
-            
-            <TextBlock Text="预览设置" FontSize="16" FontWeight="SemiBold" Margin="0,20,0,10"/>
-            
-            <CheckBox x:Name="EnablePreviewCheckBox" Content="启用文件预览" Margin="0,5"/>
-            <CheckBox x:Name="AutoPreviewCheckBox" Content="自动预览选中文件" Margin="0,5"/>
-        </StackPanel>
+        <ScrollViewer Grid.Row="1" Margin="20" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="设置" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                
+                <!-- 界面设置 -->
+                <ui:CardExpander Icon="WindowSettings24" Header="界面设置" IsExpanded="True" Margin="0,0,0,10">
+                    <StackPanel Margin="20,15">
+                        <CheckBox x:Name="ShowHiddenFilesCheckBox" Content="显示隐藏文件" Margin="0,5"
+                                  ToolTip="显示系统隐藏的文件和文件夹"/>
+                        <CheckBox x:Name="ShowSystemFilesCheckBox" Content="显示系统文件" Margin="0,5"
+                                  ToolTip="显示受保护的操作系统文件"/>
+                        <CheckBox x:Name="ShowFileExtensionsCheckBox" Content="显示文件扩展名" Margin="0,5"
+                                  ToolTip="在文件名中显示文件扩展名"/>
+                        
+                        <Separator Margin="0,10"/>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="主题:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox x:Name="ThemeComboBox" Grid.Column="1" Margin="0,0,10,0">
+                                <ComboBoxItem Content="深色主题" Tag="Dark"/>
+                                <ComboBoxItem Content="浅色主题" Tag="Light"/>
+                                <ComboBoxItem Content="跟随系统" Tag="Auto"/>
+                            </ComboBox>
+                        </Grid>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="字体大小:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="FontSizeSlider" Grid.Column="1" Minimum="10" Maximum="18" 
+                                    Value="12" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider, StringFormat={}{0:F0}pt}" 
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </ui:CardExpander>
+                
+                <!-- 性能设置 -->
+                <ui:CardExpander Icon="Flash24" Header="性能设置" Margin="0,0,0,10">
+                    <StackPanel Margin="20,15">
+                        <CheckBox x:Name="EnableBackgroundSizeCalculationCheckBox" Content="启用后台文件夹大小计算" Margin="0,5"
+                                  ToolTip="在后台计算文件夹大小，可能会影响性能"/>
+                        <CheckBox x:Name="EnableVirtualizationCheckBox" Content="启用文件列表虚拟化" Margin="0,5"
+                                  ToolTip="在大文件夹中提高滚动性能"/>
+                        <CheckBox x:Name="EnableFileWatchingCheckBox" Content="启用文件监视" Margin="0,5"
+                                  ToolTip="自动检测文件变化并更新列表"/>
+                        
+                        <Separator Margin="0,10"/>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="缓存大小:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="CacheSizeSlider" Grid.Column="1" Minimum="50" Maximum="500" 
+                                    Value="200" TickFrequency="50" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=CacheSizeSlider, StringFormat={}{0:F0}MB}" 
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="最大线程数:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="MaxThreadsSlider" Grid.Column="1" Minimum="1" Maximum="16" 
+                                    Value="4" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=MaxThreadsSlider, StringFormat={}{0:F0}}" 
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </ui:CardExpander>
+                
+                <!-- 预览设置 -->
+                <ui:CardExpander Icon="Eye24" Header="预览设置" Margin="0,0,0,10">
+                    <StackPanel Margin="20,15">
+                        <CheckBox x:Name="EnablePreviewCheckBox" Content="启用文件预览" Margin="0,5"
+                                  ToolTip="在右侧面板显示文件预览"/>
+                        <CheckBox x:Name="AutoPreviewCheckBox" Content="自动预览选中文件" Margin="0,5"
+                                  ToolTip="选中文件时自动显示预览"/>
+                        
+                        <Separator Margin="0,10"/>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="最大预览文件:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="MaxPreviewSizeSlider" Grid.Column="1" Minimum="10" Maximum="500" 
+                                    Value="100" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=MaxPreviewSizeSlider, StringFormat={}{0:F0}MB}" 
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        
+                        <Grid Margin="0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="图片预览质量:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox x:Name="ImageQualityComboBox" Grid.Column="1">
+                                <ComboBoxItem Content="低质量 (快速)" Tag="Low"/>
+                                <ComboBoxItem Content="中等质量" Tag="Medium"/>
+                                <ComboBoxItem Content="高质量 (慢速)" Tag="High"/>
+                            </ComboBox>
+                        </Grid>
+                    </StackPanel>
+                </ui:CardExpander>
+                
+                <!-- 文件操作设置 -->
+                <ui:CardExpander Icon="FolderSettings24" Header="文件操作设置" Margin="0,0,0,10">
+                    <StackPanel Margin="20,15">
+                        <CheckBox x:Name="ConfirmDeleteCheckBox" Content="删除文件时显示确认对话框" Margin="0,5"
+                                  ToolTip="删除文件前要求确认"/>
+                        <CheckBox x:Name="MoveToRecycleBinCheckBox" Content="删除时移动到回收站" Margin="0,5"
+                                  ToolTip="删除的文件移动到回收站而不是永久删除"/>
+                        <CheckBox x:Name="RememberWindowPositionCheckBox" Content="记住窗口位置和大小" Margin="0,5"
+                                  ToolTip="下次启动时恢复窗口位置"/>
+                        <CheckBox x:Name="ShowProgressDialogCheckBox" Content="文件操作时显示进度对话框" Margin="0,5"
+                                  ToolTip="复制、移动文件时显示进度"/>
+                    </StackPanel>
+                </ui:CardExpander>
+                
+                <!-- 关于信息 -->
+                <ui:CardExpander Icon="Info24" Header="关于" Margin="0,0,0,20">
+                    <StackPanel Margin="20,15">
+                        <TextBlock Text="FileSpace 文件管理器" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBlock Text="版本: 1.0.0" Margin="0,0,0,5"/>
+                        <TextBlock Text="基于 WPF UI 3.0 构建" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <ui:Button Content="检查更新" Icon="ArrowSync24" Appearance="Secondary" Margin="0,0,10,0" Click="CheckUpdate_Click"/>
+                            <ui:Button Content="清除缓存" Icon="Delete24" Appearance="Secondary" Click="ClearCache_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ui:CardExpander>
+            </StackPanel>
+        </ScrollViewer>
 
         <!-- Bottom Panel - Buttons -->
         <Border Grid.Row="2" Background="{DynamicResource LayerFillColorDefaultBrush}" 
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
                 BorderThickness="0,1,0,0" Padding="20,15">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <ui:Button Content="重置为默认" Click="ResetToDefaults_Click" Margin="0,0,10,0" Appearance="Secondary"/>
-                <ui:Button Content="确定" Click="OK_Click" Margin="0,0,10,0" Appearance="Primary"/>
-                <ui:Button Content="取消" Click="Cancel_Click" Appearance="Secondary"/>
-            </StackPanel>
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <ui:Button Content="导入设置" Icon="DocumentArrowUp24" Appearance="Secondary" Margin="0,0,10,0" Click="ImportSettings_Click"/>
+                    <ui:Button Content="导出设置" Icon="DocumentArrowDown24" Appearance="Secondary" Click="ExportSettings_Click"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <ui:Button Content="重置为默认" Icon="ArrowReset24" Click="ResetToDefaults_Click" Margin="0,0,10,0" Appearance="Secondary"/>
+                    <ui:Button Content="确定" Icon="Checkmark24" Click="OK_Click" Margin="0,0,10,0" Appearance="Primary"/>
+                    <ui:Button Content="取消" Icon="Dismiss24" Click="Cancel_Click" Appearance="Secondary"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
     </Grid>

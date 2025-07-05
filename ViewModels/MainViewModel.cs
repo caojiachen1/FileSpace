@@ -102,6 +102,12 @@ namespace FileSpace.ViewModels
         partial void OnCurrentPathChanged(string value)
         {
             LoadFiles();
+            
+            // Add to recent paths if it's a valid directory
+            if (!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
+            {
+                _settingsService.AddRecentPath(value);
+            }
         }
 
         partial void OnSelectedFileChanged(FileItemModel? value)
@@ -131,7 +137,17 @@ namespace FileSpace.ViewModels
                     DirectoryTree.Add(item);
                 }
 
-                CurrentPath = initialPath;
+                // Check if we have a recent path to start with
+                var recentPaths = _settingsService.GetRecentPaths();
+                if (recentPaths.Count > 0 && Directory.Exists(recentPaths[0]))
+                {
+                    CurrentPath = recentPaths[0];
+                }
+                else
+                {
+                    CurrentPath = initialPath;
+                }
+                
                 StatusText = statusMessage;
             }
             catch (Exception ex)
