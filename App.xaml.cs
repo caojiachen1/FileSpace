@@ -19,7 +19,7 @@ namespace FileSpace
         {
             base.OnStartup(e);
             
-            // Apply saved theme and font settings
+            // Apply saved theme settings
             ApplySettingsFromConfiguration();
         }
 
@@ -29,9 +29,6 @@ namespace FileSpace
             
             // Apply theme
             ApplyTheme(settings.UISettings.Theme);
-            
-            // Apply global font settings
-            ApplyGlobalFontSettings(settings.UISettings.FontFamily, settings.UISettings.FontSize);
         }
 
         private void ApplyTheme(string themeName)
@@ -44,24 +41,6 @@ namespace FileSpace
             };
 
             ApplicationThemeManager.Apply(theme);
-        }
-
-        private void ApplyGlobalFontSettings(string fontFamily, double fontSize)
-        {
-            // Apply font settings to all windows
-            foreach (Window window in Windows)
-            {
-                if (window != null)
-                {
-                    window.FontFamily = new FontFamily(fontFamily);
-                    window.FontSize = fontSize;
-                }
-            }
-        }
-
-        public static void UpdateGlobalFont(string fontFamily, double fontSize)
-        {
-            Instance.ApplyGlobalFontSettings(fontFamily, fontSize);
         }
 
         public static void ChangeTheme(string themeName)

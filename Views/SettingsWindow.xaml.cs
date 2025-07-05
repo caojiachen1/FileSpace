@@ -6,8 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Navigation;
 using Wpf.Ui.Controls;
 using FileSpace.Services;
-using System.IO;
-using System.Text.Json;
 
 namespace FileSpace.Views
 {
@@ -45,8 +43,6 @@ namespace FileSpace.Views
                     break;
                 }
             }
-            
-            FontSizeSlider.Value = settings.UISettings.FontSize;
 
             // Performance Settings
             EnableBackgroundSizeCalculationCheckBox.IsChecked = settings.PerformanceSettings.EnableBackgroundSizeCalculation;
@@ -105,12 +101,11 @@ namespace FileSpace.Views
             settings.UISettings.ShowSystemFiles = ShowSystemFilesCheckBox.IsChecked ?? false;
             settings.UISettings.ShowFileExtensions = ShowFileExtensionsCheckBox.IsChecked ?? true;
             
-            // Theme and font settings
+            // Theme settings
             if (ThemeComboBox.SelectedItem is ComboBoxItem themeItem)
             {
                 settings.UISettings.Theme = themeItem.Tag?.ToString() ?? "Dark";
             }
-            settings.UISettings.FontSize = FontSizeSlider.Value;
             
             // Performance Settings
             settings.PerformanceSettings.EnableBackgroundSizeCalculation = EnableBackgroundSizeCalculationCheckBox.IsChecked ?? true;
@@ -135,7 +130,9 @@ namespace FileSpace.Views
             settings.FileOperationSettings.ShowProgressDialog = ShowProgressDialogCheckBox.IsChecked ?? true;
             settings.WindowSettings.RememberWindowPosition = RememberWindowPositionCheckBox.IsChecked ?? true;
             
+            // Save all settings
             _settingsService.SaveSettings();
+            
             DialogResult = true;
             Close();
         }
@@ -290,16 +287,6 @@ namespace FileSpace.Views
                         System.Windows.MessageBoxButton.OK,
                         System.Windows.MessageBoxImage.Error);
                 }
-            }
-        }
-
-        private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            // Real-time font preview
-            if (IsLoaded)
-            {
-                var newSize = e.NewValue;
-                FontSize = newSize;
             }
         }
 

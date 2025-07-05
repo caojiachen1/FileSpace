@@ -53,20 +53,6 @@
                                 <ComboBoxItem Content="跟随系统" Tag="Auto"/>
                             </ComboBox>
                         </Grid>
-                        
-                        <Grid Margin="0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="80"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="字体大小:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider x:Name="FontSizeSlider" Grid.Column="1" Minimum="10" Maximum="18" 
-                                    Value="12" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,10,0"
-                                    ValueChanged="FontSizeSlider_ValueChanged"/>
-                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=FontSizeSlider, StringFormat={}{0:F0}pt}" 
-                                       VerticalAlignment="Center"/>
-                        </Grid>
                     </StackPanel>
                 </ui:CardExpander>
                 

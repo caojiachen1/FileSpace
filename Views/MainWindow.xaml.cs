@@ -267,8 +267,7 @@ namespace FileSpace.Views
                 // Settings were changed, apply them immediately
                 if (DataContext is MainViewModel viewModel)
                 {
-                    // Apply font and theme settings globally
-                    SettingsService.Instance.ApplyFontSettings();
+                    // Apply theme settings globally
                     SettingsService.Instance.ApplyThemeSettings();
                     
                     // Refresh file list to apply visibility filters

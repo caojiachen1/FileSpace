@@ -144,15 +144,6 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 应用字体设置
-        /// </summary>
-        public void ApplyFontSettings()
-        {
-            var fontSettings = _settings.UISettings;
-            App.UpdateGlobalFont(fontSettings.FontFamily, fontSettings.FontSize);
-        }
-
-        /// <summary>
         /// 获取最近路径列表
         /// </summary>
         public List<string> GetRecentPaths()
@@ -190,12 +181,6 @@ namespace FileSpace.Services
             try
             {
                 var settings = _settings;
-                
-                // 验证字体大小
-                if (settings.UISettings.FontSize < 8 || settings.UISettings.FontSize > 24)
-                {
-                    settings.UISettings.FontSize = 12;
-                }
                 
                 // 验证缓存大小
                 if (settings.PerformanceSettings.ThumbnailCacheSize < 10 || settings.PerformanceSettings.ThumbnailCacheSize > 1000)
@@ -383,16 +368,6 @@ namespace FileSpace.Services
         /// 主题设置
         /// </summary>
         public string Theme { get; set; } = "Dark";
-
-        /// <summary>
-        /// 字体设置
-        /// </summary>
-        public string FontFamily { get; set; } = "Segoe UI";
-
-        /// <summary>
-        /// 字体大小
-        /// </summary>
-        public double FontSize { get; set; } = 12;
     }
 
     /// <summary>
