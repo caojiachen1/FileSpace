@@ -16,6 +16,10 @@ namespace FileSpace.Views
     public partial class MainWindow : FluentWindow
     {
         public MainViewModel ViewModel { get; }
+        
+        // 保存用户自定义的面板大小
+        private double _leftPanelWidth = 250;
+        private double _rightPanelWidth = 300;
 
         public MainWindow()
         {
@@ -26,8 +30,103 @@ namespace FileSpace.Views
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
             
+            // 订阅面板可见性变化事件
+            ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            
             // 设置键盘快捷键
             SetupKeyboardShortcuts();
+            
+            // 初始化后保存GridSplitter变化事件
+            this.Loaded += OnMainWindowLoaded;
+        }
+
+        private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            // 监听GridSplitter的大小变化来保存用户自定义的大小
+            var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
+            var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
+            
+            if (leftColumn != null)
+            {
+                leftColumn.Width = new GridLength(_leftPanelWidth);
+            }
+            if (rightColumn != null)
+            {
+                rightColumn.Width = new GridLength(_rightPanelWidth);
+            }
+        }
+
+        /// <summary>
+        /// 处理ViewModel属性变化
+        /// </summary>
+        private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainViewModel.IsLeftPanelVisible))
+            {
+                UpdateLeftPanelVisibility();
+            }
+            else if (e.PropertyName == nameof(MainViewModel.IsRightPanelVisible))
+            {
+                UpdateRightPanelVisibility();
+            }
+        }
+
+        /// <summary>
+        /// 更新左侧面板可见性
+        /// </summary>
+        private void UpdateLeftPanelVisibility()
+        {
+            var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
+            var leftSplitterColumn = FindName("LeftSplitterColumn") as ColumnDefinition;
+            
+            if (leftColumn != null && leftSplitterColumn != null)
+            {
+                if (ViewModel.IsLeftPanelVisible)
+                {
+                    // 恢复用户自定义的大小
+                    leftColumn.Width = new GridLength(_leftPanelWidth);
+                    leftSplitterColumn.Width = new GridLength(5);
+                }
+                else
+                {
+                    // 隐藏前保存当前大小
+                    if (leftColumn.Width.Value > 0)
+                    {
+                        _leftPanelWidth = leftColumn.Width.Value;
+                    }
+                    leftColumn.Width = new GridLength(0);
+                    leftSplitterColumn.Width = new GridLength(0);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新右侧面板可见性
+        /// </summary>
+        private void UpdateRightPanelVisibility()
+        {
+            var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
+            var rightSplitterColumn = FindName("RightSplitterColumn") as ColumnDefinition;
+            
+            if (rightColumn != null && rightSplitterColumn != null)
+            {
+                if (ViewModel.IsRightPanelVisible)
+                {
+                    // 恢复用户自定义的大小
+                    rightColumn.Width = new GridLength(_rightPanelWidth);
+                    rightSplitterColumn.Width = new GridLength(5);
+                }
+                else
+                {
+                    // 隐藏前保存当前大小
+                    if (rightColumn.Width.Value > 0)
+                    {
+                        _rightPanelWidth = rightColumn.Width.Value;
+                    }
+                    rightColumn.Width = new GridLength(0);
+                    rightSplitterColumn.Width = new GridLength(0);
+                }
+            }
         }
 
         /// <summary>
@@ -63,22 +162,25 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+            if (fileDataGrid == null) return;
+            
             // Check if click is on empty area (not on a DataGridRow)
-            var hitTest = VisualTreeHelper.HitTest(FileDataGrid, e.GetPosition(FileDataGrid));
+            var hitTest = VisualTreeHelper.HitTest(fileDataGrid, e.GetPosition(fileDataGrid));
             if (hitTest != null)
             {
                 var dataGridRow = FindAncestor<DataGridRow>(hitTest.VisualHit);
                 if (dataGridRow == null)
                 {
                     // Clicked on empty area, clear selection
-                    FileDataGrid.SelectedItems.Clear();
+                    fileDataGrid.SelectedItems.Clear();
                     if (DataContext is MainViewModel viewModel)
                     {
                         viewModel.SelectedFiles.Clear();
                     }
                     
                     // Ensure the DataGrid gets focus for keyboard shortcuts
-                    FileDataGrid.Focus();
+                    fileDataGrid.Focus();
                 }
             }
         }
@@ -125,10 +227,14 @@ namespace FileSpace.Views
         {
             if (DataContext is MainViewModel viewModel)
             {
-                viewModel.SelectedFiles.Clear();
-                foreach (FileItemModel item in FileDataGrid.SelectedItems)
+                var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                if (fileDataGrid != null)
                 {
-                    viewModel.SelectedFiles.Add(item);
+                    viewModel.SelectedFiles.Clear();
+                    foreach (FileItemModel item in fileDataGrid.SelectedItems)
+                    {
+                        viewModel.SelectedFiles.Add(item);
+                    }
                 }
             }
         }
@@ -170,9 +276,13 @@ namespace FileSpace.Views
                         else
                         {
                             // Clear selection on Escape when not renaming
-                            FileDataGrid.SelectedItems.Clear();
-                            viewModel.SelectedFiles.Clear();
-                            e.Handled = true;
+                            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                            if (fileDataGrid != null)
+                            {
+                                fileDataGrid.SelectedItems.Clear();
+                                viewModel.SelectedFiles.Clear();
+                                e.Handled = true;
+                            }
                         }
                         break;
                     case Key.Back:
@@ -344,7 +454,32 @@ namespace FileSpace.Views
         private void OnSelectAllRequested(object? sender, EventArgs e)
         {
             // 选择 DataGrid 中的所有项目
-            FileDataGrid.SelectAll();
+            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+            fileDataGrid?.SelectAll();
+        }
+
+        /// <summary>
+        /// 左侧GridSplitter拖拽完成事件
+        /// </summary>
+        private void LeftGridSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
+            if (leftColumn != null && leftColumn.Width.Value > 0)
+            {
+                _leftPanelWidth = leftColumn.Width.Value;
+            }
+        }
+
+        /// <summary>
+        /// 右侧GridSplitter拖拽完成事件
+        /// </summary>
+        private void RightGridSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
+            if (rightColumn != null && rightColumn.Width.Value > 0)
+            {
+                _rightPanelWidth = rightColumn.Width.Value;
+            }
         }
     }
 }

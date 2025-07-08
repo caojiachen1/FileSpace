@@ -353,68 +353,24 @@
         </Grid>
 
         <!-- Main Content -->
-        <Grid Grid.Row="2" Margin="10,0">
+        <Grid Grid.Row="2" Margin="10,0" x:Name="MainContentGrid">
             <Grid.ColumnDefinitions>
                 <!-- Left Panel (Directory Tree) -->
-                <ColumnDefinition x:Name="LeftPanelColumn">
-                    <ColumnDefinition.Style>
-                        <Style TargetType="ColumnDefinition">
-                            <Setter Property="Width" Value="250"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsLeftPanelVisible}" Value="False">
-                                    <Setter Property="Width" Value="0"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ColumnDefinition.Style>
-                </ColumnDefinition>
-                <!-- Left Splitter -->
-                <ColumnDefinition x:Name="LeftSplitterColumn">
-                    <ColumnDefinition.Style>
-                        <Style TargetType="ColumnDefinition">
-                            <Setter Property="Width" Value="5"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsLeftPanelVisible}" Value="False">
-                                    <Setter Property="Width" Value="0"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ColumnDefinition.Style>
-                </ColumnDefinition>
-                <!-- Center Panel (File List) - Always visible -->
+                <ColumnDefinition x:Name="LeftPanelColumn" Width="250" MinWidth="0"/>
+                <!-- Shared Left Splitter -->
+                <ColumnDefinition x:Name="LeftSplitterColumn" Width="Auto" MinWidth="0"/>
+                <!-- Center Panel (File List) - Always visible, takes remaining space -->
                 <ColumnDefinition x:Name="CenterPanelColumn" Width="*"/>
-                <!-- Right Splitter -->
-                <ColumnDefinition x:Name="RightSplitterColumn">
-                    <ColumnDefinition.Style>
-                        <Style TargetType="ColumnDefinition">
-                            <Setter Property="Width" Value="5"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsRightPanelVisible}" Value="False">
-                                    <Setter Property="Width" Value="0"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ColumnDefinition.Style>
-                </ColumnDefinition>
+                <!-- Shared Right Splitter -->
+                <ColumnDefinition x:Name="RightSplitterColumn" Width="Auto" MinWidth="0"/>
                 <!-- Right Panel (Preview) -->
-                <ColumnDefinition x:Name="RightPanelColumn">
-                    <ColumnDefinition.Style>
-                        <Style TargetType="ColumnDefinition">
-                            <Setter Property="Width" Value="300"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsRightPanelVisible}" Value="False">
-                                    <Setter Property="Width" Value="0"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ColumnDefinition.Style>
-                </ColumnDefinition>
+                <ColumnDefinition x:Name="RightPanelColumn" Width="300" MinWidth="0"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left Panel - Directory Tree -->
             <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                    BorderThickness="1" CornerRadius="8"
+                    BorderThickness="1,1,0,1" CornerRadius="8,0,0,8"
                     Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -466,12 +422,59 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" 
                           Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
-                          Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                          DragCompleted="LeftGridSplitter_DragCompleted">
+                <GridSplitter.Style>
+                    <Style TargetType="GridSplitter">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <!-- Hide when left panel is hidden -->
+                            <DataTrigger Binding="{Binding IsLeftPanelVisible}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </GridSplitter.Style>
+            </GridSplitter>
 
             <!-- Center Panel - File List (Always visible) -->
             <Border Grid.Column="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
-                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                    BorderThickness="1" CornerRadius="8">
+                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <!-- Default style when both panels are visible -->
+                        <Setter Property="BorderThickness" Value="0,1,0,1"/>
+                        <Setter Property="CornerRadius" Value="0"/>
+                        <Style.Triggers>
+                            <!-- Left panel hidden, right panel visible -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
+                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="True"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="BorderThickness" Value="1,1,0,1"/>
+                                <Setter Property="CornerRadius" Value="8,0,0,8"/>
+                            </MultiDataTrigger>
+                            <!-- Left panel visible, right panel hidden -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="True"/>
+                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="BorderThickness" Value="0,1,1,1"/>
+                                <Setter Property="CornerRadius" Value="0,8,8,0"/>
+                            </MultiDataTrigger>
+                            <!-- Both panels hidden (center only) -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
+                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="CornerRadius" Value="8"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -688,12 +691,24 @@
 
             <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" 
                           Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
-                          Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                          DragCompleted="RightGridSplitter_DragCompleted">
+                <GridSplitter.Style>
+                    <Style TargetType="GridSplitter">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <!-- Hide when right panel is hidden -->
+                            <DataTrigger Binding="{Binding IsRightPanelVisible}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </GridSplitter.Style>
+            </GridSplitter>
 
             <!-- Right Panel - File Preview -->
             <Border Grid.Column="4" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                    BorderThickness="1" CornerRadius="8"
+                    BorderThickness="0,1,1,1" CornerRadius="0,8,8,0"
                     Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
