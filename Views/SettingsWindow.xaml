@@ -19,7 +19,7 @@
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
-        <ui:TitleBar Grid.Row="0" Title="设置" ShowMinimize="False" ShowMaximize="False" ShowClose="True"/>
+        <ui:TitleBar Grid.Row="0" Title="设置"/>
 
         <!-- Main Content -->
         <ScrollViewer Grid.Row="1" Margin="20" VerticalScrollBarVisibility="Auto">

@@ -749,7 +749,7 @@
         <!-- Status Bar -->
         <Border Grid.Row="3" Background="{DynamicResource ApplicationBackgroundBrush}" 
                 BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                BorderThickness="0,1,0,0" Height="30">
+                BorderThickness="0" Height="30">
             <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Margin="10,0" 
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
         </Border>
