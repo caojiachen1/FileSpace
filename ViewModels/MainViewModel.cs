@@ -15,6 +15,9 @@ namespace FileSpace.ViewModels
         // Event to notify UI to select all items in DataGrid
         public event EventHandler? SelectAllRequested;
         
+        // Event to notify UI to focus on address bar
+        public event EventHandler? FocusAddressBarRequested;
+        
         [ObservableProperty]
         private string _currentPath = string.Empty;
 
@@ -47,6 +50,12 @@ namespace FileSpace.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<FileItemModel> _selectedFiles = new();
+
+        [ObservableProperty]
+        private ObservableCollection<Folder> _folders = new();
+
+        [ObservableProperty]
+        private bool _isPathEditing = false;
 
         [ObservableProperty]
         private bool _isFileOperationInProgress;
@@ -124,6 +133,7 @@ namespace FileSpace.ViewModels
         partial void OnCurrentPathChanged(string value)
         {
             LoadFiles();
+            UpdateBreadcrumbFolders();
             
             // Add to recent paths if it's a valid directory
             if (!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
@@ -196,6 +206,77 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 StatusText = $"加载文件错误: {ex.Message}";
+            }
+        }
+
+        private void UpdateBreadcrumbFolders()
+        {
+            Folders.Clear();
+            
+            if (string.IsNullOrEmpty(CurrentPath))
+                return;
+
+            try
+            {
+                var path = CurrentPath;
+                var parts = new List<Folder>();
+
+                // Handle network paths
+                if (path.StartsWith("\\\\"))
+                {
+                    var networkParts = path.Split(new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (networkParts.Length >= 2)
+                    {
+                        // Add server name
+                        var serverPath = $"\\\\{networkParts[0]}";
+                        parts.Add(new Folder(serverPath));
+                        
+                        // Add share name if exists
+                        if (networkParts.Length >= 2)
+                        {
+                            var sharePath = $"{serverPath}\\{networkParts[1]}";
+                            parts.Add(new Folder(sharePath));
+                            
+                            // Add remaining folders
+                            var currentPath = sharePath;
+                            for (int i = 2; i < networkParts.Length; i++)
+                            {
+                                currentPath = Path.Combine(currentPath, networkParts[i]);
+                                parts.Add(new Folder(currentPath));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle regular paths
+                    var directoryInfo = new DirectoryInfo(path);
+                    var folders = new List<DirectoryInfo>();
+                    
+                    var current = directoryInfo;
+                    while (current != null)
+                    {
+                        folders.Add(current);
+                        current = current.Parent;
+                    }
+                    
+                    folders.Reverse();
+                    
+                    foreach (var folder in folders)
+                    {
+                        parts.Add(new Folder(folder.FullName));
+                    }
+                }
+
+                foreach (var folder in parts)
+                {
+                    Folders.Add(folder);
+                }
+            }
+            catch (Exception)
+            {
+                // If there's an error parsing the path, just show the full path as a single item
+                Folders.Add(new Folder(CurrentPath));
             }
         }
 
@@ -354,6 +435,25 @@ namespace FileSpace.ViewModels
         private void NavigateToPath(string? path)
         {
             _navigationService.NavigateToPath(path);
+        }
+
+        [RelayCommand]
+        private void NavigateToFolder(Folder folder)
+        {
+            if (folder != null && !string.IsNullOrEmpty(folder.FullPath))
+            {
+                _navigationService.NavigateToPath(folder.FullPath);
+            }
+        }
+
+        [RelayCommand]
+        private void TogglePathEdit()
+        {
+            IsPathEditing = !IsPathEditing;
+            if (IsPathEditing)
+            {
+                FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         [RelayCommand]

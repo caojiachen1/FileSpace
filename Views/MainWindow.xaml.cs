@@ -30,6 +30,9 @@ namespace FileSpace.Views
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
             
+            // 订阅地址栏焦点事件
+            ViewModel.FocusAddressBarRequested += OnFocusAddressBarRequested;
+            
             // 订阅面板可见性变化事件
             ViewModel.PropertyChanged += OnViewModelPropertyChanged;
             
@@ -145,6 +148,12 @@ namespace FileSpace.Views
             var toggleRightPanelCommand = new RoutedCommand();
             CommandBindings.Add(new CommandBinding(toggleRightPanelCommand, (s, e) => ViewModel.ToggleRightPanelCommand.Execute(null)));
             InputBindings.Add(new InputBinding(toggleRightPanelCommand, toggleRightPanelGesture));
+
+            // F2: 编辑地址栏
+            var editPathGesture = new KeyGesture(Key.F2);
+            var editPathCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(editPathCommand, (s, e) => ViewModel.TogglePathEditCommand.Execute(null)));
+            InputBindings.Add(new InputBinding(editPathCommand, editPathGesture));
         }
 
         private void DirectoryTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -206,6 +215,16 @@ namespace FileSpace.Views
             {
                 ViewModel.AddressBarEnterCommand.Execute(textBox.Text);
             }
+        }
+
+        private void AddressBar_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ViewModel.IsPathEditing = false;
+        }
+
+        private void BreadcrumbBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            ViewModel.TogglePathEditCommand.Execute(null);
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -456,6 +475,14 @@ namespace FileSpace.Views
             // 选择 DataGrid 中的所有项目
             var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
             fileDataGrid?.SelectAll();
+        }
+
+        private void OnFocusAddressBarRequested(object? sender, EventArgs e)
+        {
+            // 设置焦点到地址栏
+            var addressBar = FindName("AddressBar") as Wpf.Ui.Controls.TextBox;
+            addressBar?.Focus();
+            addressBar?.SelectAll();
         }
 
         /// <summary>

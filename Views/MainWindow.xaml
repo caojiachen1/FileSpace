@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileSpace.Views"
+        xmlns:models="clr-namespace:FileSpace.Models"
         xmlns:converters="clr-namespace:FileSpace.Converters"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         mc:Ignorable="d"
@@ -482,11 +483,34 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Address Bar -->
-                    <ui:TextBox Grid.Row="0" x:Name="AddressBar" Margin="10" 
-                                PlaceholderText="输入路径..." 
-                                Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}"
-                                KeyDown="AddressBar_KeyDown"/>
+                    <!-- Address Bar / Breadcrumb Navigation -->
+                    <Grid Grid.Row="0" Margin="10">
+                        <!-- Breadcrumb Bar -->
+                        <ui:BreadcrumbBar x:Name="BreadcrumbBar"
+                                          ItemsSource="{Binding Folders, Mode=OneWay}"
+                                          Visibility="{Binding IsPathEditing, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                          MouseLeftButtonUp="BreadcrumbBar_MouseLeftButtonUp">
+                            <ui:BreadcrumbBar.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:Folder}">
+                                    <Button Content="{Binding Name, Mode=OneTime}" 
+                                            Background="Transparent" 
+                                            BorderThickness="0"
+                                            Padding="4,2"
+                                            Command="{Binding DataContext.NavigateToFolderCommand, RelativeSource={RelativeSource AncestorType=ui:FluentWindow}}"
+                                            CommandParameter="{Binding}"
+                                            Cursor="Hand"/>
+                                </DataTemplate>
+                            </ui:BreadcrumbBar.ItemTemplate>
+                        </ui:BreadcrumbBar>
+                        
+                        <!-- Path Text Box -->
+                        <ui:TextBox x:Name="AddressBar" 
+                                    PlaceholderText="输入路径..." 
+                                    Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}"
+                                    Visibility="{Binding IsPathEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    KeyDown="AddressBar_KeyDown"
+                                    LostFocus="AddressBar_LostFocus"/>
+                    </Grid>
 
                     <!-- Toolbar -->
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,10,10">
