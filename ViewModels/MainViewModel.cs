@@ -57,6 +57,18 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private bool _isPathEditing = false;
 
+        partial void OnIsPathEditingChanged(bool value)
+        {
+            if (value)
+            {
+                // Use BeginInvoke to ensure the UI is updated before focusing
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+        }
+
         [ObservableProperty]
         private bool _isFileOperationInProgress;
 
@@ -450,10 +462,6 @@ namespace FileSpace.ViewModels
         private void TogglePathEdit()
         {
             IsPathEditing = !IsPathEditing;
-            if (IsPathEditing)
-            {
-                FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
-            }
         }
 
         [RelayCommand]
@@ -518,6 +526,7 @@ namespace FileSpace.ViewModels
             if (!string.IsNullOrEmpty(path))
             {
                 NavigateToPath(path);
+                IsPathEditing = false; // Exit edit mode after navigation
             }
         }
 
@@ -1040,6 +1049,95 @@ namespace FileSpace.ViewModels
             }
         }
 
+        /// <summary>
+        /// 生成路径自动完成建议
+        /// </summary>
+        public void UpdatePathSuggestions(string currentInput)
+        {
+            PathSuggestions.Clear();
+            ShowPathSuggestions = false;
+
+            if (string.IsNullOrWhiteSpace(currentInput))
+            {
+                return;
+            }
+
+            try
+            {
+                // 如果输入包含路径分隔符，尝试获取目录建议
+                var lastSeparatorIndex = Math.Max(
+                    currentInput.LastIndexOf('\\'),
+                    currentInput.LastIndexOf('/')
+                );
+
+                if (lastSeparatorIndex >= 0)
+                {
+                    var basePath = currentInput.Substring(0, lastSeparatorIndex + 1);
+                    var searchPattern = currentInput.Substring(lastSeparatorIndex + 1);
+
+                    if (Directory.Exists(basePath))
+                    {
+                        var suggestions = new List<string>();
+
+                        // 添加子目录建议
+                        try
+                        {
+                            var directories = Directory.GetDirectories(basePath)
+                                .Where(dir => Path.GetFileName(dir).StartsWith(searchPattern, StringComparison.OrdinalIgnoreCase))
+                                .Take(10)
+                                .ToList();
+
+                            suggestions.AddRange(directories);
+                        }
+                        catch { }
+
+                        // 添加文件建议（如果搜索模式不为空）
+                        if (!string.IsNullOrEmpty(searchPattern))
+                        {
+                            try
+                            {
+                                var files = Directory.GetFiles(basePath)
+                                    .Where(file => Path.GetFileName(file).StartsWith(searchPattern, StringComparison.OrdinalIgnoreCase))
+                                    .Take(5)
+                                    .ToList();
+
+                                suggestions.AddRange(files);
+                            }
+                            catch { }
+                        }
+
+                        foreach (var suggestion in suggestions.Take(10))
+                        {
+                            PathSuggestions.Add(suggestion);
+                        }
+
+                        ShowPathSuggestions = PathSuggestions.Count > 0;
+                    }
+                }
+                else
+                {
+                    // 如果没有路径分隔符，提供驱动器建议
+                    var drives = DriveInfo.GetDrives()
+                        .Where(d => d.Name.StartsWith(currentInput, StringComparison.OrdinalIgnoreCase))
+                        .Select(d => d.Name.TrimEnd('\\'))
+                        .ToList();
+
+                    foreach (var drive in drives)
+                    {
+                        PathSuggestions.Add(drive);
+                    }
+
+                    ShowPathSuggestions = PathSuggestions.Count > 0;
+                }
+            }
+            catch
+            {
+                // 如果出现错误，清空建议
+                PathSuggestions.Clear();
+                ShowPathSuggestions = false;
+            }
+        }
+
         public void Dispose()
         {
             // Unsubscribe from events to prevent memory leaks and null reference exceptions
@@ -1073,5 +1171,11 @@ namespace FileSpace.ViewModels
         public bool CanClearSelection => SelectedFiles.Any();
         public bool CanOpenInExplorer => ExplorerService.Instance.CanOpenInExplorer(CurrentPath);
         public bool CanCopyPath => SelectedFile != null;
+
+        [ObservableProperty]
+        private ObservableCollection<string> _pathSuggestions = new();
+
+        [ObservableProperty]
+        private bool _showPathSuggestions = false;
     }
 }

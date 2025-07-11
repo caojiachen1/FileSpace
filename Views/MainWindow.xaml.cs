@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Controls.Primitives;
 using Wpf.Ui.Controls;
 using FileSpace.ViewModels;
 using FileSpace.Models;
@@ -154,6 +155,28 @@ namespace FileSpace.Views
             var editPathCommand = new RoutedCommand();
             CommandBindings.Add(new CommandBinding(editPathCommand, (s, e) => ViewModel.TogglePathEditCommand.Execute(null)));
             InputBindings.Add(new InputBinding(editPathCommand, editPathGesture));
+
+            // Ctrl+L: 进入地址栏编辑模式（Windows资源管理器标准快捷键）
+            var focusAddressBarGesture = new KeyGesture(Key.L, ModifierKeys.Control);
+            var focusAddressBarCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(focusAddressBarCommand, (s, e) => {
+                ViewModel.IsPathEditing = true;
+            }));
+            InputBindings.Add(new InputBinding(focusAddressBarCommand, focusAddressBarGesture));
+
+            // Alt+D: 选择地址栏（另一个Windows资源管理器快捷键）
+            var selectAddressBarGesture = new KeyGesture(Key.D, ModifierKeys.Alt);
+            var selectAddressBarCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(selectAddressBarCommand, (s, e) => {
+                ViewModel.IsPathEditing = true;
+            }));
+            InputBindings.Add(new InputBinding(selectAddressBarCommand, selectAddressBarGesture));
+
+            // F6: 循环焦点在不同面板之间（Windows资源管理器行为）
+            var cycleFocusGesture = new KeyGesture(Key.F6);
+            var cycleFocusCommand = new RoutedCommand();
+            CommandBindings.Add(new CommandBinding(cycleFocusCommand, (s, e) => CycleFocus()));
+            InputBindings.Add(new InputBinding(cycleFocusCommand, cycleFocusGesture));
         }
 
         private void DirectoryTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
@@ -211,20 +234,107 @@ namespace FileSpace.Views
 
         private void AddressBar_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter && sender is Wpf.Ui.Controls.TextBox textBox)
+            if (sender is Wpf.Ui.Controls.TextBox textBox)
             {
-                ViewModel.AddressBarEnterCommand.Execute(textBox.Text);
+                switch (e.Key)
+                {
+                    case Key.Enter:
+                        ViewModel.AddressBarEnterCommand.Execute(textBox.Text);
+                        ViewModel.IsPathEditing = false; // Exit edit mode after pressing Enter
+                        e.Handled = true;
+                        break;
+                        
+                    case Key.Escape:
+                        ViewModel.IsPathEditing = false; // Exit edit mode on Escape
+                        ViewModel.ShowPathSuggestions = false;
+                        e.Handled = true;
+                        break;
+                        
+                    case Key.Tab:
+                        // Tab键自动完成第一个建议
+                        if (ViewModel.PathSuggestions.Count > 0)
+                        {
+                            ViewModel.CurrentPath = ViewModel.PathSuggestions[0];
+                            ViewModel.ShowPathSuggestions = false;
+                            textBox.CaretIndex = textBox.Text.Length; // 移动光标到末尾
+                            e.Handled = true;
+                        }
+                        break;
+                        
+                    case Key.Down:
+                        // 下箭头键：如果有建议，移动到建议列表
+                        if (ViewModel.ShowPathSuggestions)
+                        {
+                            var popup = FindName("PathSuggestionsPopup") as System.Windows.Controls.Primitives.Popup;
+                            if (popup?.Child is Border border && border.Child is ListBox listBox)
+                            {
+                                listBox.Focus();
+                                if (listBox.Items.Count > 0)
+                                {
+                                    listBox.SelectedIndex = 0;
+                                }
+                            }
+                            e.Handled = true;
+                        }
+                        break;
+                        
+                    case Key.Up:
+                        // 上箭头键：如果有建议且在列表中，返回到文本框
+                        if (ViewModel.ShowPathSuggestions)
+                        {
+                            textBox.Focus();
+                            e.Handled = true;
+                        }
+                        break;
+                }
             }
         }
 
         private void AddressBar_LostFocus(object sender, RoutedEventArgs e)
         {
-            ViewModel.IsPathEditing = false;
+            // Small delay to prevent immediate focus loss when clicking on breadcrumb items
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ViewModel.IsPathEditing = false;
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private void BreadcrumbBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void AddressBar_Loaded(object sender, RoutedEventArgs e)
         {
-            ViewModel.TogglePathEditCommand.Execute(null);
+            if (sender is Wpf.Ui.Controls.TextBox textBox)
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+            }
+        }
+
+        private void AddressBarContainer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            // Only switch to edit mode if we're not already in edit mode
+            // and the click didn't originate from a breadcrumb button
+            if (!ViewModel.IsPathEditing)
+            {
+                var clickedElement = e.OriginalSource as FrameworkElement;
+                
+                // Check if the clicked element is part of a button (breadcrumb navigation)
+                var isButtonClick = false;
+                var parent = clickedElement;
+                while (parent != null)
+                {
+                    if (parent is System.Windows.Controls.Button || parent is Wpf.Ui.Controls.Button)
+                    {
+                        isButtonClick = true;
+                        break;
+                    }
+                    parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
+                }
+                
+                // Only enter edit mode if we didn't click on a button
+                if (!isButtonClick)
+                {
+                    ViewModel.IsPathEditing = true;
+                }
+            }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -506,6 +616,143 @@ namespace FileSpace.Views
             if (rightColumn != null && rightColumn.Width.Value > 0)
             {
                 _rightPanelWidth = rightColumn.Width.Value;
+            }
+        }
+
+        /// <summary>
+        /// 循环焦点在不同面板之间（模拟Windows资源管理器的F6行为）
+        /// </summary>
+        private void CycleFocus()
+        {
+            try
+            {
+                // 获取当前焦点元素
+                var focusedElement = Keyboard.FocusedElement as FrameworkElement;
+                
+                // 定义焦点循环顺序：地址栏 -> 文件夹树 -> 文件列表 -> 预览面板 -> 地址栏
+                if (ViewModel.IsPathEditing || (focusedElement != null && focusedElement.Name == "AddressBar"))
+                {
+                    // 当前在地址栏，切换到文件夹树
+                    ViewModel.IsPathEditing = false;
+                    if (ViewModel.IsLeftPanelVisible)
+                    {
+                        var treeView = FindName("DirectoryTreeView") as TreeView;
+                        treeView?.Focus();
+                    }
+                    else
+                    {
+                        var dataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                        dataGrid?.Focus();
+                    }
+                }
+                else if (focusedElement != null && focusedElement.Name == "DirectoryTreeView")
+                {
+                    // 当前在文件夹树，切换到文件列表
+                    var dataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                    dataGrid?.Focus();
+                }
+                else if (focusedElement != null && focusedElement.Name == "FileDataGrid")
+                {
+                    // 当前在文件列表，切换到预览面板或地址栏
+                    if (ViewModel.IsRightPanelVisible)
+                    {
+                        var previewScrollViewer = FindName("PreviewScrollViewer") as ScrollViewer;
+                        previewScrollViewer?.Focus();
+                    }
+                    else
+                    {
+                        // 如果预览面板不可见，直接切换到地址栏
+                        ViewModel.IsPathEditing = true;
+                    }
+                }
+                else
+                {
+                    // 默认情况或在预览面板，切换到地址栏
+                    ViewModel.IsPathEditing = true;
+                }
+            }
+            catch (Exception)
+            {
+                // 如果出现错误，默认切换到地址栏
+                ViewModel.IsPathEditing = true;
+            }
+        }
+
+        /// <summary>
+        /// 复制当前路径到剪贴板
+        /// </summary>
+        private void CopyCurrentPath_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(ViewModel.CurrentPath))
+                {
+                    System.Windows.Clipboard.SetText(ViewModel.CurrentPath);
+                    ViewModel.StatusText = $"已复制路径: {ViewModel.CurrentPath}";
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewModel.StatusText = $"复制路径失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 在新窗口中打开当前路径
+        /// </summary>
+        private void OpenInNewWindow_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(ViewModel.CurrentPath) && Directory.Exists(ViewModel.CurrentPath))
+                {
+                    var startInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{ViewModel.CurrentPath}\"",
+                        UseShellExecute = true
+                    };
+                    System.Diagnostics.Process.Start(startInfo);
+                    ViewModel.StatusText = $"已在新窗口中打开: {ViewModel.CurrentPath}";
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewModel.StatusText = $"打开新窗口失败: {ex.Message}";
+            }
+        }
+
+        private void AddressBar_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.TextBox textBox && ViewModel.IsPathEditing)
+            {
+                // 延迟更新建议，避免频繁调用
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(300)
+                };
+                timer.Tick += (s, args) =>
+                {
+                    timer.Stop();
+                    ViewModel.UpdatePathSuggestions(textBox.Text);
+                };
+                timer.Start();
+            }
+        }
+
+        private void PathSuggestions_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ListBox listBox && listBox.SelectedItem is string selectedPath)
+            {
+                ViewModel.CurrentPath = selectedPath;
+                ViewModel.ShowPathSuggestions = false;
+                
+                // 如果选择的是目录，立即导航
+                if (Directory.Exists(selectedPath))
+                {
+                    ViewModel.NavigateToPathCommand.Execute(selectedPath);
+                    ViewModel.IsPathEditing = false;
+                }
             }
         }
     }
