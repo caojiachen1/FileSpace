@@ -262,20 +262,7 @@ namespace FileSpace.Views
                         break;
                         
                     case Key.Down:
-                        // 下箭头键：如果有建议，移动到建议列表
-                        if (ViewModel.ShowPathSuggestions)
-                        {
-                            var popup = FindName("PathSuggestionsPopup") as System.Windows.Controls.Primitives.Popup;
-                            if (popup?.Child is Border border && border.Child is ListBox listBox)
-                            {
-                                listBox.Focus();
-                                if (listBox.Items.Count > 0)
-                                {
-                                    listBox.SelectedIndex = 0;
-                                }
-                            }
-                            e.Handled = true;
-                        }
+                        // 下箭头键功能已移除
                         break;
                         
                     case Key.Up:
@@ -305,35 +292,6 @@ namespace FileSpace.Views
             {
                 textBox.Focus();
                 textBox.SelectAll();
-            }
-        }
-
-        private void AddressBarContainer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            // Only switch to edit mode if we're not already in edit mode
-            // and the click didn't originate from a breadcrumb button
-            if (!ViewModel.IsPathEditing)
-            {
-                var clickedElement = e.OriginalSource as FrameworkElement;
-                
-                // Check if the clicked element is part of a button (breadcrumb navigation)
-                var isButtonClick = false;
-                var parent = clickedElement;
-                while (parent != null)
-                {
-                    if (parent is System.Windows.Controls.Button || parent is Wpf.Ui.Controls.Button)
-                    {
-                        isButtonClick = true;
-                        break;
-                    }
-                    parent = VisualTreeHelper.GetParent(parent) as FrameworkElement;
-                }
-                
-                // Only enter edit mode if we didn't click on a button
-                if (!isButtonClick)
-                {
-                    ViewModel.IsPathEditing = true;
-                }
             }
         }
 
@@ -753,6 +711,26 @@ namespace FileSpace.Views
                     ViewModel.NavigateToPathCommand.Execute(selectedPath);
                     ViewModel.IsPathEditing = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 处理地址栏键盘事件
+        /// </summary>
+        private void AddressBarTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                var textBox = sender as Wpf.Ui.Controls.TextBox;
+                if (textBox != null && !string.IsNullOrWhiteSpace(textBox.Text))
+                {
+                    ViewModel.NavigateToPathCommand.Execute(textBox.Text);
+                    ViewModel.IsPathEditing = false;
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                ViewModel.IsPathEditing = false;
             }
         }
     }

@@ -181,6 +181,8 @@ namespace FileSpace.Services
             };
         }
 
+        public static SymbolRegular GetFileIconPublic(string extension) => GetFileIcon(extension);
+
         private static string GetFileIconColor(string extension)
         {
             return extension.ToLower() switch
@@ -204,6 +206,8 @@ namespace FileSpace.Services
                 _ => "#FF607D8B" // Blue gray for unknown files
             };
         }
+
+        public static string GetFileIconColorPublic(string extension) => GetFileIconColor(extension);
 
         private static string GetFileType(string extension)
         {
@@ -250,5 +254,7 @@ namespace FileSpace.Services
                 _ => $"{extension.ToUpper()} 文件"
             };
         }
+
+        public static string GetFileTypePublic(string extension) => GetFileType(extension);
     }
 }

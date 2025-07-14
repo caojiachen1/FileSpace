@@ -7,6 +7,7 @@ using FileSpace.Services;
 using FileSpace.Views;
 using FileSpace.Utils;
 using FileSpace.Models;
+using Wpf.Ui.Controls;
 
 namespace FileSpace.ViewModels
 {
@@ -94,6 +95,76 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private bool _isRightPanelVisible = true;
 
+        // Windows Explorer-like features
+        [ObservableProperty]
+        private ObservableCollection<BreadcrumbItem> _breadcrumbItems = new();
+
+        [ObservableProperty]
+        private string _searchText = string.Empty;
+
+        [ObservableProperty]
+        private string _viewMode = "详细信息";
+
+        [ObservableProperty]
+        private ObservableCollection<string> _navigationHistory = new();
+
+        [ObservableProperty]
+        private int _currentNavigationIndex = -1;
+
+        // Status bar properties for Windows Explorer-like experience
+        [ObservableProperty]
+        private string _selectedFilesInfo = string.Empty;
+
+        [ObservableProperty]
+        private bool _hasSelectedFiles;
+
+        // Quick Access items for Windows Explorer-like experience
+        [ObservableProperty]
+        private ObservableCollection<QuickAccessItem> _quickAccessItems = new();
+
+        // Update selected files info when selection changes
+        partial void OnSelectedFilesChanged(ObservableCollection<FileItemModel> value)
+        {
+            HasSelectedFiles = value.Count > 0;
+            
+            if (value.Count == 0)
+            {
+                SelectedFilesInfo = "";
+            }
+            else if (value.Count == 1)
+            {
+                var file = value[0];
+                if (file.IsDirectory)
+                {
+                    SelectedFilesInfo = "已选择 1 个文件夹";
+                }
+                else
+                {
+                    SelectedFilesInfo = $"已选择 1 个文件 ({FileUtils.FormatFileSize(file.Size)})";
+                }
+            }
+            else
+            {
+                var fileCount = value.Count(f => !f.IsDirectory);
+                var folderCount = value.Count(f => f.IsDirectory);
+                var totalSize = value.Where(f => !f.IsDirectory).Sum(f => f.Size);
+                
+                var parts = new List<string>();
+                if (fileCount > 0) parts.Add($"{fileCount} 个文件");
+                if (folderCount > 0) parts.Add($"{folderCount} 个文件夹");
+                
+                SelectedFilesInfo = $"已选择 {string.Join("、", parts)}";
+                if (totalSize > 0)
+                {
+                    SelectedFilesInfo += $" ({FileUtils.FormatFileSize(totalSize)})";
+                }
+            }
+        }
+
+        // Helper methods for navigation
+        private bool CanGoBack() => CurrentNavigationIndex > 0;
+        private bool CanGoForward() => CurrentNavigationIndex < NavigationHistory.Count - 1;
+
         private CancellationTokenSource? _previewCancellationTokenSource;
         private CancellationTokenSource? _fileOperationCancellationTokenSource;
         private readonly SemaphoreSlim _previewSemaphore = new(1, 1);
@@ -119,6 +190,9 @@ namespace FileSpace.ViewModels
             // Load panel visibility settings
             LoadPanelSettings();
             
+            // Initialize Quick Access items
+            InitializeQuickAccessItems();
+            
             LoadInitialData();
 
             // Subscribe to background size calculation events
@@ -142,6 +216,77 @@ namespace FileSpace.ViewModels
             // Center panel is always visible
         }
 
+        /// <summary>
+        /// 初始化快速访问项目
+        /// </summary>
+        private void InitializeQuickAccessItems()
+        {
+            try
+            {
+                QuickAccessItems.Clear();
+                
+                // Desktop
+                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                if (Directory.Exists(desktopPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50"));
+                }
+                
+                // Documents
+                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                if (Directory.Exists(documentsPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3"));
+                }
+                
+                // Downloads
+                var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                if (Directory.Exists(downloadsPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800"));
+                }
+                
+                // Pictures
+                var picturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+                if (Directory.Exists(picturesPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63"));
+                }
+                
+                // Music
+                var musicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+                if (Directory.Exists(musicPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0"));
+                }
+                
+                // Videos
+                var videosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+                if (Directory.Exists(videosPath))
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722"));
+                }
+                
+                // Recent paths from settings
+                var recentPaths = _settingsService.GetRecentPaths().Take(3);
+                foreach (var path in recentPaths)
+                {
+                    if (Directory.Exists(path) && !QuickAccessItems.Any(q => q.Path == path))
+                    {
+                        var name = Path.GetFileName(path);
+                        if (string.IsNullOrEmpty(name))
+                            name = path; // For drive roots
+                        
+                        QuickAccessItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C"));
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // If initialization fails, just continue with empty quick access
+            }
+        }
+
         partial void OnCurrentPathChanged(string value)
         {
             LoadFiles();
@@ -151,6 +296,25 @@ namespace FileSpace.ViewModels
             if (!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
             {
                 _settingsService.AddRecentPath(value);
+            }
+            
+            // Update navigation history and breadcrumbs for Windows Explorer-like experience
+            if (!string.IsNullOrEmpty(value))
+            {
+                // Add to navigation history
+                if (CurrentNavigationIndex == -1 || NavigationHistory[CurrentNavigationIndex] != value)
+                {
+                    // Remove any forward history
+                    while (NavigationHistory.Count > CurrentNavigationIndex + 1)
+                    {
+                        NavigationHistory.RemoveAt(NavigationHistory.Count - 1);
+                    }
+                    
+                    NavigationHistory.Add(value);
+                    CurrentNavigationIndex = NavigationHistory.Count - 1;
+                }
+                
+                UpdateBreadcrumbs(value);
             }
         }
 
@@ -164,6 +328,118 @@ namespace FileSpace.ViewModels
             }
 
             _ = ShowPreviewAsync();
+        }
+
+        // Property for search text changed event
+        partial void OnSearchTextChanged(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                LoadFiles(); // Reload all files
+            }
+            else
+            {
+                FilterFiles(value);
+            }
+        }
+
+        // Filter files based on search text
+        private void FilterFiles(string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                LoadFiles();
+                return;
+            }
+
+            try
+            {
+                var allFiles = new List<FileItemModel>();
+                var directoryInfo = new DirectoryInfo(CurrentPath);
+                
+                // Get directories
+                var directories = directoryInfo.GetDirectories()
+                    .Where(d => d.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    .Select(d => new FileItemModel
+                    {
+                        Name = d.Name,
+                        FullPath = d.FullName,
+                        IsDirectory = true,
+                        Size = 0,
+                        ModifiedTime = d.LastWriteTime.ToString("yyyy/M/d HH:mm"),
+                        Type = "文件夹",
+                        Icon = SymbolRegular.Folder24,
+                        IconColor = "#FFE6A23C"
+                    });
+
+                // Get files  
+                var files = directoryInfo.GetFiles()
+                    .Where(f => f.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    .Select(f => new FileItemModel
+                    {
+                        Name = f.Name,
+                        FullPath = f.FullName,
+                        IsDirectory = false,
+                        Size = f.Length,
+                        ModifiedTime = f.LastWriteTime.ToString("yyyy/M/d HH:mm"),
+                        Type = FileSystemService.GetFileTypePublic(f.Extension),
+                        Icon = FileSystemService.GetFileIconPublic(f.Extension),
+                        IconColor = FileSystemService.GetFileIconColorPublic(f.Extension)
+                    });
+
+                allFiles.AddRange(directories);
+                allFiles.AddRange(files);
+
+                Files.Clear();
+                foreach (var file in allFiles.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name))
+                {
+                    Files.Add(file);
+                }
+
+                StatusText = $"找到 {allFiles.Count} 个匹配项";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"搜索错误: {ex.Message}";
+            }
+        }
+
+        private void UpdateBreadcrumbs(string path)
+        {
+            BreadcrumbItems.Clear();
+            
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                var parts = new List<string>();
+                var current = path;
+                
+                while (!string.IsNullOrEmpty(current))
+                {
+                    parts.Add(current);
+                    var parent = System.IO.Path.GetDirectoryName(current);
+                    if (parent == current) // Root directory
+                        break;
+                    current = parent;
+                }
+                
+                parts.Reverse();
+                
+                foreach (var part in parts)
+                {
+                    var name = part == path ? System.IO.Path.GetFileName(part) : System.IO.Path.GetFileName(part);
+                    if (string.IsNullOrEmpty(name))
+                        name = part; // For root drives like "C:\"
+                    
+                    BreadcrumbItems.Add(new BreadcrumbItem(name, part));
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"更新面包屑导航错误: {ex.Message}";
+            }
         }
 
         private async void LoadInitialData()
@@ -476,6 +752,78 @@ namespace FileSpace.ViewModels
             _navigationService.Up();
         }
 
+        // New navigation commands for Windows Explorer-like functionality
+        [RelayCommand]
+        private void GoBack()
+        {
+            if (CanGoBack())
+            {
+                CurrentNavigationIndex--;
+                CurrentPath = NavigationHistory[CurrentNavigationIndex];
+            }
+        }
+
+        [RelayCommand]
+        private void GoForward()
+        {
+            if (CanGoForward())
+            {
+                CurrentNavigationIndex++;
+                CurrentPath = NavigationHistory[CurrentNavigationIndex];
+            }
+        }
+
+        [RelayCommand]
+        private void GoUp()
+        {
+            var parentPath = System.IO.Path.GetDirectoryName(CurrentPath);
+            if (!string.IsNullOrEmpty(parentPath))
+            {
+                NavigateToPath(parentPath);
+            }
+        }
+
+        [RelayCommand]
+        private void NavigateToBreadcrumb(string path)
+        {
+            if (!string.IsNullOrEmpty(path))
+            {
+                NavigateToPath(path);
+            }
+        }
+
+        [RelayCommand]
+        private void ToggleViewMode()
+        {
+            ViewMode = ViewMode == "详细信息" ? "大图标" : "详细信息";
+        }
+
+        [RelayCommand]
+        private void CreateNewFolder()
+        {
+            try
+            {
+                var newFolderName = "新建文件夹";
+                var newFolderPath = System.IO.Path.Combine(CurrentPath, newFolderName);
+                
+                int counter = 1;
+                while (Directory.Exists(newFolderPath))
+                {
+                    newFolderName = $"新建文件夹 ({counter})";
+                    newFolderPath = System.IO.Path.Combine(CurrentPath, newFolderName);
+                    counter++;
+                }
+
+                Directory.CreateDirectory(newFolderPath);
+                LoadFiles(); // Refresh the file list
+                StatusText = $"已创建文件夹: {newFolderName}";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"创建文件夹失败: {ex.Message}";
+            }
+        }
+
         // Panel toggle commands for VS Code-like experience
         [RelayCommand]
         private void ToggleLeftPanel()
@@ -731,77 +1079,33 @@ namespace FileSpace.ViewModels
         {
             if (SelectedFile != null)
             {
-                try
-                {
-                    var propertiesViewModel = new PropertiesViewModel(SelectedFile.FullPath);
-                    var propertiesWindow = new PropertiesWindow(propertiesViewModel)
-                    {
-                        Owner = Application.Current.MainWindow
-                    };
-                    propertiesWindow.Show();
-                }
-                catch (Exception ex)
-                {
-                    StatusText = $"无法显示属性: {ex.Message}";
-                }
+                var viewModel = new PropertiesViewModel(SelectedFile.FullPath);
+                var propertiesWindow = new PropertiesWindow(viewModel);
+                propertiesWindow.ShowDialog();
             }
         }
 
+        // New commands for Windows Explorer-like view and sort options
         [RelayCommand]
-        private void StartRename()
+        private void SetViewMode(string mode)
+        {
+            ViewMode = mode;
+            // TODO: Implement actual view mode changes in UI
+            StatusText = $"视图模式已切换到: {mode}";
+        }
+
+        [RelayCommand]
+        private void SetSortMode(string mode)
+        {
+            // TODO: Implement actual sorting logic
+            StatusText = $"排序方式已切换到: {mode}";
+        }
+        [RelayCommand]
+        public void StartRename()
         {
             if (SelectedFile != null)
             {
                 StartInPlaceRename(SelectedFile);
-            }
-        }
-
-        [RelayCommand]
-        private void ConfirmRename()
-        {
-            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
-            {
-                var newName = NewFileName.Trim();
-                
-                if (newName != RenamingFile.Name)
-                {
-                    // Check for extension changes on files
-                    if (!RenamingFile.IsDirectory)
-                    {
-                        var originalExt = Path.GetExtension(RenamingFile.Name);
-                        var newExt = Path.GetExtension(newName);
-                        
-                        if (!string.Equals(originalExt, newExt, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (!DialogService.Instance.ConfirmExtensionChange(originalExt, newExt))
-                            {
-                                return; // User cancelled the extension change
-                            }
-                        }
-                    }
-                    
-                    PerformRename(RenamingFile, newName);
-                }
-            }
-            CancelRename();
-        }
-
-        [RelayCommand]
-        private void ShowRenameDialog()
-        {
-            if (SelectedFile != null)
-            {
-                try
-                {
-                    if (DialogService.Instance.ShowRenameDialog(SelectedFile.Name, SelectedFile.IsDirectory, out string newName))
-                    {
-                        PerformRename(SelectedFile, newName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    StatusText = $"重命名失败: {ex.Message}";
-                }
             }
         }
 
@@ -820,6 +1124,16 @@ namespace FileSpace.ViewModels
             {
                 // For files, show full name with extension but we'll select only the name part in the UI
                 NewFileName = file.Name;
+            }
+        }
+
+        [RelayCommand]
+        private void ConfirmRename()
+        {
+            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
+            {
+                PerformRename(RenamingFile, NewFileName.Trim());
+                CancelRename();
             }
         }
 
