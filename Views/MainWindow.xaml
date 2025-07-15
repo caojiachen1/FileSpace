@@ -594,38 +594,67 @@
                     </Grid.RowDefinitions>
                     
                     <!-- Quick Access Section -->
-                    <StackPanel Grid.Row="0" Margin="10,10,10,0">
+                    <StackPanel Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch">
                         <TextBlock Text="快速访问" FontWeight="Bold" FontSize="13" Margin="0,0,0,8" 
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left"/>
                         
                         <!-- Quick Access Items -->
-                        <ItemsControl ItemsSource="{Binding QuickAccessItems}">
-                            <ItemsControl.ItemTemplate>
+                        <ListView ItemsSource="{Binding QuickAccessItems}" 
+                                  Background="Transparent" BorderThickness="0"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  SelectionMode="Single"
+                                  HorizontalAlignment="Stretch"
+                                  Width="Auto">
+                            <ListView.ItemTemplate>
                                 <DataTemplate>
-                                    <ui:Button Command="{Binding DataContext.NavigateToPathCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               CommandParameter="{Binding Path}"
-                                               Background="Transparent" BorderThickness="0"
-                                               HorizontalAlignment="Stretch" Padding="8,4" Margin="0,1">
-                                        <StackPanel Orientation="Horizontal">
+                                    <Grid Background="Transparent" 
+                                          MouseLeftButtonUp="QuickAccessItem_MouseLeftButtonUp"
+                                          Tag="{Binding Path}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" 
+                                                    Margin="8,4">
                                             <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,8,0" FontSize="16"
-                                                           Foreground="{Binding IconColor}"/>
-                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                           Foreground="{Binding IconColor}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Left"
                                                        Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                         </StackPanel>
-                                        <ui:Button.Style>
-                                            <Style TargetType="ui:Button">
-                                                <Setter Property="Background" Value="Transparent"/>
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ui:Button.Style>
-                                    </ui:Button>
+                                    </Grid>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListView.ItemTemplate>
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0,1"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListViewItem">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        CornerRadius="3">
+                                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                        </ListView>
                     </StackPanel>
                     
                     <!-- Separator -->

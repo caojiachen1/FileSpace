@@ -733,5 +733,16 @@ namespace FileSpace.Views
                 ViewModel.IsPathEditing = false;
             }
         }
+
+        /// <summary>
+        /// 处理快速访问项目点击事件
+        /// </summary>
+        private void QuickAccessItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Grid grid && grid.Tag is string path)
+            {
+                ViewModel.NavigateToPathCommand.Execute(path);
+            }
+        }
     }
 }
