@@ -25,7 +25,7 @@
 # - Major:   v0.3 → v1.0 (resets minor to 0)
 # - Continue: v1.0 → v1.1 → v1.2
 
-name: .NET WPF
+name: Build and Release
 
 on:
   push:
@@ -140,10 +140,12 @@ jobs:
         elseif ($isMinorBump) { echo "This is a MINOR version update!" }
         else { echo "This is a regular patch update." }
 
+    # 直接用 GitHub 仓库名作为项目名，无需额外步骤
+
     - name: Publish WPF application
       run: |
         $version = "${{ steps.version.outputs.new_version }}" -replace '^v', ''
-        
+        $projectName = "${{ github.event.repository.name }}"
         # Publish as self-contained WPF application for Windows x64
         dotnet publish -c Release --runtime win-x64 -o ./publish/
 
@@ -152,17 +154,15 @@ jobs:
 
     - name: Create portable ZIP package
       run: |
-        $zipName = "FileSpace-${{ steps.version.outputs.new_version }}-portable.zip"
-        
+        $projectName = "${{ github.event.repository.name }}"
+        $zipName = "$projectName-${{ steps.version.outputs.new_version }}-portable.zip"
         # Ensure publish directory exists and has content
         if (!(Test-Path "./publish/") -or (Get-ChildItem "./publish/" | Measure-Object).Count -eq 0) {
           throw "Publish directory is empty or doesn't exist"
         }
-        
         Compress-Archive -Path "./publish/*" -DestinationPath $zipName -Force
         echo "ZIP package created: $zipName"
         echo "ZIP_PATH=$zipName" >> $env:GITHUB_ENV
-        
         # Show package contents and size for verification
         echo "Package contents:"
         Get-ChildItem ./publish/ | ForEach-Object { echo "  $($_.Name)" }
@@ -170,11 +170,10 @@ jobs:
 
     - name: Create framework-dependent standalone executable
       run: |
-        $exeName = "FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe"
-        
+        $projectName = "${{ github.event.repository.name }}"
+        $exeName = "$projectName-${{ steps.version.outputs.new_version }}-standalone.exe"
         # Find the main executable in the framework-dependent standalone publish folder
         $sourceExe = Get-ChildItem "./publish-standalone/" -Filter "*.exe" | Where-Object { $_.Name -notlike "*host*" } | Select-Object -First 1
-        
         if ($sourceExe) {
           Copy-Item $sourceExe.FullName -Destination $exeName
           echo "Framework-dependent standalone executable created: $exeName"
@@ -198,8 +197,8 @@ jobs:
           ${{ steps.version.outputs.clean_commit_message }}
 
           ## Download Options
-          - `FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
-          - `FileSpace-${{ steps.version.outputs.new_version }}-portable.zip` - Extract and run
+          - `${{ github.event.repository.name }}-${{ steps.version.outputs.new_version }}-standalone.exe` - Single file, requires .NET 8 runtime installed
+          - `${{ github.event.repository.name }}-${{ steps.version.outputs.new_version }}-portable.zip` - Extract and run
         draft: false
         prerelease: false
 
@@ -211,7 +210,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ${{ env.ZIP_PATH }}
-        asset_name: FileSpace-${{ steps.version.outputs.new_version }}-portable.zip
+        asset_name: ${{ github.event.repository.name }}-${{ steps.version.outputs.new_version }}-portable.zip
         asset_content_type: application/zip
 
     - name: Upload Framework-Dependent Standalone Executable
@@ -222,7 +221,7 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ${{ env.FRAMEWORK_EXE_PATH }}
-        asset_name: FileSpace-${{ steps.version.outputs.new_version }}-standalone.exe
+        asset_name: ${{ github.event.repository.name }}-${{ steps.version.outputs.new_version }}-standalone.exe
         asset_content_type: application/octet-stream
 
     - name: Upload artifact
