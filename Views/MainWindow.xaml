@@ -444,33 +444,38 @@
                         </ui:TextBox>
                         
                         <!-- View Mode Dropdown -->
-                        <ui:Button Width="80" Height="32" Margin="4,0,0,0" Background="Transparent" BorderThickness="1"
-                                   ToolTip="查看选项">
+                        <ui:Button x:Name="ViewModeButton" Width="80" Height="32" Margin="4,0,0,0" 
+                                   Background="Transparent" BorderThickness="1"
+                                   BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                   ToolTip="查看选项" Click="ViewModeButton_Click">
                             <ui:Button.Content>
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="Grid24" FontSize="14" Margin="0,0,4,0"/>
-                                    <TextBlock Text="视图" FontSize="12" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="10" Margin="4,0,0,0"/>
+                                    <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="14" Margin="0,0,4,0"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="视图" FontSize="12" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="10" Margin="4,0,0,0"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="详细信息" Command="{Binding SetViewModeCommand}" CommandParameter="详细信息">
+                                <ContextMenu x:Name="ViewModeContextMenu">
+                                    <MenuItem Header="详细信息" Click="ViewModeMenuItem_Click" Tag="详细信息">
                                         <MenuItem.Icon>
                                             <ui:SymbolIcon Symbol="TextBulletListSquare24"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="大图标" Command="{Binding SetViewModeCommand}" CommandParameter="大图标">
+                                    <MenuItem Header="大图标" Click="ViewModeMenuItem_Click" Tag="大图标">
                                         <MenuItem.Icon>
                                             <ui:SymbolIcon Symbol="Grid24"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="中等图标" Command="{Binding SetViewModeCommand}" CommandParameter="中等图标">
+                                    <MenuItem Header="中等图标" Click="ViewModeMenuItem_Click" Tag="中等图标">
                                         <MenuItem.Icon>
                                             <ui:SymbolIcon Symbol="Apps24"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
-                                    <MenuItem Header="小图标" Command="{Binding SetViewModeCommand}" CommandParameter="小图标">
+                                    <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
                                         <MenuItem.Icon>
                                             <ui:SymbolIcon Symbol="AppsList24"/>
                                         </MenuItem.Icon>
@@ -499,21 +504,16 @@
                                 </ContextMenu>
                             </ui:Button.ContextMenu>
                             <ui:Button.Style>
-                                <Style TargetType="ui:Button">
+                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                     <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     <Style.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
                                         </Trigger>
-                                        <EventTrigger RoutedEvent="Click">
-                                            <BeginStoryboard>
-                                                <Storyboard>
-                                                    <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="ContextMenu.IsOpen">
-                                                        <DiscreteObjectKeyFrame KeyTime="0" Value="True"/>
-                                                    </ObjectAnimationUsingKeyFrames>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </EventTrigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
+                                        </Trigger>
                                     </Style.Triggers>
                                 </Style>
                             </ui:Button.Style>
@@ -766,7 +766,7 @@
                     </Style>
                 </Border.Style>
                 <Grid>
-                    <!-- File List -->
+                    <!-- Details View (DataGrid) -->
                     <ui:DataGrid x:Name="FileDataGrid" 
                                  ItemsSource="{Binding Files}"
                                  SelectedItem="{Binding SelectedFile}"
@@ -787,7 +787,8 @@
                                  CanUserSortColumns="True"
                                  IsReadOnly="True"
                                  RowStyle="{StaticResource FileDataGridRowStyle}"
-                                 CellStyle="{StaticResource FileDataGridCellStyle}">
+                                 CellStyle="{StaticResource FileDataGridCellStyle}"
+                                 Visibility="{Binding IsDetailsView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
@@ -940,6 +941,152 @@
                             <DataGridTextColumn Header="修改时间" Width="150" Binding="{Binding ModifiedTime}" SortMemberPath="ModifiedTime"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>
+                    
+                    <!-- Icon View (ListView with WrapPanel) -->
+                    <ListView x:Name="FileIconView" 
+                              ItemsSource="{Binding Files}"
+                              SelectedItem="{Binding SelectedFile}"
+                              Background="Transparent" BorderThickness="0"
+                              Margin="10,5,10,10"
+                              MouseDoubleClick="FileListView_MouseDoubleClick"
+                              MouseDown="FileListView_MouseDown"
+                              SelectionChanged="FileListView_SelectionChanged"
+                              KeyDown="FileListView_KeyDown"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding IsIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{Binding IconColumns}" HorizontalAlignment="Left"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Width" Value="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                <Setter Property="Height" Value="{Binding DataContext.IconItemHeight, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                <Setter Property="Padding" Value="4"/>
+                                <Setter Property="Margin" Value="2"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewItem">
+                                            <Border x:Name="ItemBorder" 
+                                                    Background="{TemplateBinding Background}" 
+                                                    BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}"
+                                                    BorderThickness="0" 
+                                                    CornerRadius="6"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ToolTip="{Binding Name}">
+                                    <!-- Large/Medium Icon Layout (vertical: icon on top, name below) -->
+                                    <Grid Visibility="{Binding DataContext.IsLargeOrMediumIconView, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <!-- Icon -->
+                                        <ui:SymbolIcon Grid.Row="0" Symbol="{Binding Icon}" 
+                                                       Foreground="{Binding IconColor}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                        <!-- File Name -->
+                                        <TextBlock Grid.Row="1" 
+                                                   Text="{Binding DisplayName}" 
+                                                   TextTrimming="CharacterEllipsis"
+                                                   TextAlignment="Center"
+                                                   HorizontalAlignment="Center"
+                                                   MaxWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                   Margin="2,4,2,2"
+                                                   FontSize="11"/>
+                                    </Grid>
+                                    
+                                    <!-- Small Icon Layout (horizontal: icon on left, name on right) -->
+                                    <StackPanel Orientation="Horizontal" 
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding DataContext.IsSmallIconView, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <!-- Icon -->
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" 
+                                                       Foreground="{Binding IconColor}"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                       Margin="0,0,6,0"/>
+                                        <!-- File Name -->
+                                        <TextBlock Text="{Binding DisplayName}" 
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Left"
+                                                   MaxWidth="140"
+                                                   FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="打开" Click="ContextMenu_Open">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Open24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="在资源管理器中查看" Command="{Binding OpenInExplorerCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="FolderOpen24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="复制" Command="{Binding CopyFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Copy24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="剪切" Command="{Binding CutFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Cut24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ClipboardPaste24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="删除" Command="{Binding DeleteFilesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Delete24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ListView.ContextMenu>
+                    </ListView>
                 </Grid>
             </Border>
 

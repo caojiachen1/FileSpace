@@ -105,6 +105,68 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private string _viewMode = "详细信息";
 
+        // Current sort mode
+        [ObservableProperty]
+        private string _sortMode = "Name";
+
+        [ObservableProperty]
+        private bool _sortAscending = true;
+
+        // View mode helper properties
+        public bool IsDetailsView => ViewMode == "详细信息";
+        public bool IsIconView => ViewMode != "详细信息";
+        public bool IsSmallIconView => ViewMode == "小图标";
+        public bool IsLargeOrMediumIconView => ViewMode == "大图标" || ViewMode == "中等图标";
+        
+        // Icon size for different view modes
+        public double IconSize => ViewMode switch
+        {
+            "大图标" => 64,
+            "中等图标" => 48,
+            "小图标" => 24,
+            _ => 16
+        };
+
+        // Icon item width for grid layout
+        public double IconItemWidth => ViewMode switch
+        {
+            "大图标" => 110,
+            "中等图标" => 90,
+            "小图标" => 180,
+            _ => 200
+        };
+
+        // Icon item height for grid layout
+        public double IconItemHeight => ViewMode switch
+        {
+            "大图标" => 100,
+            "中等图标" => 80,
+            "小图标" => 40,
+            _ => 30
+        };
+
+        // Number of columns for icon view (auto-calculated based on view mode)
+        public int IconColumns => ViewMode switch
+        {
+            "大图标" => 8,
+            "中等图标" => 10,
+            "小图标" => 5,
+            _ => 4
+        };
+
+        // Notify view mode related properties when ViewMode changes
+        partial void OnViewModeChanged(string value)
+        {
+            OnPropertyChanged(nameof(IsDetailsView));
+            OnPropertyChanged(nameof(IsIconView));
+            OnPropertyChanged(nameof(IsSmallIconView));
+            OnPropertyChanged(nameof(IsLargeOrMediumIconView));
+            OnPropertyChanged(nameof(IconSize));
+            OnPropertyChanged(nameof(IconItemWidth));
+            OnPropertyChanged(nameof(IconItemHeight));
+            OnPropertyChanged(nameof(IconColumns));
+        }
+
         [ObservableProperty]
         private ObservableCollection<string> _navigationHistory = new();
 
@@ -1097,8 +1159,55 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void SetSortMode(string mode)
         {
-            // TODO: Implement actual sorting logic
-            StatusText = $"排序方式已切换到: {mode}";
+            // Toggle ascending/descending if same mode is selected
+            if (SortMode == mode)
+            {
+                SortAscending = !SortAscending;
+            }
+            else
+            {
+                SortMode = mode;
+                SortAscending = true;
+            }
+            
+            ApplySorting();
+            
+            var direction = SortAscending ? "升序" : "降序";
+            var modeName = mode switch
+            {
+                "Name" => "名称",
+                "Size" => "大小",
+                "Type" => "类型",
+                "Date" => "修改日期",
+                _ => mode
+            };
+            StatusText = $"排序方式: {modeName} ({direction})";
+        }
+
+        private void ApplySorting()
+        {
+            var sortedFiles = SortMode switch
+            {
+                "Name" => SortAscending 
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Size" => SortAscending
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Size).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Size).ToList(),
+                "Type" => SortAscending
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Date" => SortAscending
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.ModifiedTime, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.ModifiedTime, StringComparer.OrdinalIgnoreCase).ToList(),
+                _ => Files.ToList()
+            };
+
+            Files.Clear();
+            foreach (var file in sortedFiles)
+            {
+                Files.Add(file);
+            }
         }
         [RelayCommand]
         public void StartRename()

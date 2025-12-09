@@ -500,6 +500,50 @@ namespace FileSpace.Views
             }
         }
 
+        /// <summary>
+        /// 视图模式按钮点击事件 - 显示下拉菜单
+        /// </summary>
+        private void ViewModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.Button button && button.ContextMenu != null)
+            {
+                button.ContextMenu.PlacementTarget = button;
+                button.ContextMenu.Placement = PlacementMode.Bottom;
+                button.ContextMenu.IsOpen = true;
+            }
+        }
+
+        /// <summary>
+        /// 视图模式菜单项点击事件
+        /// </summary>
+        private void ViewModeMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.MenuItem menuItem && menuItem.Tag is string mode)
+            {
+                ViewModel.SetViewModeCommand.Execute(mode);
+                UpdateViewModeIcon(mode);
+            }
+        }
+
+        /// <summary>
+        /// 更新视图模式按钮的图标
+        /// </summary>
+        private void UpdateViewModeIcon(string mode)
+        {
+            var icon = FindName("ViewModeIcon") as Wpf.Ui.Controls.SymbolIcon;
+            if (icon != null)
+            {
+                icon.Symbol = mode switch
+                {
+                    "详细信息" => SymbolRegular.TextBulletListSquare24,
+                    "大图标" => SymbolRegular.Grid24,
+                    "中等图标" => SymbolRegular.Apps24,
+                    "小图标" => SymbolRegular.AppsList24,
+                    _ => SymbolRegular.TextBulletListSquare24
+                };
+            }
+        }
+
         private void UpdateUIFromSettings()
         {
             // Font settings are now applied globally through App.xaml
