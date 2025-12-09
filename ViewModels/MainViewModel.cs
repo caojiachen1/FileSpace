@@ -1152,6 +1152,13 @@ namespace FileSpace.ViewModels
         private void SetViewMode(string mode)
         {
             ViewMode = mode;
+            // When switching to icon views, default to name sorting for predictable layout
+            if (IsIconView)
+            {
+                SortMode = "Name";
+                SortAscending = true;
+                ApplySorting();
+            }
             // TODO: Implement actual view mode changes in UI
             StatusText = $"视图模式已切换到: {mode}";
         }
@@ -1186,6 +1193,12 @@ namespace FileSpace.ViewModels
 
         private void ApplySorting()
         {
+            DateTime ParseModified(string s)
+            {
+                if (DateTime.TryParse(s, out var dt)) return dt;
+                return DateTime.MinValue;
+            }
+
             var sortedFiles = SortMode switch
             {
                 "Name" => SortAscending 
@@ -1198,8 +1211,8 @@ namespace FileSpace.ViewModels
                     ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
                     : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Date" => SortAscending
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.ModifiedTime, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.ModifiedTime, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
                 _ => Files.ToList()
             };
 
