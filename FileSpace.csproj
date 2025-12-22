@@ -9,6 +9,7 @@
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <PublishTrimmed>false</PublishTrimmed>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +22,7 @@
 	
   <ItemGroup>
     <EmbeddedResource Include="Model/model.onnx" Logicalname="magika_model.onnx" />
+    <Content Include="logo.ico" />
   </ItemGroup>
 
 </Project>
