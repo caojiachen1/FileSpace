@@ -311,11 +311,6 @@
                         <Style TargetType="ui:Button">
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="BorderThickness" Value="0"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
                         </Style>
                     </ui:Button.Style>
                 </ui:Button>
@@ -356,11 +351,6 @@
                         <Style TargetType="ui:Button">
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="BorderThickness" Value="0"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
                         </Style>
                     </ui:Button.Style>
                 </ui:Button>
@@ -956,7 +946,7 @@
                               Visibility="{Binding IsIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="{Binding IconColumns}" HorizontalAlignment="Left"/>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"/>
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
                         <ListView.ItemContainerStyle>
