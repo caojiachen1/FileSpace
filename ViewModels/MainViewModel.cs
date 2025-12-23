@@ -766,18 +766,13 @@ namespace FileSpace.ViewModels
                 if (SelectedFile?.IsDirectory == true && SelectedFile.FullPath == e.FolderPath)
                 {
                     _folderPreviewUpdateService.UpdateDirectoryPreviewWithSize(PreviewContent, e.SizeInfo);
+                    // Clear calculation state for the current preview folder
+                    IsSizeCalculating = false;
+                    SizeCalculationProgress = "";
                 }
 
                 // Update directory tree item if exists
                 _folderPreviewUpdateService.UpdateDirectoryTreeItemSize(DirectoryTree, e.FolderPath, e.SizeInfo);
-
-                IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.ActiveCalculationsCount > 0;
-
-                // Clear progress if this was the current preview folder
-                if (_currentPreviewFolderPath == e.FolderPath)
-                {
-                    SizeCalculationProgress = "";
-                }
             });
         }
 

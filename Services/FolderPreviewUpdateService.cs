@@ -13,47 +13,61 @@ namespace FileSpace.Services
         {
             if (previewContent is StackPanel panel)
             {
-                // Find and update the size status blocks
-                foreach (var child in panel.Children.OfType<TextBlock>())
+                // Find all Grid children that are property rows
+                var grids = panel.Children.OfType<Grid>().ToList();
+                
+                // Find the size status row (总大小:)
+                foreach (var grid in grids)
                 {
-                    if (child.Text.StartsWith("总大小:") || child.Text.StartsWith("正在后台计算") || child.Text.StartsWith("准备计算"))
+                    if (grid.Children.Count >= 2 && grid.Children[1] is TextBlock valueBlock)
                     {
-                        if (!string.IsNullOrEmpty(sizeInfo.Error))
+                        var text = valueBlock.Text;
+                        // Match any size-related status
+                        if (text.StartsWith("准备计算") || text.StartsWith("正在后台计算") || text.StartsWith("总大小:"))
                         {
-                            child.Text = $"计算失败: {sizeInfo.Error}";
-                            // Don't update file/folder counts if calculation failed
+                            if (!string.IsNullOrEmpty(sizeInfo.Error))
+                            {
+                                valueBlock.Text = $"计算失败: {sizeInfo.Error}";
+                            }
+                            else
+                            {
+                                valueBlock.Text = sizeInfo.FormattedSize;
+                            }
+                            break;
                         }
-                        else
+                    }
+                }
+
+                // Update file and folder counts if calculation succeeded
+                if (string.IsNullOrEmpty(sizeInfo.Error))
+                {
+                    foreach (var grid in grids)
+                    {
+                        if (grid.Children.Count >= 2)
                         {
-                            child.Text = $"总大小: {sizeInfo.FormattedSize}";
-
-                            // Update the file and folder count blocks in their original positions
-                            foreach (var contentChild in panel.Children.OfType<TextBlock>())
+                            if (grid.Children[0] is TextBlock labelBlock && grid.Children[1] is TextBlock valueBlock2)
                             {
-                                if (contentChild.Text.StartsWith("直接包含文件:"))
+                                if (labelBlock.Text == "直接包含文件:")
                                 {
-                                    contentChild.Text = $"总共包含文件: {sizeInfo.FileCount:N0} 个";
+                                    valueBlock2.Text = $"{sizeInfo.FileCount:N0} 个";
                                 }
-                                else if (contentChild.Text.StartsWith("直接包含文件夹:"))
+                                else if (labelBlock.Text == "直接包含文件夹:")
                                 {
-                                    contentChild.Text = $"直接包含文件夹: {sizeInfo.DirectoryCount:N0} 个";
+                                    valueBlock2.Text = $"{sizeInfo.DirectoryCount:N0} 个";
                                 }
-                            }
-
-                            // Update or add inaccessible items info
-                            var progressBlock = panel.Children.OfType<TextBlock>()
-                                .LastOrDefault(tb => !tb.Text.StartsWith("直接包含") && !tb.Text.StartsWith("总大小") && !tb.Text.StartsWith("文件夹") && !tb.Text.StartsWith("完整路径") && !tb.Text.StartsWith("创建时间") && !tb.Text.StartsWith("修改时间") && !string.IsNullOrEmpty(tb.Text));
-                            
-                            if (progressBlock != null && sizeInfo.InaccessibleItems > 0)
-                            {
-                                progressBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
-                            }
-                            else if (progressBlock != null)
-                            {
-                                progressBlock.Text = "";
+                                else if (labelBlock.Text == "计算状态:")
+                                {
+                                    if (sizeInfo.InaccessibleItems > 0)
+                                    {
+                                        valueBlock2.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
+                                    }
+                                    else
+                                    {
+                                        valueBlock2.Text = "";
+                                    }
+                                }
                             }
                         }
-                        break;
                     }
                 }
             }
