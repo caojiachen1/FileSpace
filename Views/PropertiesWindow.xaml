@@ -7,7 +7,7 @@
                  Width="500"
                  MinHeight="400"
                  MinWidth="400"
-                 WindowStartupLocation="CenterOwner"
+                 WindowStartupLocation="CenterScreen"
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica">
     
