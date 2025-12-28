@@ -48,7 +48,7 @@
   <PropertyGroup>
     <WapProjPath Condition="'$(WapProjPath)'==''">$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\</WapProjPath>
   </PropertyGroup>
-  <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.props" />
+  <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.props" Condition="Exists('$(WapProjPath)\Microsoft.DesktopBridge.props')" />
   <PropertyGroup>
     <ProjectGuid>2c8212de-4621-4637-82da-cf5ba7d70389</ProjectGuid>
     <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
@@ -63,7 +63,7 @@
       <SubType>Designer</SubType>
     </AppxManifest>
   </ItemGroup>
-  <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
+  <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" Condition="Exists('$(WapProjPath)\Microsoft.DesktopBridge.targets')" />
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" PrivateAssets="all" />
   </ItemGroup>
@@ -122,4 +122,10 @@
   <ItemGroup>
     <ProjectReference Include="..\FileSpace.csproj" />
   </ItemGroup>
+
+  <!-- If DesktopBridge targets are not available on this machine, provide a no-op Build target to avoid MSBuild errors -->
+  <Target Name="Build" Condition="!Exists('$(WapProjPath)\Microsoft.DesktopBridge.targets')">
+    <Message Text="Skipping Installer Build because DesktopBridge targets are not available." Importance="High" />
+  </Target>
+
 </Project>
