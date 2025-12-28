@@ -389,6 +389,37 @@ namespace FileSpace.ViewModels
                 _currentPreviewFolderPath = string.Empty;
             }
 
+            // If a directory is selected, trigger background size calculation for that folder only.
+            if (value?.IsDirectory == true)
+            {
+                _currentPreviewFolderPath = value.FullPath;
+
+                // Check cache first
+                var cached = BackgroundFolderSizeCalculator.Instance.GetCachedSize(value.FullPath);
+                if (cached != null && cached.IsCalculationComplete)
+                {
+                    value.UpdateSizeFromBackground(cached);
+                }
+                else
+                {
+                    // Mark as calculating (UI shows "计算中...") and queue calculation with FileItemModel as context
+                    try
+                    {
+                        value.IsSizeCalculating = true;
+                        BackgroundFolderSizeCalculator.Instance.QueueFolderSizeCalculation(value.FullPath, context: value, highPriority: true);
+                        IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.IsCalculationActive(value.FullPath);
+                        if (IsSizeCalculating)
+                        {
+                            SizeCalculationProgress = "正在计算中...";
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore any errors when attempting to queue background calc
+                    }
+                }
+            }
+
             _ = ShowPreviewAsync();
         }
 

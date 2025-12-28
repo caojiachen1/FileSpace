@@ -135,6 +135,11 @@ namespace FileSpace.Services
             {
                 dirItem.UpdateSizeFromBackground(result);
             }
+            // If the context is a FileItemModel (a folder shown in the main file list), update it as well
+            else if (request.Context is FileItemModel fileItem)
+            {
+                fileItem.UpdateSizeFromBackground(result);
+            }
             // Update preview panel context with consistent positioning
             else if (request.Context != null)
             {

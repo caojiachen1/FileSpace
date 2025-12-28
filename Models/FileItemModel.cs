@@ -19,6 +19,12 @@ namespace FileSpace.Models
         private long _size;
 
         [ObservableProperty]
+        private bool _isSizeCalculating;
+
+        [ObservableProperty]
+        private string _sizeText = string.Empty;
+
+        [ObservableProperty]
         private SymbolRegular _icon;
 
         [ObservableProperty]
@@ -30,7 +36,47 @@ namespace FileSpace.Models
         [ObservableProperty]
         private string _modifiedTime = string.Empty;
 
-        public string SizeString => IsDirectory ? "" : FileUtils.FormatFileSize(Size);
+        public string SizeString => IsDirectory ? (IsSizeCalculating ? "计算中..." : SizeText) : FileUtils.FormatFileSize(Size);
+
+        partial void OnSizeChanged(long value)
+        {
+            OnPropertyChanged(nameof(SizeString));
+        }
+
+        partial void OnIsDirectoryChanged(bool value)
+        {
+            OnPropertyChanged(nameof(SizeString));
+        }
+
+        partial void OnSizeTextChanged(string value)
+        {
+            OnPropertyChanged(nameof(SizeString));
+        }
+
+        partial void OnIsSizeCalculatingChanged(bool value)
+        {
+            OnPropertyChanged(nameof(SizeString));
+        }
+
+        public void UpdateSizeFromBackground(FolderSizeInfo sizeInfo)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (!string.IsNullOrEmpty(sizeInfo.Error))
+                {
+                    SizeText = "计算失败";
+                }
+                else if (sizeInfo.IsCalculationCancelled)
+                {
+                    SizeText = "已取消";
+                }
+                else
+                {
+                    SizeText = sizeInfo.FormattedSize;
+                }
+                IsSizeCalculating = false;
+            });
+        }
         
         public string DisplayName
         {
