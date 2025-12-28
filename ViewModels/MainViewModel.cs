@@ -141,8 +141,8 @@ namespace FileSpace.ViewModels
         {
             "大图标" => 100,
             "中等图标" => 80,
-            "小图标" => 40,
-            _ => 30
+            "小图标" => 32,
+            _ => 28
         };
 
         // Number of columns for icon view (auto-calculated based on view mode)
