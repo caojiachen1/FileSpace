@@ -291,11 +291,12 @@
                            Width="32" Height="28" Margin="2,0"
                            ToolTip="切换文件夹树 (Alt+1)"
                            Background="Transparent"
-                           BorderThickness="0">
+                           BorderThickness="0"
+                           Padding="0">
                     <ui:Button.Content>
-                        <Grid Width="20" Height="16">
+                        <Grid Width="22" Height="18">
                             <!-- VS Code style split icon with proper hollow effect -->
-                            <Rectangle Width="8" Height="14" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                            <Rectangle Width="9" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" 
                                        RadiusX="1" RadiusY="1">
                                 <Rectangle.Style>
                                     <Style TargetType="Rectangle">
@@ -313,17 +314,11 @@
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <Rectangle Width="10" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                            <Rectangle Width="11" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center" 
                                        Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
                                        StrokeThickness="1" RadiusX="1" RadiusY="1"/>
                         </Grid>
                     </ui:Button.Content>
-                    <ui:Button.Style>
-                        <Style TargetType="ui:Button">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="BorderThickness" Value="0"/>
-                        </Style>
-                    </ui:Button.Style>
                 </ui:Button>
                 
                 <!-- Right Panel Toggle (Preview) -->
@@ -331,14 +326,15 @@
                            Width="32" Height="28" Margin="2,0"
                            ToolTip="切换预览面板 (Alt+2)"
                            Background="Transparent"
-                           BorderThickness="0">
+                           BorderThickness="0"
+                           Padding="0">
                     <ui:Button.Content>
-                        <Grid Width="20" Height="16">
+                        <Grid Width="22" Height="18">
                             <!-- VS Code style split icon with proper hollow effect -->
-                            <Rectangle Width="10" Height="14" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                            <Rectangle Width="11" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" 
                                        Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
                                        StrokeThickness="1" RadiusX="1" RadiusY="1"/>
-                            <Rectangle Width="8" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                            <Rectangle Width="9" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center" 
                                        RadiusX="1" RadiusY="1">
                                 <Rectangle.Style>
                                     <Style TargetType="Rectangle">
@@ -358,12 +354,6 @@
                             </Rectangle>
                         </Grid>
                     </ui:Button.Content>
-                    <ui:Button.Style>
-                        <Style TargetType="ui:Button">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="BorderThickness" Value="0"/>
-                        </Style>
-                    </ui:Button.Style>
                 </ui:Button>
             </StackPanel>
         </Grid>
