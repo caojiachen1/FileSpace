@@ -124,11 +124,11 @@
                                 <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                <Setter TargetName="ContentBorder" Property="Background" Value="#FF404040"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ContentBorder" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                                <Setter TargetName="ContentBorder" Property="Background" Value="#FF606060"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </Trigger>
                             <DataTrigger Binding="{Binding HasSubDirectories}" Value="False">
                                 <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
@@ -595,13 +595,14 @@
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left"/>
                         
                         <!-- Quick Access Items -->
-                        <ListView ItemsSource="{Binding QuickAccessItems}" 
+                        <ListView x:Name="QuickAccessListView" ItemsSource="{Binding QuickAccessItems}" 
                                   Background="Transparent" BorderThickness="0"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                                   SelectionMode="Single"
                                   HorizontalAlignment="Stretch"
-                                  Width="Auto">
+                                  Width="Auto"
+                                  SelectionChanged="QuickAccessListView_SelectionChanged">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Background="Transparent" 
@@ -641,11 +642,11 @@
                                     </Setter>
                                     <Style.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                            <Setter Property="Background" Value="#FF404040"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}"/>
+                                            <Setter Property="Background" Value="#FF606060"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>

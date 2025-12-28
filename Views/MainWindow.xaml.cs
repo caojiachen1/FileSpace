@@ -183,6 +183,12 @@ namespace FileSpace.Views
         {
             if (e.NewValue is DirectoryItemModel dirItem)
             {
+                // Clear ListView selection when TreeView item is selected
+                var quickAccessListView = FindName("QuickAccessListView") as System.Windows.Controls.ListView;
+                if (quickAccessListView != null)
+                {
+                    quickAccessListView.SelectedIndex = -1;
+                }
                 ViewModel.DirectorySelectedCommand.Execute(dirItem);
             }
         }
@@ -778,6 +784,15 @@ namespace FileSpace.Views
             }
         }
 
+        private void QuickAccessListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems.Count > 0)
+            {
+                // Clear TreeView selection when a Quick Access item is selected
+                ClearTreeViewSelection();
+            }
+        }
+
         /// <summary>
         /// 处理快速访问项目点击事件
         /// </summary>
@@ -787,6 +802,41 @@ namespace FileSpace.Views
             {
                 ViewModel.NavigateToPathCommand.Execute(path);
             }
+        }
+
+        /// <summary>
+        /// 清除TreeView的选中状态
+        /// </summary>
+        private void ClearTreeViewSelection()
+        {
+            if (DirectoryTreeView.SelectedItem != null)
+            {
+                var container = FindTreeViewItemContainer(DirectoryTreeView, DirectoryTreeView.SelectedItem);
+                if (container != null)
+                {
+                    container.IsSelected = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 递归查找TreeViewItem容器
+        /// </summary>
+        private System.Windows.Controls.TreeViewItem? FindTreeViewItemContainer(ItemsControl container, object item)
+        {
+            var result = container.ItemContainerGenerator.ContainerFromItem(item) as System.Windows.Controls.TreeViewItem;
+            if (result != null) return result;
+
+            foreach (var childItem in container.Items)
+            {
+                var childContainer = container.ItemContainerGenerator.ContainerFromItem(childItem) as ItemsControl;
+                if (childContainer != null)
+                {
+                    result = FindTreeViewItemContainer(childContainer, item);
+                    if (result != null) return result;
+                }
+            }
+            return null;
         }
     }
 }
