@@ -489,7 +489,7 @@
                                     </MenuItem>
                                     <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
                                         <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Calendar24"/>
+                                            <ui:SymbolIcon Symbol="Timer24"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </ContextMenu>
