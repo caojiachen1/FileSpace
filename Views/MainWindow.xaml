@@ -208,7 +208,7 @@
                     <Menu.Resources>
                         <Style TargetType="MenuItem">
                             <Setter Property="FontSize" Value="9"/>
-                            <Setter Property="Padding" Value="6,2,6,2"/>
+                            <Setter Property="Padding" Value="4,1,4,1"/>
                         </Style>
                     </Menu.Resources>
                     <MenuItem Header="文件(_F)">

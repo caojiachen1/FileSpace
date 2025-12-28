@@ -64,7 +64,7 @@ namespace FileSpace.Utils
             return grid;
         }
 
-        public static Grid CreatePropertyValueRowWithTooltip(string property, string value, string fullValue = null)
+        public static Grid CreatePropertyValueRowWithTooltip(string property, string value, string? fullValue = null)
         {
             var grid = CreatePropertyValueRow(property, value);
             
@@ -295,7 +295,7 @@ namespace FileSpace.Utils
                     lineCount++;
                 }
 
-                bool hasMoreLines = !reader.EndOfStream;
+                bool hasMoreLines = lineCount >= maxLines;
 
                 // Update the header to show line count
                 var lastChild = panel.Children[panel.Children.Count - 1] as TextBlock;

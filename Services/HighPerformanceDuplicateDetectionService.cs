@@ -272,7 +272,7 @@ namespace FileSpace.Services
         {
             using var stream = File.OpenRead(filePath);
             var buffer = new byte[Math.Min(hashSize, stream.Length)];
-            stream.Read(buffer, 0, buffer.Length);
+            stream.ReadExactly(buffer, 0, buffer.Length);
             
             var hashBytes = XxHash64.Hash(buffer);
             return Convert.ToHexString(hashBytes);
@@ -294,12 +294,12 @@ namespace FileSpace.Services
             
             // 读取头部
             var headBuffer = new byte[MEDIUM_HASH_SIZE];
-            stream.Read(headBuffer, 0, MEDIUM_HASH_SIZE);
+            stream.ReadExactly(headBuffer, 0, MEDIUM_HASH_SIZE);
             
             // 读取尾部
             stream.Seek(-MEDIUM_HASH_SIZE, SeekOrigin.End);
             var tailBuffer = new byte[MEDIUM_HASH_SIZE];
-            stream.Read(tailBuffer, 0, MEDIUM_HASH_SIZE);
+            stream.ReadExactly(tailBuffer, 0, MEDIUM_HASH_SIZE);
             
             // 合并头尾部分
             var combinedBuffer = new byte[MEDIUM_HASH_SIZE * 2];

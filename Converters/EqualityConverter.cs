@@ -20,7 +20,7 @@ namespace FileSpace.Converters
             var result = new object[targetTypes.Length];
             for (int i = 0; i < targetTypes.Length; i++)
             {
-                result[i] = targetTypes[i].IsValueType ? Activator.CreateInstance(targetTypes[i]) : null;
+                result[i] = targetTypes[i].IsValueType ? (object)Activator.CreateInstance(targetTypes[i])! : null;
             }
             return result;
         }
