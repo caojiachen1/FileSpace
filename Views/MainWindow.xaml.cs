@@ -42,6 +42,12 @@ namespace FileSpace.Views
             
             // 初始化后保存GridSplitter变化事件
             this.Loaded += OnMainWindowLoaded;
+
+            // 当窗口激活时，刷新粘贴命令状态（可能在外部复制了文件）
+            this.Activated += (s, e) =>
+            {
+                ViewModel.PasteFilesCommand.NotifyCanExecuteChanged();
+            };
         }
 
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
@@ -320,13 +326,22 @@ namespace FileSpace.Views
         {
             if (DataContext is MainViewModel viewModel)
             {
-                var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
-                if (fileDataGrid != null)
+                viewModel.SelectedFiles.Clear();
+                
+                System.Collections.IEnumerable? selectedItems = null;
+                if (sender is ListBox listBox)
+                    selectedItems = listBox.SelectedItems;
+                else if (sender is MultiSelector multiSelector)
+                    selectedItems = multiSelector.SelectedItems;
+                else if (sender is System.Windows.Controls.DataGrid dataGrid)
+                    selectedItems = dataGrid.SelectedItems;
+
+                if (selectedItems != null)
                 {
-                    viewModel.SelectedFiles.Clear();
-                    foreach (FileItemModel item in fileDataGrid.SelectedItems)
+                    foreach (var item in selectedItems)
                     {
-                        viewModel.SelectedFiles.Add(item);
+                        if (item is FileItemModel fileItem)
+                            viewModel.SelectedFiles.Add(fileItem);
                     }
                 }
             }
@@ -353,13 +368,6 @@ namespace FileSpace.Views
                             e.Handled = true;
                         }
                         break;
-                    case Key.F2:
-                        if (viewModel.SelectedFile != null && !viewModel.IsRenaming)
-                        {
-                            viewModel.StartRenameCommand.Execute(null);
-                            e.Handled = true;
-                        }
-                        break;
                     case Key.Escape:
                         if (viewModel.IsRenaming)
                         {
@@ -376,56 +384,6 @@ namespace FileSpace.Views
                                 viewModel.SelectedFiles.Clear();
                                 e.Handled = true;
                             }
-                        }
-                        break;
-                    case Key.Back:
-                        // Backspace key - navigate to parent directory
-                        if (!viewModel.IsRenaming && viewModel.CanUp)
-                        {
-                            viewModel.UpCommand.Execute(null);
-                            e.Handled = true;
-                        }
-                        break;
-                    case Key.Delete:
-                        if (!viewModel.IsRenaming && viewModel.SelectedFiles.Any())
-                        {
-                            if (Keyboard.Modifiers == ModifierKeys.Shift)
-                            {
-                                viewModel.DeleteFilesPermanentlyCommand.Execute(null);
-                            }
-                            else
-                            {
-                                viewModel.DeleteFilesCommand.Execute(null);
-                            }
-                            e.Handled = true;
-                        }
-                        break;
-                    case Key.C:
-                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.SelectedFiles.Any())
-                        {
-                            viewModel.CopyFilesCommand.Execute(null);
-                            e.Handled = true;
-                        }
-                        break;
-                    case Key.V:
-                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.CanPaste)
-                        {
-                            viewModel.PasteFilesCommand.Execute(null);
-                            e.Handled = true;
-                        }
-                        break;
-                    case Key.X:
-                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming && viewModel.SelectedFiles.Any())
-                        {
-                            viewModel.CutFilesCommand.Execute(null);
-                            e.Handled = true;
-                        }
-                        break;
-                    case Key.A:
-                        if (Keyboard.Modifiers == ModifierKeys.Control && !viewModel.IsRenaming)
-                        {
-                            viewModel.SelectAllCommand.Execute(null);
-                            e.Handled = true;
                         }
                         break;
                 }

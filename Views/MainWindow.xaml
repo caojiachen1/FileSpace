@@ -13,6 +13,18 @@
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
 
+    <ui:FluentWindow.InputBindings>
+        <KeyBinding Key="Delete" Command="{Binding DeleteFilesCommand}" />
+        <KeyBinding Key="Delete" Modifiers="Shift" Command="{Binding DeleteFilesPermanentlyCommand}" />
+        <KeyBinding Key="F2" Command="{Binding StartRenameCommand}" />
+        <KeyBinding Key="Back" Command="{Binding UpCommand}" />
+        <KeyBinding Key="C" Modifiers="Control" Command="{Binding CopyFilesCommand}" />
+        <KeyBinding Key="V" Modifiers="Control" Command="{Binding PasteFilesCommand}" />
+        <KeyBinding Key="X" Modifiers="Control" Command="{Binding CutFilesCommand}" />
+        <KeyBinding Key="A" Modifiers="Control" Command="{Binding SelectAllCommand}" />
+        <KeyBinding Key="R" Modifiers="Control" Command="{Binding RefreshCommand}" />
+    </ui:FluentWindow.InputBindings>
+
     <ui:FluentWindow.Resources>
         <!-- Add missing converters -->
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>

@@ -80,6 +80,11 @@ namespace FileSpace.ViewModels
         private double _fileOperationProgress;
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(DeleteFilesCommand))]
+        [NotifyCanExecuteChangedFor(nameof(DeleteFilesPermanentlyCommand))]
+        [NotifyCanExecuteChangedFor(nameof(CopyFilesCommand))]
+        [NotifyCanExecuteChangedFor(nameof(CutFilesCommand))]
+        [NotifyCanExecuteChangedFor(nameof(StartRenameCommand))]
         private bool _isRenaming;
 
         [ObservableProperty]
@@ -265,6 +270,16 @@ namespace FileSpace.ViewModels
             FileOperationsService.Instance.OperationProgress += _fileOperationEventHandler.OnFileOperationProgress;
             FileOperationsService.Instance.OperationCompleted += _fileOperationEventHandler.OnFileOperationCompleted;
             FileOperationsService.Instance.OperationFailed += _fileOperationEventHandler.OnFileOperationFailed;
+
+            // Subscribe to selection changes to update command states
+            SelectedFiles.CollectionChanged += (s, e) =>
+            {
+                DeleteFilesCommand.NotifyCanExecuteChanged();
+                DeleteFilesPermanentlyCommand.NotifyCanExecuteChanged();
+                CopyFilesCommand.NotifyCanExecuteChanged();
+                CutFilesCommand.NotifyCanExecuteChanged();
+                StartRenameCommand.NotifyCanExecuteChanged();
+            };
         }
 
         /// <summary>
@@ -582,6 +597,7 @@ namespace FileSpace.ViewModels
                     Files.Add(file);
                 }
 
+                SelectAllCommand.NotifyCanExecuteChanged();
                 StatusText = statusMessage;
             }
             catch (Exception ex)
@@ -996,7 +1012,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanCopy))]
         private void CopyFiles()
         {
             var selectedPaths = SelectedFiles.Select(f => f.FullPath).ToList();
@@ -1005,10 +1021,11 @@ namespace FileSpace.ViewModels
                 ClipboardService.Instance.CopyFiles(selectedPaths);
                 StatusText = $"已复制 {selectedPaths.Count} 个项目到剪贴板 (Ctrl+C)";
                 OnPropertyChanged(nameof(CanPaste)); // Notify that paste state might have changed
+                PasteFilesCommand.NotifyCanExecuteChanged();
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanCut))]
         private void CutFiles()
         {
             var selectedPaths = SelectedFiles.Select(f => f.FullPath).ToList();
@@ -1017,6 +1034,7 @@ namespace FileSpace.ViewModels
                 ClipboardService.Instance.CutFiles(selectedPaths);
                 StatusText = $"已剪切 {selectedPaths.Count} 个项目到剪贴板 (Ctrl+X)";
                 OnPropertyChanged(nameof(CanPaste)); // Notify that paste state might have changed
+                PasteFilesCommand.NotifyCanExecuteChanged();
             }
         }
 
@@ -1038,7 +1056,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanPaste))]
         private async Task PasteFiles()
         {
             if (!ClipboardService.Instance.CanPaste())
@@ -1056,9 +1074,16 @@ namespace FileSpace.ViewModels
                 _fileOperationCancellationTokenSource = new CancellationTokenSource();
                 var token = _fileOperationCancellationTokenSource.Token;
 
-                var operation = ClipboardService.Instance.ClipboardOperation;
-                var sourceFiles = ClipboardService.Instance.ClipboardFiles.ToList();
+                var operation = ClipboardService.Instance.GetClipboardOperation();
+                var sourceFiles = ClipboardService.Instance.GetClipboardFiles().ToList();
                 var destinationFolder = CurrentPath;
+
+                if (!sourceFiles.Any())
+                {
+                    StatusText = "剪贴板中没有可粘贴的文件";
+                    IsFileOperationInProgress = false;
+                    return;
+                }
 
                 if (operation == ClipboardFileOperation.Copy)
                 {
@@ -1088,7 +1113,7 @@ namespace FileSpace.ViewModels
             StatusText = "正在取消操作...";
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanDeletePermanently))]
         private async Task DeleteFilesPermanently()
         {
             if (!SelectedFiles.Any())
@@ -1125,7 +1150,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanDelete))]
         private async Task DeleteFiles()
         {
             if (!SelectedFiles.Any())
@@ -1248,7 +1273,7 @@ namespace FileSpace.ViewModels
                 Files.Add(file);
             }
         }
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanRename))]
         public void StartRename()
         {
             if (SelectedFile != null)
@@ -1353,7 +1378,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanSelectAll))]
         private void SelectAll()
         {
             SelectedFiles.Clear();
@@ -1623,14 +1648,14 @@ namespace FileSpace.ViewModels
         public bool CanBack => _navigationService.CanBack;
         public bool CanUp => _navigationService.CanUp;
         public bool CanPaste => ClipboardService.Instance.CanPaste();
-        public bool CanDelete => SelectedFiles.Any();
-        public bool CanCopy => SelectedFiles.Any();
-        public bool CanCut => SelectedFiles.Any();
-        public bool CanRename => SelectedFile != null;
-        public bool CanSelectAll => Files.Any();
-        public bool CanInvertSelection => Files.Any();
-        public bool CanDeletePermanently => SelectedFiles.Any();
-        public bool CanClearSelection => SelectedFiles.Any();
+        public bool CanDelete => !IsRenaming && SelectedFiles.Any();
+        public bool CanCopy => !IsRenaming && SelectedFiles.Any();
+        public bool CanCut => !IsRenaming && SelectedFiles.Any();
+        public bool CanRename => !IsRenaming && SelectedFile != null;
+        public bool CanSelectAll => !IsRenaming && Files.Any();
+        public bool CanInvertSelection => !IsRenaming && Files.Any();
+        public bool CanDeletePermanently => !IsRenaming && SelectedFiles.Any();
+        public bool CanClearSelection => !IsRenaming && SelectedFiles.Any();
         public bool CanOpenInExplorer => ExplorerService.Instance.CanOpenInExplorer(CurrentPath);
         public bool CanCopyPath => SelectedFile != null;
 
