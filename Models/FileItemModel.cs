@@ -73,6 +73,7 @@ namespace FileSpace.Models
                 else
                 {
                     SizeText = sizeInfo.FormattedSize;
+                    Size = sizeInfo.TotalSize;
                 }
                 IsSizeCalculating = false;
             });

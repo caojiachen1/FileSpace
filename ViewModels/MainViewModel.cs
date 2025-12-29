@@ -499,10 +499,12 @@ namespace FileSpace.ViewModels
                 allFiles.AddRange(files);
 
                 Files.Clear();
-                foreach (var file in allFiles.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name))
+                foreach (var file in allFiles)
                 {
                     Files.Add(file);
                 }
+
+                ApplySorting();
 
                 StatusText = $"找到 {allFiles.Count} 个匹配项";
             }
@@ -596,6 +598,8 @@ namespace FileSpace.ViewModels
                 {
                     Files.Add(file);
                 }
+
+                ApplySorting();
 
                 SelectAllCommand.NotifyCanExecuteChanged();
                 StatusText = statusMessage;
@@ -820,6 +824,12 @@ namespace FileSpace.ViewModels
 
                 // Update directory tree item if exists
                 _folderPreviewUpdateService.UpdateDirectoryTreeItemSize(DirectoryTree, e.FolderPath, e.SizeInfo);
+
+                // If we are sorting by size, re-apply sorting to reflect the new folder size
+                if (SortMode == "Size")
+                {
+                    ApplySorting();
+                }
             });
         }
 
@@ -1244,6 +1254,10 @@ namespace FileSpace.ViewModels
 
         private void ApplySorting()
         {
+            if (Files.Count == 0) return;
+
+            var selectedFile = SelectedFile;
+
             DateTime ParseModified(string s)
             {
                 if (DateTime.TryParse(s, out var dt)) return dt;
@@ -1256,8 +1270,8 @@ namespace FileSpace.ViewModels
                     ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
                     : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Size" => SortAscending
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Size).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Size).ToList(),
+                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Type" => SortAscending
                     ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
                     : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
@@ -1267,10 +1281,36 @@ namespace FileSpace.ViewModels
                 _ => Files.ToList()
             };
 
-            Files.Clear();
-            foreach (var file in sortedFiles)
+            // Only update if the order actually changed
+            bool orderChanged = false;
+            if (sortedFiles.Count == Files.Count)
             {
-                Files.Add(file);
+                for (int i = 0; i < Files.Count; i++)
+                {
+                    if (Files[i] != sortedFiles[i])
+                    {
+                        orderChanged = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                orderChanged = true;
+            }
+
+            if (orderChanged)
+            {
+                Files.Clear();
+                foreach (var file in sortedFiles)
+                {
+                    Files.Add(file);
+                }
+
+                if (selectedFile != null && Files.Contains(selectedFile))
+                {
+                    SelectedFile = selectedFile;
+                }
             }
         }
         [RelayCommand(CanExecute = nameof(CanRename))]
