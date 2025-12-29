@@ -591,8 +591,8 @@
 
             <!-- Left Panel - Quick Access & Directory Tree -->
             <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
-                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                    BorderThickness="1,1,0,1" CornerRadius="8,0,0,8"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
+                    BorderThickness="0,0.5,0,0" CornerRadius="0"
                     Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -715,8 +715,8 @@
                 </Grid>
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" 
-                          Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+            <GridSplitter Grid.Column="1" Width="2" HorizontalAlignment="Stretch" 
+                          Background="{DynamicResource ControlStrokeColorDefaultBrush}"
                           DragCompleted="LeftGridSplitter_DragCompleted">
                 <GridSplitter.Style>
                     <Style TargetType="GridSplitter">
@@ -733,11 +733,11 @@
 
             <!-- Center Panel - File List (Always visible) -->
             <Border Grid.Column="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
-                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}">
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
                 <Border.Style>
                     <Style TargetType="Border">
                         <!-- Default style when both panels are visible -->
-                        <Setter Property="BorderThickness" Value="0,1,0,1"/>
+                        <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
                         <Setter Property="CornerRadius" Value="0"/>
                         <Style.Triggers>
                             <!-- Left panel hidden, right panel visible -->
@@ -746,8 +746,8 @@
                                     <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
                                     <Condition Binding="{Binding IsRightPanelVisible}" Value="True"/>
                                 </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="1,1,0,1"/>
-                                <Setter Property="CornerRadius" Value="8,0,0,8"/>
+                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
+                                <Setter Property="CornerRadius" Value="0"/>
                             </MultiDataTrigger>
                             <!-- Left panel visible, right panel hidden -->
                             <MultiDataTrigger>
@@ -755,8 +755,8 @@
                                     <Condition Binding="{Binding IsLeftPanelVisible}" Value="True"/>
                                     <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
                                 </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="0,1,1,1"/>
-                                <Setter Property="CornerRadius" Value="0,8,8,0"/>
+                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
+                                <Setter Property="CornerRadius" Value="0"/>
                             </MultiDataTrigger>
                             <!-- Both panels hidden (center only) -->
                             <MultiDataTrigger>
@@ -764,8 +764,8 @@
                                     <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
                                     <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
                                 </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="1"/>
-                                <Setter Property="CornerRadius" Value="8"/>
+                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
+                                <Setter Property="CornerRadius" Value="0"/>
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -1105,8 +1105,8 @@
                 </Grid>
             </Border>
 
-            <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" 
-                          Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+            <GridSplitter Grid.Column="3" Width="2" HorizontalAlignment="Stretch" 
+                          Background="{DynamicResource ControlStrokeColorDefaultBrush}"
                           DragCompleted="RightGridSplitter_DragCompleted">
                 <GridSplitter.Style>
                     <Style TargetType="GridSplitter">
@@ -1123,8 +1123,8 @@
 
             <!-- Right Panel - File Preview -->
             <Border Grid.Column="4" Background="{DynamicResource ApplicationBackgroundBrush}" 
-                    BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" 
-                    BorderThickness="0,1,1,1" CornerRadius="0,8,8,0"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
+                    BorderThickness="0,0.5,0,0" CornerRadius="0"
                     Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
