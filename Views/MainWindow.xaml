@@ -371,9 +371,9 @@
         </Grid>
 
             <!-- Toolbar -->
-            <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+            <Border Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" 
-                    BorderThickness="0,1,0,1" Margin="0,0,0,0" Padding="10,4">
+                    BorderThickness="0,1,0,1" Margin="0,0,0,0" Padding="10,2">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -384,15 +384,15 @@
                     <!-- Navigation Buttons -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:Button Command="{Binding GoBackCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="后退 (Alt+Left)" Background="Transparent" BorderThickness="1">
+                                   ToolTip="后退 (Alt+Left)" Background="Transparent" BorderThickness="0">
                             <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="16"/>
                         </ui:Button>
                         <ui:Button Command="{Binding GoForwardCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="前进 (Alt+Right)" Background="Transparent" BorderThickness="1">
+                                   ToolTip="前进 (Alt+Right)" Background="Transparent" BorderThickness="0">
                             <ui:SymbolIcon Symbol="ArrowRight24" FontSize="16"/>
                         </ui:Button>
                         <ui:Button Command="{Binding GoUpCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="向上 (Alt+Up)" Background="Transparent" BorderThickness="1">
+                                   ToolTip="向上 (Alt+Up)" Background="Transparent" BorderThickness="0">
                             <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
                         </ui:Button>
                     </StackPanel>
@@ -401,7 +401,7 @@
                     <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" 
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
                             BorderThickness="1" CornerRadius="4" Margin="10,0">
-                        <Grid>
+                        <Grid Height="26" VerticalAlignment="Center">
                             <!-- Breadcrumb Navigation -->
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                                           Visibility="{Binding IsPathEditing, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
@@ -433,7 +433,7 @@
                             <ui:TextBox x:Name="AddressBarTextBox" Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="Transparent" BorderThickness="0"
                                         Visibility="{Binding IsPathEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        KeyDown="AddressBarTextBox_KeyDown"/>
+                                        KeyDown="AddressBarTextBox_KeyDown" Margin="2,0,2,0"/>
                         </Grid>
                     </Border>
                     
@@ -448,7 +448,7 @@
                         
                         <!-- View Mode Dropdown -->
                         <ui:Button x:Name="ViewModeButton" Width="80" Height="32" Margin="4,0,0,0" 
-                                   Background="Transparent" BorderThickness="1"
+                                   Background="Transparent" BorderThickness="0"
                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                                    ToolTip="查看选项" Click="ViewModeButton_Click">
                             <ui:Button.Content>
@@ -526,30 +526,27 @@
             </Border>
             
             <!-- Quick Access Toolbar -->
-            <Border Grid.Row="2" Background="{DynamicResource SubtleFillColorSecondaryBrush}" 
-                    Margin="0,0,0,0" Padding="5,3" CornerRadius="4">
+            <Border Grid.Row="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+                    Margin="0,0,0,0" Padding="5,3">
                 <StackPanel Orientation="Horizontal">
                     <ui:Button Command="{Binding CopyFilesCommand}" Background="Transparent" BorderThickness="0"
-                               ToolTip="复制 (Ctrl+C)" Margin="0,0,4,0" Padding="8,4">
+                               ToolTip="复制 (Ctrl+C)">
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Copy24" FontSize="14" Margin="0,0,4,0"/>
-                            <TextBlock Text="复制" FontSize="12"/>
+                            <ui:SymbolIcon Symbol="Copy24" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
                     
                     <ui:Button Command="{Binding PasteFilesCommand}" Background="Transparent" BorderThickness="0"
-                               ToolTip="粘贴 (Ctrl+V)" Margin="0,0,4,0" Padding="8,4">
+                               ToolTip="粘贴 (Ctrl+V)">
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="14" Margin="0,0,4,0"/>
-                            <TextBlock Text="粘贴" FontSize="12"/>
+                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
                     
                     <ui:Button Command="{Binding DeleteFilesCommand}" Background="Transparent" BorderThickness="0"
-                               ToolTip="删除 (Delete)" Margin="0,0,4,0" Padding="8,4">
+                               ToolTip="删除 (Delete)">
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Delete24" FontSize="14" Margin="0,0,4,0"/>
-                            <TextBlock Text="删除" FontSize="12"/>
+                            <ui:SymbolIcon Symbol="Delete24" FontSize="14"/>
                         </StackPanel>
                     </ui:Button>
                     
@@ -592,7 +589,7 @@
             <!-- Left Panel - Quick Access & Directory Tree -->
             <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
-                    BorderThickness="0,0.5,0,0" CornerRadius="0"
+                    BorderThickness="0,1,0,0" CornerRadius="0"
                     Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -604,9 +601,6 @@
                     
                     <!-- Quick Access Section -->
                     <StackPanel Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch">
-                        <TextBlock Text="快速访问" FontWeight="Bold" FontSize="13" Margin="0,0,0,8" 
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left"/>
-                        
                         <!-- Quick Access Items -->
                         <ListView x:Name="QuickAccessListView" ItemsSource="{Binding QuickAccessItems}" 
                                   Background="Transparent" BorderThickness="0"
@@ -623,10 +617,10 @@
                                           Tag="{Binding Path}">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" 
                                                     Margin="8,0">
-                                            <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,8,0" FontSize="16"
+                                            <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,8,0" FontSize="18"
                                                            Foreground="{Binding IconColor}" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="14"/>
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
@@ -669,11 +663,7 @@
                     </StackPanel>
                     
                     <!-- Separator -->
-                    <Separator Grid.Row="1" Margin="10,8" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
-                    
-                    <!-- This PC Section Header -->
-                    <TextBlock Grid.Row="2" Text="此电脑" FontWeight="Bold" FontSize="13" Margin="10,0,10,8" 
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <Separator Grid.Row="1" Margin="5,8" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                     
                     <!-- Directory Tree -->
                     <TreeView Grid.Row="3" x:Name="DirectoryTreeView" 
@@ -689,12 +679,12 @@
                             <HierarchicalDataTemplate ItemsSource="{Binding SubDirectories}">
                                 <StackPanel Orientation="Horizontal">
                                     <!-- Colorful folder icon -->
-                                    <ui:SymbolIcon Symbol="Folder24" Margin="0,0,5,0" 
+                                    <ui:SymbolIcon Symbol="Folder24" Margin="0,0,5,0" FontSize="18"
                                                    Foreground="#FFE6A23C"/>
                                     
                                     <!-- Directory name -->
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="14"/>
                                     
                                     <!-- Loading indicator with color -->
                                     <ui:ProgressRing Width="14" Height="14" Margin="5,0,0,0"
@@ -737,7 +727,7 @@
                 <Border.Style>
                     <Style TargetType="Border">
                         <!-- Default style when both panels are visible -->
-                        <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
+                        <Setter Property="BorderThickness" Value="0,1,0,0"/>
                         <Setter Property="CornerRadius" Value="0"/>
                         <Style.Triggers>
                             <!-- Left panel hidden, right panel visible -->
@@ -1124,7 +1114,7 @@
             <!-- Right Panel - File Preview -->
             <Border Grid.Column="4" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
-                    BorderThickness="0,0.5,0,0" CornerRadius="0"
+                    BorderThickness="0,1,0,0" CornerRadius="0"
                     Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
