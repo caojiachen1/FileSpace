@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using FileSpace.Models;
+using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
 {
@@ -54,6 +55,22 @@ namespace FileSpace.Services
                 foreach (var drive in drives)
                 {
                     directoryTree.Add(new DirectoryItemModel(drive));
+                }
+
+                // Load and Add WSL Distributions
+                if (WslService.Instance.IsWslInstalled())
+                {
+                    var wslDistros = await WslService.Instance.GetDistributionsAsync();
+                    foreach (var (name, path) in wslDistros)
+                    {
+                        var wslItem = new DirectoryItemModel(path)
+                        {
+                            Name = name,
+                            Icon = SymbolRegular.Folder24, 
+                            IconColor = "#E95420" // Ubuntu Orange
+                        };
+                        directoryTree.Add(wslItem);
+                    }
                 }
 
                 // Set initial path

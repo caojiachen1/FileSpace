@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using FileSpace.Services;
+using Wpf.Ui.Controls;
 
 namespace FileSpace.Models
 {
@@ -14,6 +15,12 @@ namespace FileSpace.Models
 
         [ObservableProperty]
         private string _fullPath = string.Empty;
+
+        [ObservableProperty]
+        private SymbolRegular _icon = SymbolRegular.Folder24;
+
+        [ObservableProperty]
+        private string _iconColor = "#FFE6A23C";
 
         [ObservableProperty]
         private ObservableCollection<DirectoryItemModel> _subDirectories = new();

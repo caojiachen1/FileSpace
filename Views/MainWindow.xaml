@@ -679,8 +679,8 @@
                             <HierarchicalDataTemplate ItemsSource="{Binding SubDirectories}">
                                 <StackPanel Orientation="Horizontal">
                                     <!-- Colorful folder icon -->
-                                    <ui:SymbolIcon Symbol="Folder24" Margin="0,0,5,0" FontSize="18"
-                                                   Foreground="#FFE6A23C"/>
+                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" FontSize="18"
+                                                   Foreground="{Binding IconColor}"/>
                                     
                                     <!-- Directory name -->
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
