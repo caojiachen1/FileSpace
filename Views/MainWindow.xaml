@@ -267,12 +267,6 @@
                         </Style>
                     </Menu.Resources>
                     <MenuItem Header="文件(_F)">
-                        <MenuItem Header="搜索..." Command="{Binding ShowSearchWindowCommand}" InputGestureText="Ctrl+F">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Search24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator/>
                         <MenuItem Header="退出" Click="Exit_Click" InputGestureText="Alt+F4">
                             <MenuItem.Icon>
                                 <ui:SymbolIcon Symbol="Dismiss24"/>
@@ -457,82 +451,6 @@
                                 <ui:SymbolIcon Symbol="Search24"/>
                             </ui:TextBox.Icon>
                         </ui:TextBox>
-                        
-                        <!-- View Mode Dropdown -->
-                        <ui:Button x:Name="ViewModeButton" Width="80" Height="32" Margin="4,0,0,0" 
-                                   Background="Transparent" BorderThickness="0"
-                                   BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                   ToolTip="查看选项" Click="ViewModeButton_Click">
-                            <ui:Button.Content>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="14" Margin="0,0,4,0"
-                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="视图" FontSize="12" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="10" Margin="4,0,0,0"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                </StackPanel>
-                            </ui:Button.Content>
-                            <ui:Button.ContextMenu>
-                                <ContextMenu x:Name="ViewModeContextMenu">
-                                    <MenuItem Header="详细信息" Click="ViewModeMenuItem_Click" Tag="详细信息">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="TextBulletListSquare24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="大图标" Click="ViewModeMenuItem_Click" Tag="大图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Grid24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="中等图标" Click="ViewModeMenuItem_Click" Tag="中等图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Apps24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="AppsList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator/>
-                                    <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="TextSortAscending24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DataUsage24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DocumentBulletList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Timer24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ui:Button.ContextMenu>
-                            <ui:Button.Style>
-                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
-                                        </Trigger>
-                                        <Trigger Property="IsPressed" Value="True">
-                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ui:Button.Style>
-                        </ui:Button>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -571,6 +489,62 @@
                         </StackPanel>
                     </ui:Button>
 
+                    <ui:Button x:Name="ViewModeButton" Style="{StaticResource ToolbarButtonStyle}"
+                               ToolTip="查看选项" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
+                        <ui:Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="14" Margin="0,0,4,0"/>
+                                <TextBlock Text="视图" FontSize="12" VerticalAlignment="Center"/>
+                                <ui:SymbolIcon Symbol="ChevronDown24" FontSize="10" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </ui:Button.Content>
+                        <ui:Button.ContextMenu>
+                            <ContextMenu x:Name="ViewModeContextMenu">
+                                <MenuItem Header="详细信息" Click="ViewModeMenuItem_Click" Tag="详细信息">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="TextBulletListSquare24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="大图标" Click="ViewModeMenuItem_Click" Tag="大图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Grid24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="中等图标" Click="ViewModeMenuItem_Click" Tag="中等图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Apps24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="AppsList24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="TextSortAscending24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="DataUsage24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="DocumentBulletList24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Timer24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ui:Button.ContextMenu>
+                    </ui:Button>
+
                     <ui:Button x:Name="MoreToolsButton" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="更多" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
                         <ui:Button.Content>
@@ -597,6 +571,11 @@
                                 <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Folder24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="高级搜索..." Command="{Binding ShowSearchWindowCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Search24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
