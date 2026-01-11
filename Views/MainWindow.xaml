@@ -284,7 +284,7 @@
                     <!-- Address Bar -->
                     <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" 
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
-                            BorderThickness="1" CornerRadius="4" Margin="10,0">
+                            BorderThickness="1" CornerRadius="4" Margin="10,6">
                         <Grid Height="26" VerticalAlignment="Center">
                             <!-- Breadcrumb Navigation -->
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
@@ -317,13 +317,13 @@
                             <ui:TextBox x:Name="AddressBarTextBox" Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="Transparent" BorderThickness="0"
                                         Visibility="{Binding IsPathEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        KeyDown="AddressBarTextBox_KeyDown" Margin="2,0,2,0"/>
+                                        KeyDown="AddressBarTextBox_KeyDown" Margin="4,2,4,2"/>
                         </Grid>
                     </Border>
                     
                     <!-- Search and View Options -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ui:TextBox x:Name="SearchTextBox" PlaceholderText="搜索..." Width="200" Margin="8,0"
+                        <ui:TextBox x:Name="SearchTextBox" PlaceholderText="搜索..." Width="200" Margin="8,6"
                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
                             <ui:TextBox.Icon>
                                 <ui:SymbolIcon Symbol="Search24"/>
@@ -358,7 +358,7 @@
                             <ui:SymbolIcon Symbol="Delete24" FontSize="16"/>
                         </ui:Button>
                         
-                        <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0,18,0"/>
+                        <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,10,18,10" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                         
                         <ui:Button Command="{Binding CreateNewFolderCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="新建文件夹">
