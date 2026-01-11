@@ -253,7 +253,7 @@
             <!-- Toolbar -->
             <Border Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" 
-                    BorderThickness="0,0,0,1" Margin="0,0,0,0" Padding="10,2">
+                    BorderThickness="0,0,0,1" Margin="0,0,0,0" Height="48" Padding="10,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -335,46 +335,46 @@
             
             <!-- Quick Access Toolbar -->
             <Border Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" 
-                    Margin="0,0,0,0" Padding="5,3">
+                    Margin="0,0,0,0" Height="48" Padding="10,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
                         <ui:Button Command="{Binding CopyFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="复制 (Ctrl+C)">
-                            <ui:SymbolIcon Symbol="Copy24" FontSize="14"/>
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="复制 (Ctrl+C)">
+                            <ui:SymbolIcon Symbol="Copy24" FontSize="16"/>
                         </ui:Button>
 
                         <ui:Button Command="{Binding CutFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="剪切 (Ctrl+X)">
-                            <ui:SymbolIcon Symbol="Cut24" FontSize="14"/>
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="剪切 (Ctrl+X)">
+                            <ui:SymbolIcon Symbol="Cut24" FontSize="16"/>
                         </ui:Button>
                         
                         <ui:Button Command="{Binding PasteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="粘贴 (Ctrl+V)">
-                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="14"/>
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="粘贴 (Ctrl+V)">
+                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16"/>
                         </ui:Button>
                         
                         <ui:Button Command="{Binding DeleteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="删除 (Delete)">
-                            <ui:SymbolIcon Symbol="Delete24" FontSize="14"/>
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="删除 (Delete)">
+                            <ui:SymbolIcon Symbol="Delete24" FontSize="16"/>
                         </ui:Button>
                         
-                        <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
+                        <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0,18,0"/>
                         
                         <ui:Button Command="{Binding CreateNewFolderCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="新建文件夹" Margin="0,0,4,0" Padding="8,4">
+                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="新建文件夹">
                             <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="FolderAdd24" FontSize="14" Margin="0,0,4,0"/>
-                                <TextBlock Text="新建文件夹" FontSize="12"/>
+                                <ui:SymbolIcon Symbol="FolderAdd24" FontSize="16" Margin="0,0,4,0"/>
+                                <TextBlock Text="新建文件夹" FontSize="13" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ui:Button>
 
                         <ui:Button x:Name="ViewModeButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="查看选项" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
+                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="查看选项" Click="ViewModeButton_Click">
                             <ui:Button.Content>
                                 <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="14" Margin="0,0,4,0"/>
-                                    <TextBlock Text="视图" FontSize="12" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="10" Margin="4,0,0,0"/>
+                                    <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="16" Margin="0,0,4,0"/>
+                                    <TextBlock Text="视图" FontSize="13" VerticalAlignment="Center"/>
+                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
                                 </StackPanel>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>
@@ -425,9 +425,9 @@
                         </ui:Button>
 
                         <ui:Button x:Name="MoreToolsButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   ToolTip="更多" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="更多" Click="ViewModeButton_Click">
                             <ui:Button.Content>
-                                <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="14"/>
+                                <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="16"/>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>
                                 <ContextMenu>
@@ -472,15 +472,15 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
                         <!-- Left Panel Toggle (Folder Tree) -->
                         <ui:Button Command="{Binding ToggleLeftPanelCommand}" 
-                                   Width="32" Height="28" Margin="2,0"
+                                   Width="40" Height="32" Margin="5,0"
                                    ToolTip="切换文件夹树 (Alt+1)"
                                    Background="Transparent"
                                    BorderThickness="0"
                                    Padding="0">
                             <ui:Button.Content>
-                                <Grid Width="22" Height="18">
+                                <Grid Width="24" Height="20">
                                     <!-- VS Code style split icon with proper hollow effect -->
-                                    <Rectangle Width="9" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                                    <Rectangle Width="10" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
                                                RadiusX="1" RadiusY="1">
                                         <Rectangle.Style>
                                             <Style TargetType="Rectangle">
@@ -498,7 +498,7 @@
                                             </Style>
                                         </Rectangle.Style>
                                     </Rectangle>
-                                    <Rectangle Width="11" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                    <Rectangle Width="12" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
                                                Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
                                                StrokeThickness="1" RadiusX="1" RadiusY="1"/>
                                 </Grid>
@@ -507,18 +507,18 @@
                         
                         <!-- Right Panel Toggle (Preview) -->
                         <ui:Button Command="{Binding ToggleRightPanelCommand}" 
-                                   Width="32" Height="28" Margin="2,0"
+                                   Width="40" Height="32" Margin="5,0"
                                    ToolTip="切换预览面板 (Alt+2)"
                                    Background="Transparent"
                                    BorderThickness="0"
                                    Padding="0">
                             <ui:Button.Content>
-                                <Grid Width="22" Height="18">
+                                <Grid Width="24" Height="20">
                                     <!-- VS Code style split icon with proper hollow effect -->
-                                    <Rectangle Width="11" Height="16" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                                    <Rectangle Width="12" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
                                                Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
                                                StrokeThickness="1" RadiusX="1" RadiusY="1"/>
-                                    <Rectangle Width="9" Height="16" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                    <Rectangle Width="10" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
                                                RadiusX="1" RadiusY="1">
                                         <Rectangle.Style>
                                             <Style TargetType="Rectangle">
