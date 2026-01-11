@@ -578,6 +578,22 @@
                         </ui:Button.Content>
                         <ui:Button.ContextMenu>
                             <ContextMenu>
+                                <MenuItem Header="全部选择" Command="{Binding SelectAllCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Apps24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="全部取消" Command="{Binding ClearSelectionCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Dismiss24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="反向选择" Command="{Binding InvertSelectionCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ArrowSwap24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
                                 <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Folder24"/>

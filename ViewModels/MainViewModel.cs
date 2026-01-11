@@ -16,6 +16,12 @@ namespace FileSpace.ViewModels
         // Event to notify UI to select all items in DataGrid
         public event EventHandler? SelectAllRequested;
         
+        // Event to notify UI to clear selection
+        public event EventHandler? ClearSelectionRequested;
+
+        // Event to notify UI to invert selection
+        public event EventHandler? InvertSelectionRequested;
+        
         // Event to notify UI to focus on address bar
         public event EventHandler? FocusAddressBarRequested;
         
@@ -1448,6 +1454,9 @@ namespace FileSpace.ViewModels
                 }
             }
             
+            // Notify UI to update its selection
+            InvertSelectionRequested?.Invoke(this, EventArgs.Empty);
+            
             StatusText = $"已选择 {SelectedFiles.Count} 个项目";
         }
 
@@ -1456,6 +1465,9 @@ namespace FileSpace.ViewModels
         {
             SelectedFiles.Clear();
             SelectedFile = null;
+            
+            // Notify UI to update its selection
+            ClearSelectionRequested?.Invoke(this, EventArgs.Empty);
             
             StatusText = "已清除选择";
         }

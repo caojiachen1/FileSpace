@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Controls.Primitives;
 using Wpf.Ui.Controls;
+using System.Linq;
 using FileSpace.ViewModels;
 using FileSpace.Models;
 using FileSpace.Services;
@@ -30,6 +31,12 @@ namespace FileSpace.Views
             
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
+            
+            // 订阅清除选择事件
+            ViewModel.ClearSelectionRequested += OnClearSelectionRequested;
+
+            // 订阅反向选择事件
+            ViewModel.InvertSelectionRequested += OnInvertSelectionRequested;
             
             // 订阅地址栏焦点事件
             ViewModel.FocusAddressBarRequested += OnFocusAddressBarRequested;
@@ -548,9 +555,69 @@ namespace FileSpace.Views
 
         private void OnSelectAllRequested(object? sender, EventArgs e)
         {
-            // 选择 DataGrid 中的所有项目
-            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
-            fileDataGrid?.SelectAll();
+            // 选择 DataGrid 或 ListView 中的所有项目
+            if (ViewModel.IsDetailsView)
+            {
+                var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                fileDataGrid?.SelectAll();
+            }
+            else
+            {
+                var fileIconView = FindName("FileIconView") as System.Windows.Controls.ListView;
+                fileIconView?.SelectAll();
+            }
+        }
+
+        private void OnClearSelectionRequested(object? sender, EventArgs e)
+        {
+            // 取消选择 DataGrid 或 ListView 中的所有项目
+            if (ViewModel.IsDetailsView)
+            {
+                var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                fileDataGrid?.UnselectAll();
+            }
+            else
+            {
+                var fileIconView = FindName("FileIconView") as System.Windows.Controls.ListView;
+                fileIconView?.UnselectAll();
+            }
+        }
+
+        private void OnInvertSelectionRequested(object? sender, EventArgs e)
+        {
+            // 反向选择 DataGrid 或 ListView 中的项目
+            if (ViewModel.IsDetailsView)
+            {
+                var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+                if (fileDataGrid != null)
+                {
+                    var selectedItems = fileDataGrid.SelectedItems.Cast<object>().ToList();
+                    fileDataGrid.UnselectAll();
+                    foreach (var item in fileDataGrid.Items)
+                    {
+                        if (!selectedItems.Contains(item))
+                        {
+                            fileDataGrid.SelectedItems.Add(item);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var fileIconView = FindName("FileIconView") as System.Windows.Controls.ListView;
+                if (fileIconView != null)
+                {
+                    var selectedItems = fileIconView.SelectedItems.Cast<object>().ToList();
+                    fileIconView.UnselectAll();
+                    foreach (var item in fileIconView.Items)
+                    {
+                        if (!selectedItems.Contains(item))
+                        {
+                            fileIconView.SelectedItems.Add(item);
+                        }
+                    }
+                }
+            }
         }
 
         private void OnFocusAddressBarRequested(object? sender, EventArgs e)
