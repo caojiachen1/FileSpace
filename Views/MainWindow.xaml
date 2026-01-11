@@ -241,7 +241,7 @@
         </Grid.RowDefinitions>
 
         <!-- Title Bar -->
-        <ui:TitleBar Grid.Row="0" Title="FileSpace" ShowMinimize="True" ShowMaximize="True" ShowClose="True" Height="40"/>
+        <ui:TitleBar Grid.Row="0" Title="FileSpace" ShowMinimize="True" ShowMaximize="True" ShowClose="True" Height="35"/>
 
         <!-- Toolbar and Menu Bar -->
         <Grid Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="0,0,0,0">
@@ -253,7 +253,7 @@
             <!-- Toolbar -->
             <Border Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" 
-                    BorderThickness="0,1,0,1" Margin="0,0,0,0" Padding="10,2">
+                    BorderThickness="0,0,0,1" Margin="0,0,0,0" Padding="10,2">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
