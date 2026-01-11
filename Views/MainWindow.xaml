@@ -259,28 +259,6 @@
                             </MenuItem.Icon>
                         </MenuItem>
                     </MenuItem>
-                    <MenuItem Header="查看(_V)">
-                        <MenuItem Header="刷新" Command="{Binding RefreshCommand}" InputGestureText="F5">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="ArrowClockwise24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator/>
-                        <MenuItem Header="面板">
-                            <MenuItem Header="文件夹树" Command="{Binding ToggleLeftPanelCommand}" 
-                                    IsCheckable="True" IsChecked="{Binding IsLeftPanelVisible}">
-                                <MenuItem.Icon>
-                                    <ui:SymbolIcon Symbol="Folder24"/>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                            <MenuItem Header="预览面板" Command="{Binding ToggleRightPanelCommand}" 
-                                    IsCheckable="True" IsChecked="{Binding IsRightPanelVisible}">
-                                <MenuItem.Icon>
-                                    <ui:SymbolIcon Symbol="Eye24"/>
-                                </MenuItem.Icon>
-                            </MenuItem>
-                        </MenuItem>
-                    </MenuItem>
                 </Menu>
             
             <!-- VS Code Style Panel Toggle Buttons -->
@@ -381,6 +359,10 @@
                         <ui:Button Command="{Binding GoUpCommand}" Width="40" Height="32" Margin="0,0,10,0"
                                    ToolTip="向上 (Alt+Up)" Background="Transparent" BorderThickness="0">
                             <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
+                        </ui:Button>
+                        <ui:Button Command="{Binding RefreshCommand}" Width="40" Height="32" Margin="0,0,10,0"
+                                   ToolTip="刷新 (F5)" Background="Transparent" BorderThickness="0">
+                            <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16"/>
                         </ui:Button>
                     </StackPanel>
                     
