@@ -244,63 +244,14 @@
         <ui:TitleBar Grid.Row="0" Title="FileSpace" ShowMinimize="True" ShowMaximize="True" ShowClose="True" Height="40"/>
 
         <!-- Toolbar and Menu Bar -->
-        <Grid Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="0,-10,0,0">
+        <Grid Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="0,0,0,0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             
-            <!-- Menu Bar -->
-            <Grid Grid.Row="0" Margin="0,-3,0,-3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <!-- Main Menu -->
-                <Menu Grid.Column="0" Background="Transparent">
-                    <Menu.Resources>
-                        <Style TargetType="MenuItem">
-                            <Setter Property="FontSize" Value="9"/>
-                            <Setter Property="Padding" Value="4,1,4,1"/>
-                        </Style>
-                    </Menu.Resources>
-                    <MenuItem Header="文件(_F)">
-                        <MenuItem Header="退出" Click="Exit_Click" InputGestureText="Alt+F4">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Dismiss24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
-                    <MenuItem Header="编辑(_E)">
-                        <MenuItem Header="复制" Command="{Binding CopyFilesCommand}" InputGestureText="Ctrl+C">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Copy24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="剪切" Command="{Binding CutFilesCommand}" InputGestureText="Ctrl+X">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Cut24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}" InputGestureText="Ctrl+V">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="ClipboardPaste24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator/>
-                        <MenuItem Header="全选" Command="{Binding SelectAllCommand}" InputGestureText="Ctrl+A">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Apps24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
-                </Menu>
-            </Grid>
-
             <!-- Toolbar -->
-            <Border Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Row="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" 
                     BorderThickness="0,1,0,1" Margin="0,0,0,0" Padding="10,2">
                 <Grid>
@@ -383,7 +334,7 @@
             </Border>
             
             <!-- Quick Access Toolbar -->
-            <Border Grid.Row="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     Margin="0,0,0,0" Padding="5,3">
                 <Grid>
                     <StackPanel Orientation="Horizontal">

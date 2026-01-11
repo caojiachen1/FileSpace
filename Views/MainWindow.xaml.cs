@@ -530,14 +530,6 @@ namespace FileSpace.Views
             }
         }
 
-        private void Exit_Click(object sender, RoutedEventArgs e)
-        {
-            // 保存窗口设置
-            SettingsService.Instance.UpdateWindowSettings(this);
-            
-            // 关闭应用程序
-            Application.Current.Shutdown();
-        }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
