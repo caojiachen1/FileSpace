@@ -281,19 +281,6 @@
                             </MenuItem>
                         </MenuItem>
                     </MenuItem>
-                    <MenuItem Header="工具(_T)">
-                        <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Folder24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator/>
-                        <MenuItem Header="设置..." Click="Settings_Click">
-                            <MenuItem.Icon>
-                                <ui:SymbolIcon Symbol="Settings24"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </MenuItem>
                 </Menu>
             
             <!-- VS Code Style Panel Toggle Buttons -->
@@ -566,6 +553,28 @@
                             <ui:SymbolIcon Symbol="Settings24" FontSize="14" Margin="0,0,4,0"/>
                             <TextBlock Text="属性" FontSize="12"/>
                         </StackPanel>
+                    </ui:Button>
+
+                    <ui:Button x:Name="MoreToolsButton" Background="Transparent" BorderThickness="0"
+                               ToolTip="更多" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
+                        <ui:Button.Content>
+                            <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="14"/>
+                        </ui:Button.Content>
+                        <ui:Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Folder24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="选项" Click="Settings_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </ui:Button.ContextMenu>
                     </ui:Button>
                 </StackPanel>
             </Border>
