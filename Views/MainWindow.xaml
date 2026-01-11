@@ -187,6 +187,49 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Style for toolbar buttons to keep background transparent when disabled -->
+        <Style x:Key="ToolbarButtonStyle" TargetType="ui:Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ui:Button">
+                        <Border x:Name="RootBorder" 
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter x:Name="ContentPresenter"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Focusable="False"
+                                              RecognizesAccessKey="True"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RootBorder" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="RootBorder" Property="Background" Value="#44FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                                <Setter TargetName="RootBorder" Property="Background" Value="Transparent"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </ui:FluentWindow.Resources>
     
     <Grid>
@@ -498,46 +541,37 @@
             <Border Grid.Row="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
                     Margin="0,0,0,0" Padding="5,3">
                 <StackPanel Orientation="Horizontal">
-                    <ui:Button Command="{Binding CopyFilesCommand}" Background="Transparent" BorderThickness="0"
+                    <ui:Button Command="{Binding CopyFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="复制 (Ctrl+C)">
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Copy24" FontSize="14"/>
-                        </StackPanel>
+                        <ui:SymbolIcon Symbol="Copy24" FontSize="14"/>
+                    </ui:Button>
+
+                    <ui:Button Command="{Binding CutFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                               ToolTip="剪切 (Ctrl+X)">
+                        <ui:SymbolIcon Symbol="Cut24" FontSize="14"/>
                     </ui:Button>
                     
-                    <ui:Button Command="{Binding PasteFilesCommand}" Background="Transparent" BorderThickness="0"
+                    <ui:Button Command="{Binding PasteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="粘贴 (Ctrl+V)">
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="14"/>
-                        </StackPanel>
+                        <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="14"/>
                     </ui:Button>
                     
-                    <ui:Button Command="{Binding DeleteFilesCommand}" Background="Transparent" BorderThickness="0"
+                    <ui:Button Command="{Binding DeleteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="删除 (Delete)">
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Delete24" FontSize="14"/>
-                        </StackPanel>
+                        <ui:SymbolIcon Symbol="Delete24" FontSize="14"/>
                     </ui:Button>
                     
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,0"/>
                     
-                    <ui:Button Command="{Binding CreateNewFolderCommand}" Background="Transparent" BorderThickness="0"
+                    <ui:Button Command="{Binding CreateNewFolderCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="新建文件夹" Margin="0,0,4,0" Padding="8,4">
                         <StackPanel Orientation="Horizontal">
                             <ui:SymbolIcon Symbol="FolderAdd24" FontSize="14" Margin="0,0,4,0"/>
                             <TextBlock Text="新建文件夹" FontSize="12"/>
                         </StackPanel>
                     </ui:Button>
-                    
-                    <ui:Button Command="{Binding ShowPropertiesCommand}" Background="Transparent" BorderThickness="0"
-                               ToolTip="属性" Margin="0,0,4,0" Padding="8,4">
-                        <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Settings24" FontSize="14" Margin="0,0,4,0"/>
-                            <TextBlock Text="属性" FontSize="12"/>
-                        </StackPanel>
-                    </ui:Button>
 
-                    <ui:Button x:Name="MoreToolsButton" Background="Transparent" BorderThickness="0"
+                    <ui:Button x:Name="MoreToolsButton" Style="{StaticResource ToolbarButtonStyle}"
                                ToolTip="更多" Margin="0,0,4,0" Padding="8,4" Click="ViewModeButton_Click">
                         <ui:Button.Content>
                             <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="14"/>
