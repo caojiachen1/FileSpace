@@ -908,13 +908,22 @@
                                                     </TextBlock>
                                                     
                                                     <!-- Show textbox for the item being renamed -->
-                                                    <ui:TextBox x:Name="RenameTextBox" 
-                                                               Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, UpdateSourceTrigger=PropertyChanged}"
-                                                               KeyDown="RenameTextBox_KeyDown"
-                                                               LostFocus="RenameTextBox_LostFocus"
-                                                               Loaded="RenameTextBox_Loaded">
-                                                        <ui:TextBox.Style>
-                                                            <Style TargetType="ui:TextBox">
+                                                    <TextBox x:Name="RenameTextBox" 
+                                                             Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, UpdateSourceTrigger=PropertyChanged}"
+                                                             KeyDown="RenameTextBox_KeyDown"
+                                                             LostFocus="RenameTextBox_LostFocus"
+                                                             IsVisibleChanged="RenameTextBox_IsVisibleChanged"
+                                                             Background="{DynamicResource ApplicationBackgroundBrush}"
+                                                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                             BorderBrush="White"
+                                                             BorderThickness="1"
+                                                             Padding="2,0"
+                                                             VerticalContentAlignment="Center"
+                                                             Margin="-4,0,0,0"
+                                                             Height="22"
+                                                             FontSize="13">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                                 <Style.Triggers>
                                                                     <DataTrigger Value="True">
@@ -928,8 +937,8 @@
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </ui:TextBox.Style>
-                                                    </ui:TextBox>
+                                                        </TextBox.Style>
+                                                    </TextBox>
                                                 </Grid>
                                             </StackPanel>
                                         </Grid>
@@ -1011,14 +1020,64 @@
                                                        VerticalAlignment="Center"
                                                        FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"/>
                                         <!-- File Name -->
-                                        <TextBlock Grid.Row="1" 
-                                                   Text="{Binding DisplayName}" 
-                                                   TextTrimming="CharacterEllipsis"
-                                                   TextAlignment="Center"
-                                                   HorizontalAlignment="Center"
-                                                   MaxWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                                   Margin="2,4,2,2"
-                                                   FontSize="11"/>
+                                        <Grid Grid.Row="1" Margin="2,4,2,2">
+                                            <TextBlock Text="{Binding DisplayName}" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       TextAlignment="Center"
+                                                       HorizontalAlignment="Center"
+                                                       MaxWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                       FontSize="11">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Value="True">
+                                                                <DataTrigger.Binding>
+                                                                    <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                        <Binding/>
+                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                    </MultiBinding>
+                                                                </DataTrigger.Binding>
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Rename mode -->
+                                            <TextBox x:Name="RenameTextBox_Large" 
+                                                     Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
+                                                     KeyDown="RenameTextBox_KeyDown"
+                                                     LostFocus="RenameTextBox_LostFocus"
+                                                     IsVisibleChanged="RenameTextBox_IsVisibleChanged"
+                                                     Background="{DynamicResource ApplicationBackgroundBrush}"
+                                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                     BorderBrush="White"
+                                                     BorderThickness="1"
+                                                     Padding="2,0"
+                                                     FontSize="11"
+                                                     VerticalContentAlignment="Center"
+                                                     HorizontalAlignment="Center"
+                                                     Width="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Value="True">
+                                                                <DataTrigger.Binding>
+                                                                    <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                        <Binding/>
+                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                    </MultiBinding>
+                                                                </DataTrigger.Binding>
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                        </Grid>
                                     </Grid>
                                     
                                     <!-- Small Icon Layout (horizontal: icon on left, name on right) -->
@@ -1033,12 +1092,64 @@
                                                        FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
                                                        Margin="0,0,6,0"/>
                                         <!-- File Name -->
-                                        <TextBlock Text="{Binding DisplayName}" 
-                                                   TextTrimming="CharacterEllipsis"
-                                                   VerticalAlignment="Center"
-                                                   HorizontalAlignment="Left"
-                                                   MaxWidth="140"
-                                                   FontSize="12"/>
+                                        <Grid VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayName}" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       MaxWidth="140"
+                                                       FontSize="12">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Value="True">
+                                                                <DataTrigger.Binding>
+                                                                    <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                        <Binding/>
+                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                    </MultiBinding>
+                                                                </DataTrigger.Binding>
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Rename mode -->
+                                            <TextBox x:Name="RenameTextBox_Small" 
+                                                     Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
+                                                     KeyDown="RenameTextBox_KeyDown"
+                                                     LostFocus="RenameTextBox_LostFocus"
+                                                     IsVisibleChanged="RenameTextBox_IsVisibleChanged"
+                                                     Background="{DynamicResource ApplicationBackgroundBrush}"
+                                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                     BorderBrush="White"
+                                                     BorderThickness="1"
+                                                     Padding="2,0"
+                                                     FontSize="12"
+                                                     VerticalContentAlignment="Center"
+                                                     HorizontalAlignment="Left"
+                                                     Width="140">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Value="True">
+                                                                <DataTrigger.Binding>
+                                                                    <MultiBinding Converter="{StaticResource EqualityConverter}">
+                                                                        <Binding/>
+                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                    </MultiBinding>
+                                                                </DataTrigger.Binding>
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

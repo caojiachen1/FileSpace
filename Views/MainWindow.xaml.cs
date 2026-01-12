@@ -55,6 +55,37 @@ namespace FileSpace.Views
             {
                 ViewModel.PasteFilesCommand.NotifyCanExecuteChanged();
             };
+
+            // 监听全局鼠标预览点击，用于处理重命名失去焦点
+            this.PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
+        }
+
+        private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (ViewModel.IsRenaming)
+            {
+                var obj = e.OriginalSource as DependencyObject;
+                while (obj != null)
+                {
+                    if (obj is System.Windows.Controls.TextBox tb && 
+                       (tb.Name == "RenameTextBox" || tb.Name == "RenameTextBox_Large" || tb.Name == "RenameTextBox_Small"))
+                    {
+                        return; // 点击在输入框内，不处理
+                    }
+                    
+                    if (obj is Visual || obj is System.Windows.Media.Media3D.Visual3D)
+                    {
+                        obj = VisualTreeHelper.GetParent(obj);
+                    }
+                    else
+                    {
+                        obj = LogicalTreeHelper.GetParent(obj);
+                    }
+                }
+
+                // 点击了外部，将焦点移开以触发确认重命名
+                FocusManager.SetFocusedElement(this, this);
+            }
         }
 
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
@@ -423,26 +454,18 @@ namespace FileSpace.Views
             }
         }
 
-        private void RenameTextBox_Loaded(object sender, RoutedEventArgs e)
+        private void RenameTextBox_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            if (sender is Wpf.Ui.Controls.TextBox textBox && DataContext is MainViewModel viewModel)
+            if (sender is System.Windows.Controls.TextBox textBox && (bool)e.NewValue)
             {
+                // IsVisible became true
                 textBox.Focus();
-                
-                // If it's a file (not directory), select only the filename part without extension
-                if (viewModel.RenamingFile != null && !viewModel.RenamingFile.IsDirectory)
+                Dispatcher.BeginInvoke(new System.Action(() =>
                 {
-                    var extension = Path.GetExtension(viewModel.RenamingFile.Name);
-                    if (!string.IsNullOrEmpty(extension))
-                    {
-                        var nameWithoutExtension = Path.GetFileNameWithoutExtension(viewModel.RenamingFile.Name);
-                        textBox.Select(0, nameWithoutExtension.Length);
-                        return;
-                    }
-                }
-                
-                // For directories or files without extensions, select all
-                textBox.SelectAll();
+                    Keyboard.Focus(textBox);
+                    textBox.Focus();
+                    textBox.SelectAll();
+                }), System.Windows.Threading.DispatcherPriority.Input);
             }
         }
 
