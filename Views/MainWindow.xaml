@@ -352,6 +352,11 @@
                                    Width="40" Height="32" Margin="0,0,10,0" ToolTip="粘贴 (Ctrl+V)">
                             <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16"/>
                         </ui:Button>
+
+                        <ui:Button Command="{Binding StartRenameCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="重命名 (F2)">
+                            <ui:SymbolIcon Symbol="Rename24" FontSize="16"/>
+                        </ui:Button>
                         
                         <ui:Button Command="{Binding DeleteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Width="40" Height="32" Margin="0,0,10,0" ToolTip="删除 (Delete)">
