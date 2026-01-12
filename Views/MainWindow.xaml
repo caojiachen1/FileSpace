@@ -338,6 +338,31 @@
                     Margin="0,0,0,0" Height="48" Padding="10,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
+                        <ui:Button x:Name="NewItemButton" Style="{StaticResource ToolbarButtonStyle}"
+                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="新建" Click="NewItemButton_Click">
+                            <ui:Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>
+                                    <TextBlock Text="新建" FontSize="13" VerticalAlignment="Center"/>
+                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </ui:Button.Content>
+                            <ui:Button.ContextMenu>
+                                <ContextMenu x:Name="NewItemContextMenu">
+                                    <MenuItem Header="文件夹" Command="{Binding CreateNewFolderCommand}">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="FolderAdd24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="文本文档" Command="{Binding CreateNewTextFileCommand}">
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="DocumentAdd24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ui:Button.ContextMenu>
+                        </ui:Button>
+
                         <ui:Button Command="{Binding CopyFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Width="40" Height="32" Margin="0,0,10,0" ToolTip="复制 (Ctrl+C)">
                             <ui:SymbolIcon Symbol="Copy24" FontSize="16"/>
@@ -365,14 +390,6 @@
                         
                         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,10,18,10" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                         
-                        <ui:Button Command="{Binding CreateNewFolderCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="新建文件夹">
-                            <StackPanel Orientation="Horizontal">
-                                <ui:SymbolIcon Symbol="FolderAdd24" FontSize="16" Margin="0,0,4,0"/>
-                                <TextBlock Text="新建文件夹" FontSize="13" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </ui:Button>
-
                         <ui:Button x:Name="ViewModeButton" Style="{StaticResource ToolbarButtonStyle}"
                                    Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="查看选项" Click="ViewModeButton_Click">
                             <ui:Button.Content>

@@ -944,6 +944,32 @@ namespace FileSpace.ViewModels
             }
         }
 
+        [RelayCommand]
+        private void CreateNewTextFile()
+        {
+            try
+            {
+                var newFileName = "新建文本文档.txt";
+                var newFilePath = System.IO.Path.Combine(CurrentPath, newFileName);
+
+                int counter = 1;
+                while (File.Exists(newFilePath))
+                {
+                    newFileName = $"新建文本文档 ({counter}).txt";
+                    newFilePath = System.IO.Path.Combine(CurrentPath, newFileName);
+                    counter++;
+                }
+
+                File.WriteAllText(newFilePath, string.Empty);
+                LoadFiles(); // Refresh the file list
+                StatusText = $"已创建文件: {newFileName}";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"创建文件失败: {ex.Message}";
+            }
+        }
+
         // Panel toggle commands for VS Code-like experience
         [RelayCommand]
         private void ToggleLeftPanel()

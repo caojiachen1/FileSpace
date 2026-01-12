@@ -485,6 +485,19 @@ namespace FileSpace.Views
         }
 
         /// <summary>
+        /// 新建按钮点击事件 - 显示下拉菜单
+        /// </summary>
+        private void NewItemButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.Button button && button.ContextMenu != null)
+            {
+                button.ContextMenu.PlacementTarget = button;
+                button.ContextMenu.Placement = PlacementMode.Bottom;
+                button.ContextMenu.IsOpen = true;
+            }
+        }
+
+        /// <summary>
         /// 视图模式菜单项点击事件
         /// </summary>
         private void ViewModeMenuItem_Click(object sender, RoutedEventArgs e)
