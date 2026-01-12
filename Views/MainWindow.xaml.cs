@@ -22,6 +22,10 @@ namespace FileSpace.Views
         // 保存用户自定义的面板大小
         private double _leftPanelWidth = 250;
         private double _rightPanelWidth = 300;
+        
+        // 单击重命名计时器
+        private System.Windows.Threading.DispatcherTimer _renameTimer;
+        private object? _potentialRenameItem;
 
         public MainWindow()
         {
@@ -29,6 +33,12 @@ namespace FileSpace.Views
             ViewModel = new MainViewModel();
             DataContext = ViewModel;
             
+            // 初始化重命名计时器
+            _renameTimer = new System.Windows.Threading.DispatcherTimer();
+            // 使用标准双击时间 500ms + 200ms 缓冲
+            _renameTimer.Interval = TimeSpan.FromMilliseconds(700); 
+            _renameTimer.Tick += RenameTimer_Tick;
+
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
             
@@ -235,6 +245,78 @@ namespace FileSpace.Views
                 }
                 ViewModel.DirectorySelectedCommand.Execute(dirItem);
             }
+        }
+
+        private void RenameTimer_Tick(object? sender, EventArgs e)
+        {
+            _renameTimer.Stop();
+            if (ViewModel.IsRenaming) return;
+
+            if (_potentialRenameItem is FileItemModel file && ViewModel.SelectedFile == file)
+            {
+                ViewModel.StartInPlaceRename(file);
+            }
+            _potentialRenameItem = null;
+        }
+
+        private void OnItemPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // 如果是双击，停止计时器
+            if (e.ClickCount > 1)
+            {
+                _renameTimer.Stop();
+                _potentialRenameItem = null;
+                return;
+            }
+
+            if (sender is FrameworkElement element && element.DataContext is FileItemModel file)
+            {
+                if (ViewModel.SelectedFile == file && !ViewModel.IsRenaming)
+                {
+                    // 检查是否点击在文本名称上
+                    if (IsClickOnName(element, e.GetPosition(element)))
+                    {
+                        _potentialRenameItem = file;
+                        _renameTimer.Stop();
+                        _renameTimer.Start();
+                    }
+                }
+                else
+                {
+                    _renameTimer.Stop();
+                    _potentialRenameItem = null;
+                }
+            }
+        }
+
+        private bool IsClickOnName(FrameworkElement itemContainer, Point position)
+        {
+            var result = VisualTreeHelper.HitTest(itemContainer, position);
+            if (result == null) return false;
+
+            // 第一遍：检查是否在 DataGridCell 中
+            var current = result.VisualHit;
+            while (current != null && current != itemContainer)
+            {
+                if (current is DataGridCell cell)
+                {
+                    // 如果在 DataGridCell 中，必须是 Name 列
+                    return cell.Column.SortMemberPath == "Name";
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+
+            // 第二遍：如果在 DataGridCell 之外（如 ListView 图标模式），只要点击 TextBlock 就认为是名称
+            current = result.VisualHit;
+            while (current != null && current != itemContainer)
+            {
+                if (current is Wpf.Ui.Controls.TextBlock)
+                {
+                    return true;
+                }
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return false;
         }
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
