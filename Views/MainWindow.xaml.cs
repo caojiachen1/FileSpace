@@ -261,6 +261,14 @@ namespace FileSpace.Views
 
         private void OnItemPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // 如果当前已经在编辑模式，不处理单击事件，避免重复触发
+            if (ViewModel.IsRenaming)
+            {
+                // 如果点击的是正在重命名的文件项，也需要阻止事件传播
+                e.Handled = true;
+                return;
+            }
+
             // 如果是双击，停止计时器
             if (e.ClickCount > 1)
             {
@@ -271,7 +279,7 @@ namespace FileSpace.Views
 
             if (sender is FrameworkElement element && element.DataContext is FileItemModel file)
             {
-                if (ViewModel.SelectedFile == file && !ViewModel.IsRenaming)
+                if (ViewModel.SelectedFile == file)
                 {
                     // 检查是否点击在文本名称上
                     if (IsClickOnName(element, e.GetPosition(element)))
