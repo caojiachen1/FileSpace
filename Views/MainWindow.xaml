@@ -614,6 +614,7 @@
                                   SelectionMode="Single"
                                   HorizontalAlignment="Stretch"
                                   Width="Auto"
+                                  MouseDown="QuickAccessListView_MouseDown"
                                   SelectionChanged="QuickAccessListView_SelectionChanged">
                             <ListView.ItemTemplate>
                                 <DataTemplate>
@@ -784,6 +785,7 @@
                               SelectionMode="Single"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               MouseDoubleClick="DrivesView_MouseDoubleClick"
+                              MouseDown="DrivesView_MouseDown"
                               Visibility="{Binding IsThisPCView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>

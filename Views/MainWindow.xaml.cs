@@ -357,6 +357,32 @@ namespace FileSpace.Views
             }
         }
 
+        private void DrivesView_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var hitTest = VisualTreeHelper.HitTest(DrivesView, e.GetPosition(DrivesView));
+            if (hitTest != null)
+            {
+                var listViewItem = FindAncestor<System.Windows.Controls.ListViewItem>(hitTest.VisualHit);
+                if (listViewItem == null)
+                {
+                    DrivesView.SelectedIndex = -1;
+                }
+            }
+        }
+
+        private void QuickAccessListView_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var hitTest = VisualTreeHelper.HitTest(QuickAccessListView, e.GetPosition(QuickAccessListView));
+            if (hitTest != null)
+            {
+                var listViewItem = FindAncestor<System.Windows.Controls.ListViewItem>(hitTest.VisualHit);
+                if (listViewItem == null)
+                {
+                    QuickAccessListView.SelectedIndex = -1;
+                }
+            }
+        }
+
         private static T? FindAncestor<T>(DependencyObject current) where T : class
         {
             do
