@@ -59,23 +59,55 @@ namespace FileSpace.Services
                 var searchedFiles = 0;
                 var totalEstimate = 1000; // 初始估计
 
-                await Task.Run(async () =>
+                // Special handling for "此电脑" (This PC) - search all drives
+                if (searchPath == "此电脑")
                 {
-                    await SearchDirectoryRecursive(
-                        searchPath, 
-                        searchPattern, 
-                        searchOptions, 
-                        results, 
-                        cancellationToken,
-                        (searched, total) =>
+                    var drives = DriveInfo.GetDrives().Where(d => d.IsReady).ToList();
+                    var driveCount = drives.Count;
+                    
+                    for (int i = 0; i < driveCount; i++)
+                    {
+                        var drive = drives[i];
+                        var drivePath = drive.RootDirectory.FullName;
+                        
+                        await Task.Run(async () =>
                         {
-                            searchedFiles = searched;
-                            totalEstimate = Math.Max(total, totalEstimate);
-                            SearchProgress = Math.Min(100, (searched * 100) / totalEstimate);
-                            SearchStatus = $"已搜索 {searched} 个文件...";
-                            SearchProgressChanged?.Invoke(this, new SearchProgressEventArgs(searched, total));
-                        });
-                }, cancellationToken);
+                            await SearchDirectoryRecursive(
+                                drivePath, 
+                                searchPattern, 
+                                searchOptions, 
+                                results, 
+                                cancellationToken,
+                                (searched, total) =>
+                                {
+                                    searchedFiles += searched;
+                                    totalEstimate = Math.Max(total * driveCount, totalEstimate);
+                                    SearchProgress = Math.Min(100, (searchedFiles * 100) / totalEstimate);
+                                    SearchStatus = $"正在搜索 {drivePath} ({i+1}/{driveCount})... 已发现 {results.Count} 项";
+                                });
+                        }, cancellationToken);
+                    }
+                }
+                else
+                {
+                    await Task.Run(async () =>
+                    {
+                        await SearchDirectoryRecursive(
+                            searchPath, 
+                            searchPattern, 
+                            searchOptions, 
+                            results, 
+                            cancellationToken,
+                            (searched, total) =>
+                            {
+                                searchedFiles = searched;
+                                totalEstimate = Math.Max(total, totalEstimate);
+                                SearchProgress = Math.Min(100, (searched * 100) / totalEstimate);
+                                SearchStatus = $"已搜索 {searched} 个文件... 已发现 {results.Count} 项";
+                                SearchProgressChanged?.Invoke(this, new SearchProgressEventArgs(searched, total));
+                            });
+                    }, cancellationToken);
+                }
 
                 SearchCompleted?.Invoke(this, new SearchResultEventArgs(results, searchedFiles));
                 SearchStatus = $"搜索完成，找到 {results.Count} 个匹配项";

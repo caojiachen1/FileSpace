@@ -91,9 +91,15 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private async Task StartSearch()
         {
-            if (string.IsNullOrWhiteSpace(SearchPath) || !Directory.Exists(SearchPath))
+            if (string.IsNullOrWhiteSpace(SearchPath))
             {
                 SearchStatus = "请输入有效的搜索路径";
+                return;
+            }
+
+            if (SearchPath != "此电脑" && !Directory.Exists(SearchPath))
+            {
+                SearchStatus = "搜索路径不存在";
                 return;
             }
 

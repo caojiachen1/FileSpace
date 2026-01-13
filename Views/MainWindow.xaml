@@ -338,7 +338,7 @@
                     
                     <!-- Search and View Options -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ui:TextBox x:Name="SearchTextBox" PlaceholderText="搜索..." Width="200" Margin="8,6"
+                        <ui:TextBox x:Name="SearchTextBox" PlaceholderText="搜索..." Width="300" Margin="8,6"
                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
                             <ui:TextBox.Icon>
                                 <ui:SymbolIcon Symbol="Search24"/>

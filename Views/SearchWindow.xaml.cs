@@ -20,6 +20,15 @@ namespace FileSpace.Views
             
             // 添加键盘快捷键支持
             KeyDown += SearchWindow_KeyDown;
+
+            // 窗口关闭时取消搜索
+            Closed += (s, e) =>
+            {
+                if (ViewModel.IsSearching)
+                {
+                    ViewModel.CancelSearchCommand.Execute(null);
+                }
+            };
         }
 
         private void SearchWindow_KeyDown(object sender, KeyEventArgs e)

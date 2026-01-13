@@ -511,6 +511,8 @@ namespace FileSpace.ViewModels
         {
             if (string.IsNullOrWhiteSpace(value))
             {
+                // Cancel any ongoing search if the search box is cleared
+                FileSearchService.Instance.CancelSearch();
                 LoadFiles(); // Reload all files
             }
             else
@@ -520,11 +522,43 @@ namespace FileSpace.ViewModels
         }
 
         // Filter files based on search text
-        private void FilterFiles(string searchText)
+        private async void FilterFiles(string searchText)
         {
             if (string.IsNullOrWhiteSpace(searchText))
             {
                 LoadFiles();
+                return;
+            }
+
+            // If we are on "This PC" view, trigger a global search instead of local filtering
+            if (CurrentPath == ThisPCPath)
+            {
+                try
+                {
+                    StatusText = "正在全盘搜索...";
+                    Files.Clear();
+                    
+                    var options = new SearchOptions
+                    {
+                        SearchFiles = true,
+                        SearchDirectories = true,
+                        IncludeSubdirectories = true
+                    };
+                    
+                    var results = await FileSearchService.Instance.SearchFilesAsync("此电脑", $"*{searchText}*", options);
+                    
+                    foreach (var result in results)
+                    {
+                        Files.Add(result);
+                    }
+                    
+                    ApplySorting();
+                    StatusText = $"全盘搜索完成，找到 {results.Count} 个匹配项";
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"搜索失败: {ex.Message}";
+                }
                 return;
             }
 
