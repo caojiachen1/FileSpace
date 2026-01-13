@@ -556,12 +556,9 @@ namespace FileSpace.ViewModels
                     
                     var results = await FileSearchService.Instance.SearchFilesAsync("此电脑", $"*{searchText}*", options);
                     
-                    foreach (var result in results)
-                    {
-                        Files.Add(result);
-                    }
+                    var sortedResults = await Task.Run(() => SortList(results));
+                    await AddFilesBatchedAsync(sortedResults);
                     
-                    ApplySorting();
                     StatusText = $"全盘搜索完成，找到 {results.Count} 个匹配项";
                     
                     _ = LoadThumbnailsAsync();
@@ -612,12 +609,8 @@ namespace FileSpace.ViewModels
                 allFiles.AddRange(files);
 
                 Files.Clear();
-                foreach (var file in allFiles)
-                {
-                    Files.Add(file);
-                }
-
-                ApplySorting();
+                var sortedResults = await Task.Run(() => SortList(allFiles));
+                await AddFilesBatchedAsync(sortedResults);
 
                 StatusText = $"找到 {allFiles.Count} 个匹配项";
 
@@ -736,10 +729,16 @@ namespace FileSpace.ViewModels
             }
         }
 
+        private CancellationTokenSource? _loadFilesCancellationTokenSource;
+
         private async void LoadFiles()
         {
             try
             {
+                _loadFilesCancellationTokenSource?.Cancel();
+                _loadFilesCancellationTokenSource = new CancellationTokenSource();
+                var token = _loadFilesCancellationTokenSource.Token;
+
                 if (CurrentPath == ThisPCPath)
                 {
                     IsThisPCView = true;
@@ -774,10 +773,10 @@ namespace FileSpace.ViewModels
                                 DriveLetter = path,
                                 CustomDescription = "WSL 发行版",
                                 Icon = SymbolRegular.Server24,
-                                DriveType = DriveType.Fixed, // Dummy value
-                                TotalSize = 0, // Not easily available
+                                DriveType = DriveType.Fixed, 
+                                TotalSize = 0, 
                                 AvailableFreeSpace = 0,
-                                PercentUsed = 0 // Or set to 0.5 to show some bar if needed, or hide bar in XAML
+                                PercentUsed = 0 
                             });
                         }
                     }
@@ -789,26 +788,123 @@ namespace FileSpace.ViewModels
 
                 IsThisPCView = false;
                 IsLinuxView = false;
-                var (files, statusMessage) = await FileSystemService.Instance.LoadFilesAsync(CurrentPath);
-
-                // Update UI
+                
+                // Clear existing files first to show intent
                 Files.Clear();
-                foreach (var file in files)
+                StatusText = "正在加载文件...";
+
+                var allLoadedFiles = new List<FileItemModel>();
+                int count = 0;
+
+                // Enumerate files progressively from background thread
+                await foreach (var item in FileSystemService.Instance.EnumerateFilesAsync(CurrentPath, token))
                 {
-                    Files.Add(file);
+                    allLoadedFiles.Add(item);
+                    count++;
+
+                    // For the very first items, show them quickly to provide immediate feedback
+                    if (count <= 30)
+                    {
+                        Files.Add(item);
+                    }
+                    // For larger directories, update status periodically
+                    else if (count % 200 == 0)
+                    {
+                        StatusText = $"正在扫描目录... 已发现 {count} 个项目";
+                        await Task.Yield();
+                    }
                 }
 
-                ApplySorting();
+                if (token.IsCancellationRequested) return;
+
+                // Once scan is complete, sort everything and update the UI collection properly
+                if (allLoadedFiles.Count > 0)
+                {
+                    StatusText = "正在整理列表...";
+                    var sortedList = await Task.Run(() => SortList(allLoadedFiles), token);
+                    
+                    // Clear the temporary items and show the full sorted list in batches
+                    Files.Clear();
+                    await AddFilesBatchedAsync(sortedList);
+
+                    StatusText = $"{sortedList.Count} 个项目";
+                }
+                else
+                {
+                    Files.Clear();
+                    StatusText = "0 个项目";
+                }
 
                 SelectAllCommand.NotifyCanExecuteChanged();
-                StatusText = statusMessage;
 
                 // Always load icons/thumbnails to match Windows Explorer behavior
                 _ = LoadThumbnailsAsync();
             }
+            catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 StatusText = $"加载文件错误: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 对文件列表进行排序，不在 UI 线程执行
+        /// </summary>
+        private List<FileItemModel> SortList(IEnumerable<FileItemModel> unsortedFiles)
+        {
+            DateTime ParseModified(string s)
+            {
+                if (DateTime.TryParse(s, out var dt)) return dt;
+                return DateTime.MinValue;
+            }
+
+            return SortMode switch
+            {
+                "Name" => SortAscending
+                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Size" => SortAscending
+                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Type" => SortAscending
+                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
+                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Date" => SortAscending
+                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
+                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
+                _ => unsortedFiles.ToList()
+            };
+        }
+
+        /// <summary>
+        /// 批量添加文件到集合中，避免界面冻结
+        /// </summary>
+        private async Task AddFilesBatchedAsync(IEnumerable<FileItemModel> items)
+        {
+            var list = items.ToList();
+            if (list.Count == 0) return;
+
+            // 如果项目较少且不是图标视图，快速添加
+            if (list.Count <= 100 && !IsIconView)
+            {
+                foreach (var item in list)
+                    Files.Add(item);
+                return;
+            }
+
+            // 根据视图模式调整批次大小
+            // 图标视图通常使用 WrapPanel，不支持 UI 虚拟化，因此单次添加过多会导致 UI 线程剧烈抖动
+            int batchSize = IsIconView ? 30 : 100;
+            int delay = IsIconView ? 5 : 1;
+
+            for (int i = 0; i < list.Count; i += batchSize)
+            {
+                var batch = list.Skip(i).Take(batchSize).ToList();
+                foreach (var item in batch)
+                    Files.Add(item);
+
+                // 让出 UI 线程处理时间，确保界面重绘
+                await Task.Delay(delay);
             }
         }
 
@@ -833,8 +929,8 @@ namespace FileSpace.ViewModels
                         // If we already have a thumbnail and it's big enough, skip
                         if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) continue;
 
-                        // Get thumbnail or system icon for ALL files and directories
-                        var thumbnail = ThumbnailUtils.GetThumbnail(file.FullPath, (int)targetSize, (int)targetSize);
+                        // Get thumbnail or system icon via ThumbnailCacheService (with memory and disk cache)
+                        var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, token);
                         if (thumbnail != null)
                         {
                             await Application.Current.Dispatcher.InvokeAsync(() =>

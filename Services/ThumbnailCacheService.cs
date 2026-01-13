@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
+using FileSpace.Utils;
 
 namespace FileSpace.Services
 {
@@ -40,15 +41,15 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 获取图片缩略图
+        /// 获取缩略图
         /// </summary>
-        /// <param name="filePath">图片文件路径</param>
+        /// <param name="filePath">文件路径</param>
         /// <param name="thumbnailSize">缩略图大小</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>缩略图图像源</returns>
         public async Task<ImageSource?> GetThumbnailAsync(string filePath, int thumbnailSize = 128, CancellationToken cancellationToken = default)
         {
-            if (!IsImageFile(filePath) || !File.Exists(filePath))
+            if (string.IsNullOrEmpty(filePath) || (!File.Exists(filePath) && !Directory.Exists(filePath)))
                 return null;
 
             var cacheKey = GenerateCacheKey(filePath, thumbnailSize);
@@ -99,12 +100,12 @@ namespace FileSpace.Services
         /// <param name="cancellationToken">取消令牌</param>
         public async Task PreGenerateThumbnailsAsync(IEnumerable<string> filePaths, int thumbnailSize = 128, CancellationToken cancellationToken = default)
         {
-            var imagePaths = filePaths.Where(IsImageFile).ToList();
-            if (!imagePaths.Any()) return;
+            var paths = filePaths.ToList();
+            if (!paths.Any()) return;
 
             await Task.Run(async () =>
             {
-                var tasks = imagePaths.Select(async path =>
+                var tasks = paths.Select(async path =>
                 {
                     try
                     {
@@ -135,7 +136,7 @@ namespace FileSpace.Services
                 // 清理内存缓存中的死引用
                 CleanMemoryCache();
 
-                // 清理磁盘缓存
+                // 清理磁盘缓存 (兼容旧的 jpg 格式清理)
                 CleanDiskCache(maxAge ?? TimeSpan.FromDays(30));
             }
         }
@@ -146,10 +147,9 @@ namespace FileSpace.Services
         public CacheStatistics GetStatistics()
         {
             var memoryCacheCount = _memoryCache.Count(kvp => kvp.Value.Target != null);
-            var diskCacheFiles = Directory.Exists(_cacheDirectory) ? Directory.GetFiles(_cacheDirectory, "*.jpg").Length : 0;
-            var diskCacheSize = Directory.Exists(_cacheDirectory) 
-                ? Directory.GetFiles(_cacheDirectory, "*.jpg").Sum(f => new FileInfo(f).Length)
-                : 0;
+            var diskFiles = Directory.Exists(_cacheDirectory) ? Directory.GetFiles(_cacheDirectory, "*.png") : Array.Empty<string>();
+            var diskCacheFiles = diskFiles.Length;
+            var diskCacheSize = diskFiles.Sum(f => new FileInfo(f).Length);
 
             return new CacheStatistics
             {
@@ -167,8 +167,22 @@ namespace FileSpace.Services
 
         private string GenerateCacheKey(string filePath, int thumbnailSize)
         {
-            var fileInfo = new FileInfo(filePath);
-            var keyString = $"{filePath}_{thumbnailSize}_{fileInfo.LastWriteTime.Ticks}_{fileInfo.Length}";
+            long length = 0;
+            DateTime lastWriteTime;
+
+            if (File.Exists(filePath))
+            {
+                var fileInfo = new FileInfo(filePath);
+                length = fileInfo.Length;
+                lastWriteTime = fileInfo.LastWriteTime;
+            }
+            else
+            {
+                var dirInfo = new DirectoryInfo(filePath);
+                lastWriteTime = dirInfo.LastWriteTime;
+            }
+
+            var keyString = $"{filePath}_{thumbnailSize}_{lastWriteTime.Ticks}_{length}";
             
             using var sha256 = SHA256.Create();
             var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(keyString));
@@ -181,38 +195,46 @@ namespace FileSpace.Services
             {
                 try
                 {
-                    using var stream = File.OpenRead(filePath);
-                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-                    
-                    if (decoder.Frames.Count == 0)
-                        return null;
+                    // 使用 ThumbnailUtils 获取所有类型文件的缩略图或图标
+                    var thumbnail = ThumbnailUtils.GetThumbnail(filePath, thumbnailSize, thumbnailSize);
+                    if (thumbnail != null)
+                    {
+                        if (thumbnail.CanFreeze)
+                            thumbnail.Freeze();
+                        return thumbnail as ImageSource;
+                    }
 
-                    var frame = decoder.Frames[0];
-                    
-                    // 计算缩放比例
-                    var scaleX = (double)thumbnailSize / frame.PixelWidth;
-                    var scaleY = (double)thumbnailSize / frame.PixelHeight;
-                    var scale = Math.Min(scaleX, scaleY);
+                    // 如果 Shell API 失败，对于图片文件尝试备选方案
+                    if (IsImageFile(filePath))
+                    {
+                        using var stream = File.OpenRead(filePath);
+                        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
+                        
+                        if (decoder.Frames.Count == 0)
+                            return null;
 
-                    var scaledWidth = (int)(frame.PixelWidth * scale);
-                    var scaledHeight = (int)(frame.PixelHeight * scale);
+                        var frame = decoder.Frames[0];
+                        
+                        var scaleX = (double)thumbnailSize / frame.PixelWidth;
+                        var scaleY = (double)thumbnailSize / frame.PixelHeight;
+                        var scale = Math.Min(scaleX, scaleY);
 
-                    // 创建缩略图
-                    var thumbnail = new TransformedBitmap(frame, new ScaleTransform(scale, scale));
-                    thumbnail.Freeze(); // 使其可在其他线程中使用
-
-                    return thumbnail as ImageSource;
+                        var scaledBitmap = new TransformedBitmap(frame, new ScaleTransform(scale, scale));
+                        scaledBitmap.Freeze();
+                        return scaledBitmap as ImageSource;
+                    }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    return null;
+                    System.Diagnostics.Debug.WriteLine($"GenerateThumbnailAsync Error: {ex.Message}");
                 }
+                return null;
             }, cancellationToken);
         }
 
         private async Task<ImageSource?> LoadFromDiskCacheAsync(string cacheKey, CancellationToken cancellationToken)
         {
-            var cacheFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.jpg");
+            var cacheFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.png");
             
             if (!File.Exists(cacheFilePath))
                 return null;
@@ -243,14 +265,15 @@ namespace FileSpace.Services
             if (imageSource is not BitmapSource bitmapSource)
                 return;
 
-            var cacheFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.jpg");
+            var cacheFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.png");
 
             try
             {
                 await Task.Run(() =>
                 {
                     using var fileStream = File.Create(cacheFilePath);
-                    var encoder = new JpegBitmapEncoder { QualityLevel = 90 };
+                    // 使用 PngBitmapEncoder 以保留透明通道，解决图标背景黑/白块问题
+                    var encoder = new PngBitmapEncoder();
                     encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
                     encoder.Save(fileStream);
                 }, cancellationToken);
@@ -282,26 +305,49 @@ namespace FileSpace.Services
                 if (!Directory.Exists(_cacheDirectory))
                     return;
 
+                // 1. 按时间清理 (包括旧的 jpg 和新的 png)
                 var cutoffTime = DateTime.Now - maxAge;
-                var filesToDelete = Directory.GetFiles(_cacheDirectory, "*.jpg")
-                    .Where(file => File.GetLastAccessTime(file) < cutoffTime)
+                var allFiles = Directory.GetFileSystemEntries(_cacheDirectory, "*.*")
+                    .Where(f => f.EndsWith(".jpg") || f.EndsWith(".png"))
+                    .Select(f => new FileInfo(f))
+                    .OrderBy(f => f.LastAccessTime)
                     .ToList();
 
-                foreach (var file in filesToDelete)
+                foreach (var file in allFiles.Where(f => f.LastAccessTime < cutoffTime))
                 {
                     try
                     {
-                        File.Delete(file);
+                        file.Delete();
                     }
-                    catch
+                    catch { }
+                }
+
+                // 2. 按容量清理 (MB)
+                var maxCacheSize = SettingsService.Instance.Settings.PerformanceSettings.ThumbnailCacheSize * 1024L * 1024L;
+                var currentFiles = Directory.GetFileSystemEntries(_cacheDirectory, "*.*")
+                    .Where(f => f.EndsWith(".jpg") || f.EndsWith(".png"))
+                    .Select(f => new FileInfo(f))
+                    .OrderBy(f => f.LastAccessTime) 
+                    .ToList();
+
+                long currentSize = currentFiles.Sum(f => f.Length);
+                int index = 0;
+
+                while (currentSize > maxCacheSize && index < currentFiles.Count)
+                {
+                    try
                     {
-                        // 忽略删除失败的文件
+                        var file = currentFiles[index];
+                        currentSize -= file.Length;
+                        file.Delete();
                     }
+                    catch { }
+                    index++;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略清理错误
+                System.Diagnostics.Debug.WriteLine($"CleanDiskCache Error: {ex.Message}");
             }
         }
 

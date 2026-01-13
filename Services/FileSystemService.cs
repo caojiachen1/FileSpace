@@ -1,5 +1,6 @@
-using System.Collections.ObjectModel;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using FileSpace.Models;
 using Wpf.Ui.Controls;
 
@@ -17,128 +18,105 @@ namespace FileSpace.Services
             _settingsService = SettingsService.Instance;
         }
 
-        public async Task<(ObservableCollection<FileItemModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
+        public async IAsyncEnumerable<FileItemModel> EnumerateFilesAsync(string currentPath, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var files = new ObservableCollection<FileItemModel>();
-            string statusMessage;
-
-            try
+            if (!Directory.Exists(currentPath))
             {
-                if (!Directory.Exists(currentPath))
-                {
-                    return (files, "路径不存在");
-                }
+                yield break;
+            }
 
-                await Task.Run(() =>
+            // Using Channels to stream items from background thread to UI thread
+            var channel = Channel.CreateBounded<FileItemModel>(new BoundedChannelOptions(500)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = true
+            });
+
+            // Start background producer
+            _ = Task.Run(async () =>
+            {
+                try
                 {
-                    // Add directories
-                    try
+                    var dirInfo = new DirectoryInfo(currentPath);
+                    foreach (var info in dirInfo.EnumerateFileSystemInfos())
                     {
-                        foreach (var dir in Directory.GetDirectories(currentPath))
+                        if (cancellationToken.IsCancellationRequested) break;
+
+                        try
                         {
-                            try
+                            if (!ShouldShowItem(info.Attributes))
+                                continue;
+
+                            FileItemModel? item = null;
+                            if (info is DirectoryInfo di)
                             {
-                                var dirInfo = new DirectoryInfo(dir);
-                                
-                                // 检查是否应该显示此目录
-                                if (!ShouldShowItem(dirInfo.Attributes))
+                                item = new FileItemModel
                                 {
-                                    continue;
-                                }
-                                
-                                var fileItem = new FileItemModel
-                                {
-                                    Name = dirInfo.Name,
-                                    FullPath = dirInfo.FullName,
+                                    Name = di.Name,
+                                    FullPath = di.FullName,
                                     IsDirectory = true,
                                     Icon = SymbolRegular.Folder24,
-                                    IconColor = "#FFE6A23C", // Golden yellow for folders
+                                    IconColor = "#FFE6A23C",
                                     Type = "文件夹",
-                                    ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                                    ModifiedTime = di.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                                 };
-
-                                // Add on UI thread
-                                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    files.Add(fileItem);
-                                });
                             }
-                            catch (UnauthorizedAccessException)
+                            else if (info is FileInfo fi)
                             {
-                                // Skip directories we don't have access to
-                                continue;
-                            }
-                        }
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // Handle in the outer catch
-                        throw;
-                    }
-
-                    // Add files
-                    try
-                    {
-                        foreach (var file in Directory.GetFiles(currentPath))
-                        {
-                            try
-                            {
-                                var fileInfo = new FileInfo(file);
-                                
-                                // 检查是否应该显示此文件
-                                if (!ShouldShowItem(fileInfo.Attributes))
+                                item = new FileItemModel
                                 {
-                                    continue;
-                                }
-                                
-                                var fileItem = new FileItemModel
-                                {
-                                    Name = fileInfo.Name,
-                                    FullPath = fileInfo.FullName,
+                                    Name = fi.Name,
+                                    FullPath = fi.FullName,
                                     IsDirectory = false,
-                                    Size = fileInfo.Length,
-                                    Icon = GetFileIcon(fileInfo.Extension),
-                                    IconColor = GetFileIconColor(fileInfo.Extension),
-                                    Type = GetFileType(fileInfo.Extension),
-                                    ModifiedTime = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                                    Size = fi.Length,
+                                    Icon = GetFileIcon(fi.Extension),
+                                    IconColor = GetFileIconColor(fi.Extension),
+                                    Type = GetFileType(fi.Extension),
+                                    ModifiedTime = fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                                 };
-
-                                // Add on UI thread
-                                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                                {
-                                    files.Add(fileItem);
-                                });
                             }
-                            catch (UnauthorizedAccessException)
+
+                            if (item != null)
                             {
-                                // Skip files we don't have access to
-                                continue;
+                                await channel.Writer.WriteAsync(item, cancellationToken);
                             }
                         }
+                        catch { continue; }
                     }
-                    catch (UnauthorizedAccessException)
-                    {
-                        // Handle in the outer catch
-                        throw;
-                    }
-                });
+                }
+                catch { }
+                finally
+                {
+                    channel.Writer.Complete();
+                }
+            }, cancellationToken);
 
-                statusMessage = $"{files.Count} 个项目";
-            }
-            catch (UnauthorizedAccessException)
+            // Return items as they arrive
+            while (await channel.Reader.WaitToReadAsync(cancellationToken))
             {
-                statusMessage = "访问被拒绝: 没有权限访问此目录";
+                while (channel.Reader.TryRead(out var item))
+                {
+                    yield return item;
+                }
             }
-            catch (DirectoryNotFoundException)
+        }
+
+        public async Task<(List<FileItemModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
+        {
+            var files = new List<FileItemModel>();
+            try
             {
-                statusMessage = "目录不存在";
+                await foreach (var item in EnumerateFilesAsync(currentPath))
+                {
+                    files.Add(item);
+                }
+                return (files, $"{files.Count} 个项目");
             }
             catch (Exception ex)
             {
-                statusMessage = $"错误: {ex.Message}";
+                return (files, $"错误: {ex.Message}");
             }
-
-            return (files, statusMessage);
         }
 
         /// <summary>
