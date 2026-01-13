@@ -63,10 +63,40 @@ namespace FileSpace.Models
         public DirectoryItemModel(string fullPath)
         {
             FullPath = fullPath;
-            Name = Path.GetFileName(fullPath);
-            if (string.IsNullOrEmpty(Name))
+            
+            // Special handling for drive roots to show label (e.g., "系统 (C:)")
+            if (fullPath.Length <= 3 && fullPath.EndsWith(":\\"))
             {
-                Name = fullPath; // For drive roots like "C:\"
+                try
+                {
+                    var drive = new DriveInfo(fullPath);
+                    if (drive.IsReady)
+                    {
+                        var isSystem = fullPath.StartsWith("C", StringComparison.OrdinalIgnoreCase);
+                        string label = string.IsNullOrEmpty(drive.VolumeLabel) ? "本地磁盘" : drive.VolumeLabel;
+                        if (isSystem && string.IsNullOrEmpty(drive.VolumeLabel)) label = "系统";
+                        
+                        Name = $"{label} ({fullPath.TrimEnd('\\')})";
+                        Icon = SymbolRegular.HardDrive20;
+                        IconColor = "#FF2196F3"; // Standard Windows Drive blue
+                    }
+                    else
+                    {
+                        Name = fullPath;
+                    }
+                }
+                catch
+                {
+                    Name = fullPath;
+                }
+            }
+            else
+            {
+                Name = Path.GetFileName(fullPath);
+                if (string.IsNullOrEmpty(Name))
+                {
+                    Name = fullPath; // For cases like network shares
+                }
             }
             
             // Check if has subdirectories without loading them
@@ -189,7 +219,7 @@ namespace FileSpace.Models
                             var wslItem = new DirectoryItemModel(path)
                             {
                                 Name = name,
-                                Icon = SymbolRegular.Folder24,
+                                Icon = SymbolRegular.HardDrive20,
                                 IconColor = "#E95420"
                             };
                             SubDirectories.Add(wslItem);

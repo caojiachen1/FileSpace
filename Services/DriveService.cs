@@ -117,7 +117,7 @@ namespace FileSpace.Services
                         // Windows label logic
                         var isSystem = drive.Name.StartsWith("C", StringComparison.OrdinalIgnoreCase);
                         string label = string.IsNullOrEmpty(drive.VolumeLabel) ? "本地磁盘" : drive.VolumeLabel;
-                        if (isSystem && string.IsNullOrEmpty(drive.VolumeLabel)) label = "Windows";
+                        if (isSystem && string.IsNullOrEmpty(drive.VolumeLabel)) label = "系统";
 
                         driveItems.Add(new DriveItemModel
                         {

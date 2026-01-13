@@ -360,15 +360,6 @@ namespace FileSpace.ViewModels
             {
                 QuickAccessItems.Clear();
 
-                // 此电脑
-                QuickAccessItems.Add(new QuickAccessItem("此电脑", ThisPCPath, SymbolRegular.Laptop24, "#FF2196F3"));
-
-                // Linux
-                if (WslService.Instance.IsWslInstalled())
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("Linux", LinuxPath, SymbolRegular.Server24, "#FCC624"));
-                }
-                
                 // Desktop
                 var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 if (Directory.Exists(desktopPath))
