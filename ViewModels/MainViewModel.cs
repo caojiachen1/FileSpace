@@ -235,10 +235,7 @@ namespace FileSpace.ViewModels
             OnPropertyChanged(nameof(IconItemHeight));
             OnPropertyChanged(nameof(IconColumns));
 
-            if (IsIconView)
-            {
-                _ = LoadThumbnailsAsync();
-            }
+            _ = LoadThumbnailsAsync();
         }
 
         [ObservableProperty]
@@ -824,18 +821,20 @@ namespace FileSpace.ViewModels
                 var token = _thumbnailCancellationTokenSource.Token;
 
                 var filesSnapshot = Files.ToList();
-                int size = (int)IconSize;
-                if (size <= 0) size = 64;
+                double targetSize = IconSize;
+                if (targetSize <= 16) targetSize = 32; // Load at least 32px for details view to look sharp
 
                 await Task.Run(async () =>
                 {
                     foreach (var file in filesSnapshot)
                     {
                         if (token.IsCancellationRequested) break;
-                        if (file.Thumbnail != null) continue;
+                        
+                        // If we already have a thumbnail and it's big enough, skip
+                        if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) continue;
 
                         // Get thumbnail or system icon for ALL files and directories
-                        var thumbnail = ThumbnailUtils.GetThumbnail(file.FullPath, size, size);
+                        var thumbnail = ThumbnailUtils.GetThumbnail(file.FullPath, (int)targetSize, (int)targetSize);
                         if (thumbnail != null)
                         {
                             await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -843,6 +842,7 @@ namespace FileSpace.ViewModels
                                 if (!token.IsCancellationRequested)
                                 {
                                     file.Thumbnail = thumbnail;
+                                    file.LoadedThumbnailSize = targetSize;
                                 }
                             });
                         }

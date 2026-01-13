@@ -34,6 +34,13 @@ namespace FileSpace.Models
         [ObservableProperty]
         private ImageSource? _thumbnail;
 
+        private double _loadedThumbnailSize;
+        public double LoadedThumbnailSize
+        {
+            get => _loadedThumbnailSize;
+            set => SetProperty(ref _loadedThumbnailSize, value);
+        }
+
         [ObservableProperty]
         private string _type = string.Empty;
 
