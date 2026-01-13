@@ -84,7 +84,6 @@
             <Setter Property="Height" Value="24"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0,0,0,0"/>
-            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Visibility" Value="Hidden"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -117,7 +116,6 @@
             <Setter Property="Margin" Value="0,0,1,0"/>
             <Setter Property="MinWidth" Value="200"/>
             <Setter Property="MaxWidth" Value="240"/>
-            <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
         <!-- New Tab Button Style -->
@@ -129,7 +127,6 @@
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="24"/>
             <Setter Property="Margin" Value="2,0,0,0"/>
-            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="ToolTip" Value="新建标签页 (Ctrl+T)"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -182,7 +179,6 @@
                                 Margin="0,0,1,0"
                                 MinWidth="250"
                                 MaxWidth="250"
-                                Cursor="Hand"
                                 MouseLeftButtonDown="OnTabMouseLeftButtonDown"
                                 MouseDown="OnTabMouseDown">
                             <Border.Style>
