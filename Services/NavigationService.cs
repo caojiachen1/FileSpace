@@ -24,8 +24,8 @@ namespace FileSpace.Services
         {
             if (string.IsNullOrEmpty(path)) return;
 
-            // Allow navigation to "This PC"
-            if (path == MainViewModel.ThisPCPath)
+            // Allow navigation to special virtual paths
+            if (path == MainViewModel.ThisPCPath || path == MainViewModel.LinuxPath)
             {
                 _viewModel.CurrentPath = path;
                 return;

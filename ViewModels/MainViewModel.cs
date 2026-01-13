@@ -360,6 +360,12 @@ namespace FileSpace.ViewModels
 
                 // 此电脑
                 QuickAccessItems.Add(new QuickAccessItem("此电脑", ThisPCPath, SymbolRegular.Laptop24, "#FF2196F3"));
+
+                // Linux
+                if (WslService.Instance.IsWslInstalled())
+                {
+                    QuickAccessItems.Add(new QuickAccessItem("Linux", LinuxPath, SymbolRegular.Server24, "#FCC624"));
+                }
                 
                 // Desktop
                 var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -1187,7 +1193,9 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void DirectorySelected(DirectoryItemModel? directory)
         {
-            if (directory != null && Directory.Exists(directory.FullPath))
+            if (directory == null) return;
+            
+            if (directory.FullPath == ThisPCPath || directory.FullPath == LinuxPath || Directory.Exists(directory.FullPath))
             {
                 NavigateToPath(directory.FullPath);
             }
