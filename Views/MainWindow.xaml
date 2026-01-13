@@ -229,6 +229,7 @@
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
                                 <Setter TargetName="RootBorder" Property="Background" Value="Transparent"/>
+                                <Setter TargetName="RootBorder" Property="BorderBrush" Value="Transparent"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -273,20 +274,24 @@
                     
                     <!-- Navigation Buttons -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ui:Button Command="{Binding GoBackCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="后退 (Alt+Left)" Background="Transparent" BorderThickness="0">
+                        <ui:Button Command="{Binding GoBackCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                                   Width="40" Height="32" Margin="0,0,10,0"
+                                   ToolTip="后退 (Alt+Left)">
                             <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="16"/>
                         </ui:Button>
-                        <ui:Button Command="{Binding GoForwardCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="前进 (Alt+Right)" Background="Transparent" BorderThickness="0">
+                        <ui:Button Command="{Binding GoForwardCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                                   Width="40" Height="32" Margin="0,0,10,0"
+                                   ToolTip="前进 (Alt+Right)">
                             <ui:SymbolIcon Symbol="ArrowRight24" FontSize="16"/>
                         </ui:Button>
-                        <ui:Button Command="{Binding GoUpCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="向上 (Alt+Up)" Background="Transparent" BorderThickness="0">
+                        <ui:Button Command="{Binding GoUpCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                                   Width="40" Height="32" Margin="0,0,10,0"
+                                   ToolTip="向上 (Alt+Up)">
                             <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
                         </ui:Button>
-                        <ui:Button Command="{Binding RefreshCommand}" Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="刷新 (F5)" Background="Transparent" BorderThickness="0">
+                        <ui:Button Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarButtonStyle}"
+                                   Width="40" Height="32" Margin="0,0,10,0"
+                                   ToolTip="刷新 (F5)">
                             <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16"/>
                         </ui:Button>
                     </StackPanel>
@@ -503,11 +508,9 @@
                     <!-- VS Code Style Panel Toggle Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
                         <!-- Left Panel Toggle (Folder Tree) -->
-                        <ui:Button Command="{Binding ToggleLeftPanelCommand}" 
+                        <ui:Button Command="{Binding ToggleLeftPanelCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Width="40" Height="32" Margin="5,0"
                                    ToolTip="切换文件夹树 (Alt+1)"
-                                   Background="Transparent"
-                                   BorderThickness="0"
                                    Padding="0">
                             <ui:Button.Content>
                                 <Grid Width="24" Height="20">
@@ -538,11 +541,9 @@
                         </ui:Button>
                         
                         <!-- Right Panel Toggle (Preview) -->
-                        <ui:Button Command="{Binding ToggleRightPanelCommand}" 
+                        <ui:Button Command="{Binding ToggleRightPanelCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Width="40" Height="32" Margin="5,0"
                                    ToolTip="切换预览面板 (Alt+2)"
-                                   Background="Transparent"
-                                   BorderThickness="0"
                                    Padding="0">
                             <ui:Button.Content>
                                 <Grid Width="24" Height="20">

@@ -60,6 +60,8 @@ namespace FileSpace.ViewModels
         public const string LinuxPath = "Linux";
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(GoUpCommand))]
+        [NotifyCanExecuteChangedFor(nameof(UpCommand))]
         private string _currentPath = string.Empty;
 
         [ObservableProperty]
@@ -1002,11 +1004,13 @@ namespace FileSpace.ViewModels
             _navigationService.Back();
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanGoUp))]
         private void Up()
         {
             _navigationService.Up();
         }
+
+        private bool CanGoUp() => NavigationUtils.CanGoUp(CurrentPath);
 
         // New navigation commands for Windows Explorer-like functionality
         [RelayCommand]
@@ -1029,14 +1033,10 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanGoUp))]
         private void GoUp()
         {
-            var parentPath = System.IO.Path.GetDirectoryName(CurrentPath);
-            if (!string.IsNullOrEmpty(parentPath))
-            {
-                NavigateToPath(parentPath);
-            }
+            _navigationService.Up();
         }
 
         [RelayCommand]

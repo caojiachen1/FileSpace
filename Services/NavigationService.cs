@@ -67,7 +67,8 @@ namespace FileSpace.Services
 
         public void Up()
         {
-            if (_viewModel.CurrentPath == MainViewModel.ThisPCPath) return;
+            if (_viewModel.CurrentPath == MainViewModel.ThisPCPath || _viewModel.CurrentPath == MainViewModel.LinuxPath) 
+                return;
 
             var parentPath = NavigationUtils.GoUp(_viewModel.CurrentPath);
             if (parentPath != null)
@@ -76,7 +77,15 @@ namespace FileSpace.Services
             }
             else
             {
-                 NavigateToPath(MainViewModel.ThisPCPath);
+                // If it's a WSL path, go to Linux root, otherwise This PC
+                if (_viewModel.CurrentPath.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
+                {
+                    NavigateToPath(MainViewModel.LinuxPath);
+                }
+                else
+                {
+                    NavigateToPath(MainViewModel.ThisPCPath);
+                }
             }
         }
     }

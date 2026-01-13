@@ -16,15 +16,25 @@ namespace FileSpace.Utils
         
         public static bool CanGoUp(string currentPath)
         {
-            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑")
+            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux")
                 return false;
-            return true; // Any path (even root drives) can go up to "This PC"
+            return true; 
         }
 
         public static string? GoUp(string currentPath)
         {
-            var parent = Directory.GetParent(currentPath);
-            return parent?.FullName;
+            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux")
+                return null;
+
+            try
+            {
+                var parent = Directory.GetParent(currentPath);
+                return parent?.FullName;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public void AddToHistory(string currentPath)
