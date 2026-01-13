@@ -55,27 +55,16 @@ namespace FileSpace.Services
                     return driveList.OrderBy(d => d).ToList();
                 });
 
-                // Add drives to the tree
-                foreach (var drive in drives)
+                // Create This PC node
+                var thisPCItem = new DirectoryItemModel("此电脑")
                 {
-                    directoryTree.Add(new DirectoryItemModel(drive));
-                }
+                    Name = "此电脑",
+                    Icon = SymbolRegular.Laptop24,
+                    IconColor = "#FF2196F3",
+                    IsExpanded = true
+                };
 
-                // Load and Add WSL Distributions
-                if (WslService.Instance.IsWslInstalled())
-                {
-                    var wslDistros = await WslService.Instance.GetDistributionsAsync();
-                    foreach (var (name, path) in wslDistros)
-                    {
-                        var wslItem = new DirectoryItemModel(path)
-                        {
-                            Name = name,
-                            Icon = SymbolRegular.Folder24, 
-                            IconColor = "#E95420" // Ubuntu Orange
-                        };
-                        directoryTree.Add(wslItem);
-                    }
-                }
+                directoryTree.Add(thisPCItem);
 
                 // Set initial path
                 initialPath = "此电脑";

@@ -1,6 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using FileSpace.Services;
 using Wpf.Ui.Controls;
@@ -52,7 +55,9 @@ namespace FileSpace.Models
         [ObservableProperty]
         private string _loadErrorMessage = string.Empty;
 
+        [ObservableProperty]
         private bool _hasLoadedChildren = false;
+
         private readonly SemaphoreSlim _loadingSemaphore = new(1, 1);
 
         public DirectoryItemModel(string fullPath)
@@ -80,6 +85,12 @@ namespace FileSpace.Models
         {
             try
             {
+                if (FullPath == "此电脑")
+                {
+                    HasSubDirectories = true;
+                    return;
+                }
+
                 HasSubDirectories = await Task.Run(() =>
                 {
                     try
@@ -126,16 +137,74 @@ namespace FileSpace.Models
                 // Clear any existing items
                 SubDirectories.Clear();
 
-                var directories = await Task.Run(() => GetDirectoriesAsync());
+                if (FullPath == "此电脑")
+                {
+                    var driveRoots = await Task.Run(() =>
+                    {
+                        var driveList = new List<string>();
+                        foreach (var drive in DriveInfo.GetDrives())
+                        {
+                            if (drive.IsReady && drive.DriveType != DriveType.CDRom)
+                            {
+                                try
+                                {
+                                    // Test access to the drive
+                                    Directory.GetDirectories(drive.RootDirectory.FullName).Take(1).ToList();
+                                    driveList.Add(drive.RootDirectory.FullName);
+                                }
+                                catch
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+                        return driveList.OrderBy(d => d).ToList();
+                    });
+
+                    // Update UI on the UI thread
+                    await Application.Current.Dispatcher.InvokeAsync(async () =>
+                    {
+                        foreach (var root in driveRoots)
+                        {
+                            SubDirectories.Add(new DirectoryItemModel(root));
+                        }
+
+                        if (WslService.Instance.IsWslInstalled())
+                        {
+                            try
+                            {
+                                var wslDistros = await WslService.Instance.GetDistributionsAsync();
+                                foreach (var (name, path) in wslDistros)
+                                {
+                                    var wslItem = new DirectoryItemModel(path)
+                                    {
+                                        Name = name,
+                                        Icon = SymbolRegular.Folder24,
+                                        IconColor = "#E95420"
+                                    };
+                                    SubDirectories.Add(wslItem);
+                                }
+                            }
+                            catch { }
+                        }
+                    });
+                }
+                else
+                {
+                    var directories = await Task.Run(() => GetDirectoriesAsync());
+
+                    // Update UI on the UI thread
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        foreach (var dir in directories.OrderBy(d => Path.GetFileName(d)))
+                        {
+                            SubDirectories.Add(new DirectoryItemModel(dir));
+                        }
+                    });
+                }
                 
-                // Update UI on the UI thread
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    foreach (var dir in directories.OrderBy(d => Path.GetFileName(d)))
-                    {
-                        SubDirectories.Add(new DirectoryItemModel(dir));
-                    }
-                    
                     _hasLoadedChildren = true;
                     IsLoadingChildren = false;
 
