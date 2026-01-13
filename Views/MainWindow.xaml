@@ -162,9 +162,9 @@
             <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemPreviewMouseLeftButtonDown"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
-            <Setter Property="Height" Value="24"/>
+            <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="MaxHeight" Value="24"/>
+            <Setter Property="MaxHeight" Value="32"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -183,9 +183,9 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
             <Setter Property="Padding" Value="8,0"/>
-            <Setter Property="Height" Value="24"/>
+            <Setter Property="Height" Value="32"/>
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="MaxHeight" Value="24"/>
+            <Setter Property="MaxHeight" Value="32"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
@@ -918,7 +918,7 @@
                                  Margin="10,5,10,10"
                                  Padding="0"
                                  FontSize="13"
-                                 RowHeight="24"
+                                 RowHeight="32"
                                  MinRowHeight="0"
                                  MinHeight="0"
                                  VerticalContentAlignment="Center"
