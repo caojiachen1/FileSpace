@@ -7,7 +7,7 @@
              xmlns:local="clr-namespace:FileSpace.Controls"
              xmlns:models="clr-namespace:FileSpace.Models"
              mc:Ignorable="d" 
-             d:DesignHeight="40" d:DesignWidth="800">
+             d:DesignHeight="34" d:DesignWidth="800">
     <UserControl.Resources>
         <!-- Custom Title Bar Button Style -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
@@ -83,7 +83,7 @@
             <Setter Property="Width" Value="24"/>
             <Setter Property="Height" Value="24"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Visibility" Value="Hidden"/>
             <Setter Property="Template">
@@ -113,9 +113,9 @@
         <Style x:Key="TabItemStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="8,8,0,0"/>
-            <Setter Property="Padding" Value="12,6,6,6"/>
-            <Setter Property="Margin" Value="0,6,1,0"/>
-            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Padding" Value="12,0,6,0"/>
+            <Setter Property="Margin" Value="0,0,1,0"/>
+            <Setter Property="MinWidth" Value="200"/>
             <Setter Property="MaxWidth" Value="240"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
@@ -127,15 +127,15 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
             <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="Margin" Value="2,4,0,4"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="ToolTip" Value="新建标签页 (Ctrl+T)"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="RootBorder" Background="{TemplateBinding Background}" 
-                                CornerRadius="4" Width="32" Height="32">
+                                CornerRadius="4" Width="32" Height="24">
                             <ui:SymbolIcon Symbol="Add24" FontSize="14" 
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Foreground="{TemplateBinding Foreground}"/>
@@ -155,7 +155,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid x:Name="RootGrid" Height="40" Background="Black">
+    <Grid x:Name="RootGrid" Height="32" Background="Black">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
@@ -178,10 +178,10 @@
                         <Border x:Name="TabBorder" 
                                 Background="Transparent"
                                 CornerRadius="8,8,0,0"
-                                Padding="12,6,6,6"
-                                Margin="0,6,1,0"
-                                MinWidth="100"
-                                MaxWidth="240"
+                                Padding="14,0,6,0"
+                                Margin="0,0,1,0"
+                                MinWidth="250"
+                                MaxWidth="250"
                                 Cursor="Hand"
                                 MouseLeftButtonDown="OnTabMouseLeftButtonDown"
                                 MouseDown="OnTabMouseDown">
@@ -199,7 +199,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="32"/>
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Folder Icon -->
@@ -212,11 +212,13 @@
                                                VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"
                                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                               FontSize="12" MaxWidth="160"/>
+                                               FontSize="12" MaxWidth="200"/>
                                     
                                     <!-- Close Button -->
                                     <Button x:Name="CloseButton" Grid.Column="2" 
                                             Style="{StaticResource TabCloseButtonStyle}"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
                                             Click="OnTabCloseClick"
                                             Tag="{Binding}"/>
                                 </Grid>
