@@ -345,10 +345,14 @@ namespace FileSpace.ViewModels
         /// </summary>
         private void LoadPanelSettings()
         {
+            // Set default to true for both panels when starting
+            IsLeftPanelVisible = true;
+            IsRightPanelVisible = true;
+            
+            // Sync to settings so it's remembered correctly
             var uiSettings = _settingsService.Settings.UISettings;
-            IsLeftPanelVisible = uiSettings.IsLeftPanelVisible;
-            IsRightPanelVisible = uiSettings.IsRightPanelVisible;
-            // Center panel is always visible
+            uiSettings.IsLeftPanelVisible = true;
+            uiSettings.IsRightPanelVisible = true;
         }
 
         /// <summary>
