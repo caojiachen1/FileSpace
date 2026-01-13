@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Windows;
 using FileSpace.Services;
 using FileSpace.Views;
@@ -179,11 +181,12 @@ namespace FileSpace.ViewModels
         public bool IsDetailsView => ViewMode == "详细信息";
         public bool IsIconView => ViewMode != "详细信息";
         public bool IsSmallIconView => ViewMode == "小图标";
-        public bool IsLargeOrMediumIconView => ViewMode == "大图标" || ViewMode == "中等图标";
+        public bool IsLargeOrMediumIconView => ViewMode == "大图标" || ViewMode == "中等图标" || ViewMode == "超大图标";
         
         // Icon size for different view modes
         public double IconSize => ViewMode switch
         {
+            "超大图标" => 256,
             "大图标" => 64,
             "中等图标" => 48,
             "小图标" => 24,
@@ -193,6 +196,7 @@ namespace FileSpace.ViewModels
         // Icon item width for grid layout
         public double IconItemWidth => ViewMode switch
         {
+            "超大图标" => 280,
             "大图标" => 110,
             "中等图标" => 90,
             "小图标" => 180,
@@ -202,6 +206,7 @@ namespace FileSpace.ViewModels
         // Icon item height for grid layout
         public double IconItemHeight => ViewMode switch
         {
+            "超大图标" => 300,
             "大图标" => 100,
             "中等图标" => 80,
             "小图标" => 32,
@@ -211,6 +216,7 @@ namespace FileSpace.ViewModels
         // Number of columns for icon view (auto-calculated based on view mode)
         public int IconColumns => ViewMode switch
         {
+            "超大图标" => 4,
             "大图标" => 8,
             "中等图标" => 10,
             "小图标" => 5,
@@ -228,6 +234,11 @@ namespace FileSpace.ViewModels
             OnPropertyChanged(nameof(IconItemWidth));
             OnPropertyChanged(nameof(IconItemHeight));
             OnPropertyChanged(nameof(IconColumns));
+
+            if (IsIconView)
+            {
+                _ = LoadThumbnailsAsync();
+            }
         }
 
         [ObservableProperty]
@@ -291,6 +302,7 @@ namespace FileSpace.ViewModels
         private bool CanGoForward() => CurrentNavigationIndex < NavigationHistory.Count - 1;
 
         private CancellationTokenSource? _previewCancellationTokenSource;
+        private CancellationTokenSource? _thumbnailCancellationTokenSource;
         private CancellationTokenSource? _fileOperationCancellationTokenSource;
         private readonly SemaphoreSlim _previewSemaphore = new(1, 1);
 
@@ -554,6 +566,8 @@ namespace FileSpace.ViewModels
                     
                     ApplySorting();
                     StatusText = $"全盘搜索完成，找到 {results.Count} 个匹配项";
+                    
+                    _ = LoadThumbnailsAsync();
                 }
                 catch (Exception ex)
                 {
@@ -609,6 +623,8 @@ namespace FileSpace.ViewModels
                 ApplySorting();
 
                 StatusText = $"找到 {allFiles.Count} 个匹配项";
+
+                _ = LoadThumbnailsAsync();
             }
             catch (Exception ex)
             {
@@ -789,10 +805,54 @@ namespace FileSpace.ViewModels
 
                 SelectAllCommand.NotifyCanExecuteChanged();
                 StatusText = statusMessage;
+
+                // Always load icons/thumbnails to match Windows Explorer behavior
+                _ = LoadThumbnailsAsync();
             }
             catch (Exception ex)
             {
                 StatusText = $"加载文件错误: {ex.Message}";
+            }
+        }
+
+        private async Task LoadThumbnailsAsync()
+        {
+            try
+            {
+                _thumbnailCancellationTokenSource?.Cancel();
+                _thumbnailCancellationTokenSource = new CancellationTokenSource();
+                var token = _thumbnailCancellationTokenSource.Token;
+
+                var filesSnapshot = Files.ToList();
+                int size = (int)IconSize;
+                if (size <= 0) size = 64;
+
+                await Task.Run(async () =>
+                {
+                    foreach (var file in filesSnapshot)
+                    {
+                        if (token.IsCancellationRequested) break;
+                        if (file.Thumbnail != null) continue;
+
+                        // Get thumbnail or system icon for ALL files and directories
+                        var thumbnail = ThumbnailUtils.GetThumbnail(file.FullPath, size, size);
+                        if (thumbnail != null)
+                        {
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                if (!token.IsCancellationRequested)
+                                {
+                                    file.Thumbnail = thumbnail;
+                                }
+                            });
+                        }
+                    }
+                }, token);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading thumbnails: {ex.Message}");
             }
         }
 

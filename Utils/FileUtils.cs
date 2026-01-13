@@ -52,6 +52,20 @@ namespace FileSpace.Utils
             };
         }
 
+        public static bool IsVideoFile(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm" => true,
+                _ => false
+            };
+        }
+
+        public static bool IsThumbnailSupported(string extension)
+        {
+            return IsImageFile(extension) || IsVideoFile(extension);
+        }
+
         public static Encoding DetectEncoding(string filePath)
         {
             try

@@ -684,6 +684,7 @@ namespace FileSpace.Views
                 icon.Symbol = mode switch
                 {
                     "详细信息" => SymbolRegular.TextBulletListSquare24,
+                    "超大图标" => SymbolRegular.Grid28,
                     "大图标" => SymbolRegular.Grid24,
                     "中等图标" => SymbolRegular.Apps24,
                     "小图标" => SymbolRegular.AppsList24,
