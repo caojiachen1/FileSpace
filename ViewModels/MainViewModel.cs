@@ -186,7 +186,7 @@ namespace FileSpace.ViewModels
         // Icon size for different view modes
         public double IconSize => ViewMode switch
         {
-            "超大图标" => 256,
+            "超大图标" => 192,
             "大图标" => 64,
             "中等图标" => 48,
             "小图标" => 24,
@@ -196,7 +196,7 @@ namespace FileSpace.ViewModels
         // Icon item width for grid layout
         public double IconItemWidth => ViewMode switch
         {
-            "超大图标" => 280,
+            "超大图标" => 220,
             "大图标" => 110,
             "中等图标" => 90,
             "小图标" => 180,
@@ -206,7 +206,7 @@ namespace FileSpace.ViewModels
         // Icon item height for grid layout
         public double IconItemHeight => ViewMode switch
         {
-            "超大图标" => 300,
+            "超大图标" => 240,
             "大图标" => 100,
             "中等图标" => 80,
             "小图标" => 32,
@@ -216,7 +216,7 @@ namespace FileSpace.ViewModels
         // Number of columns for icon view (auto-calculated based on view mode)
         public int IconColumns => ViewMode switch
         {
-            "超大图标" => 4,
+            "超大图标" => 5,
             "大图标" => 8,
             "中等图标" => 10,
             "小图标" => 5,
