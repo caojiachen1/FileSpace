@@ -1588,17 +1588,17 @@ namespace FileSpace.ViewModels
             var sortedFiles = SortMode switch
             {
                 "Name" => SortAscending 
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Size" => SortAscending
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Type" => SortAscending
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
+                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Date" => SortAscending
-                    ? Files.OrderBy(f => !f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
-                    : Files.OrderBy(f => !f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
+                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
+                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
                 _ => Files.ToList()
             };
 
