@@ -25,6 +25,37 @@ namespace FileSpace.ViewModels
         // Event to notify UI to focus on address bar
         public event EventHandler? FocusAddressBarRequested;
         
+        // Tab management
+        [ObservableProperty]
+        private ObservableCollection<TabItemModel> _tabs = new();
+
+        [ObservableProperty]
+        private TabItemModel? _selectedTab;
+
+        // 标签页选择变化时更新当前路径
+        partial void OnSelectedTabChanged(TabItemModel? value)
+        {
+            if (value != null)
+            {
+                // 标记所有其他标签为未选中
+                foreach (var tab in Tabs)
+                {
+                    tab.IsSelected = tab.Id == value.Id;
+                }
+                
+                // 同步路径到当前选中的标签页
+                if (value.Path != CurrentPath)
+                {
+                    _isTabSwitching = true;
+                    CurrentPath = value.Path;
+                    _isTabSwitching = false;
+                }
+            }
+        }
+
+        // 用于防止在标签页切换时重复更新
+        private bool _isTabSwitching = false;
+        
         [ObservableProperty]
         private string _currentPath = string.Empty;
 
@@ -381,6 +412,12 @@ namespace FileSpace.ViewModels
                 _settingsService.AddRecentPath(value);
             }
             
+            // 更新当前选中标签页的路径（如果不是标签页切换引起的）
+            if (!_isTabSwitching && SelectedTab != null && SelectedTab.Path != value)
+            {
+                SelectedTab.Path = value;
+            }
+            
             // Update navigation history and breadcrumbs for Windows Explorer-like experience
             if (!string.IsNullOrEmpty(value))
             {
@@ -575,14 +612,22 @@ namespace FileSpace.ViewModels
 
                 // Check if we have a recent path to start with
                 var recentPaths = _settingsService.GetRecentPaths();
+                string startPath;
                 if (recentPaths.Count > 0 && Directory.Exists(recentPaths[0]))
                 {
-                    CurrentPath = recentPaths[0];
+                    startPath = recentPaths[0];
                 }
                 else
                 {
-                    CurrentPath = initialPath;
+                    startPath = initialPath;
                 }
+                
+                // 创建第一个标签页
+                var firstTab = new TabItemModel(startPath) { IsSelected = true };
+                Tabs.Add(firstTab);
+                SelectedTab = firstTab;
+                
+                CurrentPath = startPath;
                 
                 StatusText = statusMessage;
             }
@@ -910,6 +955,55 @@ namespace FileSpace.ViewModels
             {
                 NavigateToPath(path);
             }
+        }
+
+        // 标签页管理命令
+        [RelayCommand]
+        private void NewTab()
+        {
+            // 在当前路径创建新标签页
+            var path = !string.IsNullOrEmpty(CurrentPath) ? CurrentPath : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var newTab = new TabItemModel(path);
+            Tabs.Add(newTab);
+            SelectedTab = newTab;
+        }
+
+        [RelayCommand]
+        private void CloseTab(TabItemModel? tab)
+        {
+            if (tab == null || Tabs.Count <= 1) return;
+            
+            var index = Tabs.IndexOf(tab);
+            var wasSelected = tab.IsSelected;
+            
+            Tabs.Remove(tab);
+            
+            // 如果关闭的是当前选中的标签页，选择相邻的标签页
+            if (wasSelected && Tabs.Count > 0)
+            {
+                var newIndex = Math.Min(index, Tabs.Count - 1);
+                SelectedTab = Tabs[newIndex];
+            }
+        }
+
+        [RelayCommand]
+        private void SelectTab(TabItemModel? tab)
+        {
+            if (tab != null)
+            {
+                SelectedTab = tab;
+            }
+        }
+
+        [RelayCommand]
+        private void DuplicateTab(TabItemModel? tab)
+        {
+            if (tab == null) return;
+            
+            var newTab = new TabItemModel(tab.Path);
+            var index = Tabs.IndexOf(tab);
+            Tabs.Insert(index + 1, newTab);
+            SelectedTab = newTab;
         }
 
         [RelayCommand]

@@ -24,6 +24,9 @@
         <KeyBinding Key="X" Modifiers="Control" Command="{Binding CutFilesCommand}" />
         <KeyBinding Key="A" Modifiers="Control" Command="{Binding SelectAllCommand}" />
         <KeyBinding Key="R" Modifiers="Control" Command="{Binding RefreshCommand}" />
+        <!-- Tab management shortcuts -->
+        <KeyBinding Key="T" Modifiers="Control" Command="{Binding NewTabCommand}" />
+        <KeyBinding Key="W" Modifiers="Control" Command="{Binding CloseTabCommand}" CommandParameter="{Binding SelectedTab}" />
     </ui:FluentWindow.InputBindings>
 
     <ui:FluentWindow.Resources>
@@ -242,8 +245,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Custom Title Bar -->
-        <controls:CustomTitleBar Grid.Row="0" x:Name="AppTitleBar" Title="FileSpace - 文件管理器"/>
+        <!-- Custom Title Bar with Tabs -->
+        <controls:CustomTitleBar Grid.Row="0" x:Name="AppTitleBar"
+                                 Tabs="{Binding Tabs}"
+                                 SelectedTab="{Binding SelectedTab}"
+                                 NewTabCommand="{Binding NewTabCommand}"
+                                 CloseTabCommand="{Binding CloseTabCommand}"
+                                 SelectTabCommand="{Binding SelectTabCommand}"/>
 
         <!-- Toolbar and Menu Bar -->
         <Grid Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="0,0,0,0">
