@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:FileSpace.Controls"
              mc:Ignorable="d" 
              d:DesignHeight="40" d:DesignWidth="800">
     <UserControl.Resources>
@@ -35,6 +36,15 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Maximize Button Style (Handles the NC Hover state) -->
+        <Style x:Key="MaximizeButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=local:CustomTitleBar}, Path=IsMaxButtonHovered}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Custom Close Button Style -->
@@ -79,7 +89,7 @@
         </StackPanel>
 
         <!-- Drag Area -->
-        <Grid x:Name="DragArea" Grid.Column="0" Grid.ColumnSpan="2" Background="Transparent" MouseLeftButtonDown="DragArea_MouseLeftButtonDown"/>
+        <Grid x:Name="DragArea" Grid.Column="0" Grid.ColumnSpan="2" Background="Transparent" />
 
         <!-- Middle Content Area -->
         <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -91,7 +101,7 @@
             <Button x:Name="BtnMinimize" Style="{StaticResource TitleBarButtonStyle}" Click="OnMinimizeClick">
                 <ui:SymbolIcon Symbol="Subtract24" FontSize="14"/>
             </Button>
-            <Button x:Name="BtnMaximize" Style="{StaticResource TitleBarButtonStyle}" Click="OnMaximizeClick">
+            <Button x:Name="BtnMaximize" Style="{StaticResource MaximizeButtonStyle}">
                 <ui:SymbolIcon x:Name="MaximizeIcon" Symbol="Maximize24" FontSize="14"/>
             </Button>
             <Button x:Name="BtnClose" Style="{StaticResource TitleBarCloseButtonStyle}" Click="OnCloseClick">
