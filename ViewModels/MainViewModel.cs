@@ -1548,8 +1548,19 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void SetSortMode(string mode)
         {
-            // Toggle ascending/descending if same mode is selected
-            if (SortMode == mode)
+            if (mode == "Ascending")
+            {
+                SortAscending = true;
+            }
+            else if (mode == "Descending")
+            {
+                SortAscending = false;
+            }
+            else if (mode == "ToggleDirection")
+            {
+                SortAscending = !SortAscending;
+            }
+            else if (SortMode == mode)
             {
                 SortAscending = !SortAscending;
             }

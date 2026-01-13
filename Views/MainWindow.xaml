@@ -407,6 +407,106 @@
                         
                         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,10,18,10" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                         
+                        <ui:Button x:Name="SortModeButton" Style="{StaticResource ToolbarButtonStyle}"
+                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="排序" Click="ViewModeButton_Click">
+                            <ui:Button.Content>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:SymbolIcon Symbol="ArrowSort24" FontSize="16" Margin="0,0,4,0"/>
+                                    <TextBlock Text="排序" FontSize="13" VerticalAlignment="Center"/>
+                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </ui:Button.Content>
+                            <ui:Button.ContextMenu>
+                                <ContextMenu x:Name="SortModeContextMenu">
+                                    <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortMode}" Value="Name">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="TextSortAscending24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortMode}" Value="Size">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="DataUsage24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortMode}" Value="Type">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="DocumentBulletList24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortMode}" Value="Date">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="Timer24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="升序" Command="{Binding SetSortModeCommand}" CommandParameter="Ascending">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortAscending}" Value="True">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="ArrowSortUp24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="降序" Command="{Binding SetSortModeCommand}" CommandParameter="Descending">
+                                        <MenuItem.Style>
+                                            <Style TargetType="MenuItem">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SortAscending}" Value="False">
+                                                        <Setter Property="IsChecked" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </MenuItem.Style>
+                                        <MenuItem.Icon>
+                                            <ui:SymbolIcon Symbol="ArrowSortDown24"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </ui:Button.ContextMenu>
+                        </ui:Button>
+
                         <ui:Button x:Name="ViewModeButton" Style="{StaticResource ToolbarButtonStyle}"
                                    Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="查看选项" Click="ViewModeButton_Click">
                             <ui:Button.Content>
@@ -441,27 +541,6 @@
                                     <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
                                         <MenuItem.Icon>
                                             <ui:SymbolIcon Symbol="AppsList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator/>
-                                    <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="TextSortAscending24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DataUsage24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DocumentBulletList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Timer24"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </ContextMenu>
