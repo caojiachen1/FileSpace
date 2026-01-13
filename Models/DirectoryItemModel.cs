@@ -75,7 +75,7 @@ namespace FileSpace.Models
 
         partial void OnIsExpandedChanged(bool value)
         {
-            if (value && !_hasLoadedChildren && HasSubDirectories)
+            if (value && !HasLoadedChildren && HasSubDirectories)
             {
                 _ = LoadSubDirectoriesAsync();
             }
@@ -85,7 +85,7 @@ namespace FileSpace.Models
         {
             try
             {
-                if (FullPath == "此电脑")
+                if (FullPath == "此电脑" || FullPath == "Linux")
                 {
                     HasSubDirectories = true;
                     return;
@@ -122,13 +122,13 @@ namespace FileSpace.Models
 
         private async Task LoadSubDirectoriesAsync()
         {
-            if (_hasLoadedChildren || !HasSubDirectories) return;
+            if (HasLoadedChildren || !HasSubDirectories) return;
 
             await _loadingSemaphore.WaitAsync();
             
             try
             {
-                if (_hasLoadedChildren) return; // Double-check after acquiring semaphore
+                if (HasLoadedChildren) return; // Double-check after acquiring semaphore
 
                 IsLoadingChildren = true;
                 HasLoadError = false;
@@ -168,24 +168,31 @@ namespace FileSpace.Models
                         {
                             SubDirectories.Add(new DirectoryItemModel(root));
                         }
-
-                        if (WslService.Instance.IsWslInstalled())
+                    });
+                }
+                else if (FullPath == "Linux")
+                {
+                    var wslDistros = new List<(string Name, string Path)>();
+                    if (WslService.Instance.IsWslInstalled())
+                    {
+                        try
                         {
-                            try
+                            wslDistros = await WslService.Instance.GetDistributionsAsync();
+                        }
+                        catch { }
+                    }
+
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        foreach (var (name, path) in wslDistros)
+                        {
+                            var wslItem = new DirectoryItemModel(path)
                             {
-                                var wslDistros = await WslService.Instance.GetDistributionsAsync();
-                                foreach (var (name, path) in wslDistros)
-                                {
-                                    var wslItem = new DirectoryItemModel(path)
-                                    {
-                                        Name = name,
-                                        Icon = SymbolRegular.Folder24,
-                                        IconColor = "#E95420"
-                                    };
-                                    SubDirectories.Add(wslItem);
-                                }
-                            }
-                            catch { }
+                                Name = name,
+                                Icon = SymbolRegular.Folder24,
+                                IconColor = "#E95420"
+                            };
+                            SubDirectories.Add(wslItem);
                         }
                     });
                 }
@@ -205,13 +212,16 @@ namespace FileSpace.Models
                 
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    _hasLoadedChildren = true;
+                    HasLoadedChildren = true;
                     IsLoadingChildren = false;
 
                     // If no directories were found, update the HasSubDirectories flag
                     if (!SubDirectories.Any())
                     {
-                        HasSubDirectories = false;
+                        if (FullPath != "此电脑" && FullPath != "Linux")
+                        {
+                            HasSubDirectories = false;
+                        }
                     }
                 });
             }
@@ -276,7 +286,7 @@ namespace FileSpace.Models
 
         public async Task RefreshAsync()
         {
-            _hasLoadedChildren = false;
+            HasLoadedChildren = false;
             SubDirectories.Clear();
             HasLoadError = false;
             LoadErrorMessage = string.Empty;

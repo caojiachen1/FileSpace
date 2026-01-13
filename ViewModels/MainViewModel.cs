@@ -57,6 +57,7 @@ namespace FileSpace.ViewModels
         private bool _isTabSwitching = false;
         
         public const string ThisPCPath = "此电脑";
+        public const string LinuxPath = "Linux";
 
         [ObservableProperty]
         private string _currentPath = string.Empty;
@@ -71,7 +72,17 @@ namespace FileSpace.ViewModels
         private ObservableCollection<DriveItemModel> _drives = new();
 
         [ObservableProperty]
+        private ObservableCollection<DriveItemModel> _linuxDistros = new();
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsFilesView))]
         private bool _isThisPCView;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsFilesView))]
+        private bool _isLinuxView;
+
+        public bool IsFilesView => !IsThisPCView && !IsLinuxView;
 
         [ObservableProperty]
         private FileItemModel? _selectedFile;
@@ -581,10 +592,23 @@ namespace FileSpace.ViewModels
                 return;
             }
 
+            if (path == LinuxPath)
+            {
+                BreadcrumbItems.Add(new BreadcrumbItem("Linux", LinuxPath));
+                return;
+            }
+
             try
             {
-                // Always start with This PC
-                BreadcrumbItems.Add(new BreadcrumbItem("此电脑", ThisPCPath));
+                // Determine root
+                if (path.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
+                {
+                    BreadcrumbItems.Add(new BreadcrumbItem("Linux", LinuxPath));
+                }
+                else
+                {
+                    BreadcrumbItems.Add(new BreadcrumbItem("此电脑", ThisPCPath));
+                }
 
                 var parts = new List<string>();
                 var current = path;
@@ -656,6 +680,7 @@ namespace FileSpace.ViewModels
                 if (CurrentPath == ThisPCPath)
                 {
                     IsThisPCView = true;
+                    IsLinuxView = false;
                     StatusText = "正在加载设备...";
                     var drives = await DriveService.Instance.GetDrivesDetailAsync();
                     Drives.Clear();
@@ -668,7 +693,39 @@ namespace FileSpace.ViewModels
                     return; 
                 }
 
+                if (CurrentPath == LinuxPath)
+                {
+                    IsThisPCView = false;
+                    IsLinuxView = true;
+                    StatusText = "正在加载 Linux 发行版...";
+                    
+                    LinuxDistros.Clear();
+                    if (WslService.Instance.IsWslInstalled())
+                    {
+                        var distros = await WslService.Instance.GetDistributionsAsync();
+                        foreach (var (name, path) in distros)
+                        {
+                            LinuxDistros.Add(new DriveItemModel
+                            {
+                                Name = name,
+                                DriveLetter = path,
+                                CustomDescription = "WSL 发行版",
+                                Icon = SymbolRegular.Server24,
+                                DriveType = DriveType.Fixed, // Dummy value
+                                TotalSize = 0, // Not easily available
+                                AvailableFreeSpace = 0,
+                                PercentUsed = 0 // Or set to 0.5 to show some bar if needed, or hide bar in XAML
+                            });
+                        }
+                    }
+                    
+                    Files.Clear();
+                    StatusText = $"共 {LinuxDistros.Count} 个发行版";
+                    return;
+                }
+
                 IsThisPCView = false;
+                IsLinuxView = false;
                 var (files, statusMessage) = await FileSystemService.Instance.LoadFilesAsync(CurrentPath);
 
                 // Update UI

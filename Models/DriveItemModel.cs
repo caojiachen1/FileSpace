@@ -32,10 +32,14 @@ namespace FileSpace.Models
         [ObservableProperty]
         private SymbolRegular _icon;
 
+        [ObservableProperty]
+        private string? _customDescription;
+
         public string Description
         {
             get
             {
+                if (!string.IsNullOrEmpty(CustomDescription)) return CustomDescription;
                 if (TotalSize <= 0) return "Unknown";
                 return $"{FormatSize(AvailableFreeSpace)} 可用，共 {FormatSize(TotalSize)}";
             }

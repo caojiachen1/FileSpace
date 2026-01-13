@@ -65,6 +65,19 @@ namespace FileSpace.Services
                 };
 
                 directoryTree.Add(thisPCItem);
+                
+                // Create Linux node
+                if (WslService.Instance.IsWslInstalled())
+                {
+                    var linuxItem = new DirectoryItemModel("Linux")
+                    {
+                        Name = "Linux",
+                        Icon = SymbolRegular.Server24,
+                        IconColor = "#FCC624",
+                        HasSubDirectories = true
+                    };
+                    directoryTree.Add(linuxItem);
+                }
 
                 // Set initial path
                 initialPath = "此电脑";

@@ -370,6 +370,31 @@ namespace FileSpace.Views
             }
         }
 
+        private void LinuxView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var listView = sender as System.Windows.Controls.ListView;
+            if (listView?.SelectedItem is DriveItemModel drive)
+            {
+                ViewModel.CurrentPath = drive.DriveLetter;
+            }
+        }
+
+        private void LinuxView_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ListView listView)
+            {
+                var hitTest = VisualTreeHelper.HitTest(listView, e.GetPosition(listView));
+                if (hitTest != null)
+                {
+                    var listViewItem = FindAncestor<System.Windows.Controls.ListViewItem>(hitTest.VisualHit);
+                    if (listViewItem == null)
+                    {
+                        listView.SelectedIndex = -1;
+                    }
+                }
+            }
+        }
+
         private void QuickAccessListView_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var hitTest = VisualTreeHelper.HitTest(QuickAccessListView, e.GetPosition(QuickAccessListView));
