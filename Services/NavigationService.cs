@@ -24,6 +24,13 @@ namespace FileSpace.Services
         {
             if (string.IsNullOrEmpty(path)) return;
 
+            // Allow navigation to "This PC"
+            if (path == MainViewModel.ThisPCPath)
+            {
+                _viewModel.CurrentPath = path;
+                return;
+            }
+
             try
             {
                 // Check if we have access to the directory before navigating
@@ -60,10 +67,16 @@ namespace FileSpace.Services
 
         public void Up()
         {
+            if (_viewModel.CurrentPath == MainViewModel.ThisPCPath) return;
+
             var parentPath = NavigationUtils.GoUp(_viewModel.CurrentPath);
             if (parentPath != null)
             {
                 NavigateToPath(parentPath);
+            }
+            else
+            {
+                 NavigateToPath(MainViewModel.ThisPCPath);
             }
         }
     }

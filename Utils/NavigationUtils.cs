@@ -16,7 +16,9 @@ namespace FileSpace.Utils
         
         public static bool CanGoUp(string currentPath)
         {
-            return !string.IsNullOrEmpty(currentPath) && Directory.GetParent(currentPath) != null;
+            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑")
+                return false;
+            return true; // Any path (even root drives) can go up to "This PC"
         }
 
         public static string? GoUp(string currentPath)

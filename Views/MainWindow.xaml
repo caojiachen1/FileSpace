@@ -766,8 +766,78 @@
                     </Style>
                 </Border.Style>
                 <Grid>
-                    <!-- Details View (DataGrid) -->
-                    <ui:DataGrid x:Name="FileDataGrid" 
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Drives View Header -->
+                    <StackPanel Grid.Row="0" Margin="10,10,10,0" Visibility="{Binding IsThisPCView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                         <TextBlock Text="设备和驱动器" FontSize="14" FontWeight="SemiBold" Margin="4,0,0,10" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </StackPanel>
+
+                    <!-- Drives List View -->
+                    <ListView Grid.Row="1" x:Name="DrivesView" 
+                              ItemsSource="{Binding Drives}"
+                              Background="Transparent" BorderThickness="0"
+                              Margin="10,0,10,10"
+                              SelectionMode="Single"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              MouseDoubleClick="DrivesView_MouseDoubleClick"
+                              Visibility="{Binding IsThisPCView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Margin" Value="4"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListViewItem">
+                                            <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="4" BorderThickness="1" BorderBrush="Transparent" Padding="8,4">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Width="260" Margin="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="40" Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="6" Margin="0,6,0,6" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <!-- File Views Container -->
+                    <Grid Grid.Row="0" Grid.RowSpan="2" Visibility="{Binding IsThisPCView, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                        <!-- Details View (DataGrid) -->
+                        <ui:DataGrid x:Name="FileDataGrid" 
                                  ItemsSource="{Binding Files}"
                                  SelectedItem="{Binding SelectedFile}"
                                  Background="Transparent" BorderThickness="0"
@@ -1209,6 +1279,7 @@
                             </ContextMenu>
                         </ListView.ContextMenu>
                     </ListView>
+                    </Grid>
                 </Grid>
             </Border>
 

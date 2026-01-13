@@ -56,6 +56,8 @@ namespace FileSpace.ViewModels
         // 用于防止在标签页切换时重复更新
         private bool _isTabSwitching = false;
         
+        public const string ThisPCPath = "此电脑";
+
         [ObservableProperty]
         private string _currentPath = string.Empty;
 
@@ -64,6 +66,12 @@ namespace FileSpace.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<FileItemModel> _files = new();
+        
+        [ObservableProperty]
+        private ObservableCollection<DriveItemModel> _drives = new();
+
+        [ObservableProperty]
+        private bool _isThisPCView;
 
         [ObservableProperty]
         private FileItemModel? _selectedFile;
@@ -338,6 +346,9 @@ namespace FileSpace.ViewModels
             try
             {
                 QuickAccessItems.Clear();
+
+                // 此电脑
+                QuickAccessItems.Add(new QuickAccessItem("此电脑", ThisPCPath, SymbolRegular.Laptop24, "#FF2196F3"));
                 
                 // Desktop
                 var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
@@ -564,8 +575,17 @@ namespace FileSpace.ViewModels
             if (string.IsNullOrEmpty(path))
                 return;
 
+            if (path == ThisPCPath)
+            {
+                BreadcrumbItems.Add(new BreadcrumbItem("此电脑", ThisPCPath));
+                return;
+            }
+
             try
             {
+                // Always start with This PC
+                BreadcrumbItems.Add(new BreadcrumbItem("此电脑", ThisPCPath));
+
                 var parts = new List<string>();
                 var current = path;
                 
@@ -610,17 +630,9 @@ namespace FileSpace.ViewModels
                     DirectoryTree.Add(item);
                 }
 
-                // Check if we have a recent path to start with
-                var recentPaths = _settingsService.GetRecentPaths();
-                string startPath;
-                if (recentPaths.Count > 0 && Directory.Exists(recentPaths[0]))
-                {
-                    startPath = recentPaths[0];
-                }
-                else
-                {
-                    startPath = initialPath;
-                }
+                // Check if we have a recent path to start with (disabled to default to This PC as requested)
+                // var recentPaths = _settingsService.GetRecentPaths();
+                string startPath = initialPath; // Default to This PC
                 
                 // 创建第一个标签页
                 var firstTab = new TabItemModel(startPath) { IsSelected = true };
@@ -641,6 +653,22 @@ namespace FileSpace.ViewModels
         {
             try
             {
+                if (CurrentPath == ThisPCPath)
+                {
+                    IsThisPCView = true;
+                    StatusText = "正在加载设备...";
+                    var drives = await DriveService.Instance.GetDrivesDetailAsync();
+                    Drives.Clear();
+                    foreach (var drive in drives)
+                    {
+                        Drives.Add(drive);
+                    }
+                    Files.Clear();
+                    StatusText = $"共 {drives.Count} 个设备";
+                    return; 
+                }
+
+                IsThisPCView = false;
                 var (files, statusMessage) = await FileSystemService.Instance.LoadFilesAsync(CurrentPath);
 
                 // Update UI

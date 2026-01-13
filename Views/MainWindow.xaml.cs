@@ -324,6 +324,14 @@ namespace FileSpace.Views
             ViewModel.FileDoubleClickCommand.Execute(ViewModel.SelectedFile);
         }
 
+        private void DrivesView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (DrivesView.SelectedItem is DriveItemModel drive)
+            {
+                ViewModel.CurrentPath = drive.DriveLetter;
+            }
+        }
+
         private void FileListView_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
