@@ -625,9 +625,22 @@ namespace FileSpace.ViewModels
                 
                 foreach (var part in parts)
                 {
-                    var name = part == path ? System.IO.Path.GetFileName(part) : System.IO.Path.GetFileName(part);
+                    var name = System.IO.Path.GetFileName(part);
                     if (string.IsNullOrEmpty(name))
-                        name = part; // For root drives like "C:\"
+                    {
+                        name = part; // For root drives like "C:\" or WSL roots
+                        
+                        // Cleanup WSL root names (e.g., \\wsl$\Ubuntu-22.04 -> Ubuntu-22.04)
+                        if (name.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var trimmed = name.TrimEnd('\\');
+                            var lastIndex = trimmed.LastIndexOf('\\');
+                            if (lastIndex >= 0)
+                            {
+                                name = trimmed.Substring(lastIndex + 1);
+                            }
+                        }
+                    }
                     
                     BreadcrumbItems.Add(new BreadcrumbItem(name, part));
                 }
