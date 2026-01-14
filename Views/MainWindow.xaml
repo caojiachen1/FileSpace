@@ -1232,7 +1232,7 @@
                                                                         <DataTrigger.Binding>
                                                                             <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                                 <Binding/>
-                                                                                <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ui:DataGrid}"/>
+                                                                                <Binding Path="DataContext.RenamingFile" ElementName="FileDataGrid"/>
                                                                             </MultiBinding>
                                                                         </DataTrigger.Binding>
                                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -1265,7 +1265,7 @@
                                                                         <DataTrigger.Binding>
                                                                             <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                                 <Binding/>
-                                                                                <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ui:DataGrid}"/>
+                                                                                <Binding Path="DataContext.RenamingFile" ElementName="FileDataGrid"/>
                                                                             </MultiBinding>
                                                                         </DataTrigger.Binding>
                                                                         <Setter Property="Visibility" Value="Visible"/>
@@ -1349,20 +1349,20 @@
                             <DataTemplate>
                                 <Grid ToolTip="{Binding Name}">
                                     <!-- Large/Medium Icon Layout (vertical: icon on top, name below) -->
-                                    <Grid Visibility="{Binding DataContext.IsLargeOrMediumIconView, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid Visibility="{Binding DataContext.IsLargeOrMediumIconView, ElementName=FileIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
                                         <!-- Icon -->
                                         <Grid Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                              Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                              Width="{Binding DataContext.IconSize, ElementName=FileIconView}"
+                                              Height="{Binding DataContext.IconSize, ElementName=FileIconView}">
                                             <ui:SymbolIcon Symbol="{Binding Icon}" 
                                                            Foreground="{Binding IconColor}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"
-                                                           FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                           FontSize="{Binding DataContext.IconSize, ElementName=FileIconView}"
                                                            Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
                                             <Image Source="{Binding Thumbnail}"
                                                    Stretch="Uniform"
@@ -1376,7 +1376,7 @@
                                                        TextTrimming="CharacterEllipsis"
                                                        TextAlignment="Center"
                                                        HorizontalAlignment="Center"
-                                                       MaxWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                       MaxWidth="{Binding DataContext.IconItemWidth, ElementName=FileIconView}"
                                                        FontSize="11">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -1386,7 +1386,7 @@
                                                                 <DataTrigger.Binding>
                                                                     <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                         <Binding/>
-                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                        <Binding Path="DataContext.RenamingFile" ElementName="FileIconView"/>
                                                                     </MultiBinding>
                                                                 </DataTrigger.Binding>
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -1398,7 +1398,7 @@
 
                                             <!-- Rename mode -->
                                             <TextBox x:Name="RenameTextBox_Large" 
-                                                     Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
+                                                     Text="{Binding DataContext.NewFileName, ElementName=FileIconView, UpdateSourceTrigger=PropertyChanged}"
                                                      KeyDown="RenameTextBox_KeyDown"
                                                      LostFocus="RenameTextBox_LostFocus"
                                                      IsVisibleChanged="RenameTextBox_IsVisibleChanged"
@@ -1410,7 +1410,7 @@
                                                      FontSize="11"
                                                      VerticalContentAlignment="Center"
                                                      HorizontalAlignment="Center"
-                                                     Width="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}">
+                                                     Width="{Binding DataContext.IconItemWidth, ElementName=FileIconView}">
                                                 <TextBox.Style>
                                                     <Style TargetType="TextBox">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -1419,7 +1419,7 @@
                                                                 <DataTrigger.Binding>
                                                                     <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                         <Binding/>
-                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                        <Binding Path="DataContext.RenamingFile" ElementName="FileIconView"/>
                                                                     </MultiBinding>
                                                                 </DataTrigger.Binding>
                                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -1434,18 +1434,18 @@
                                     <!-- Small Icon Layout (horizontal: icon on left, name on right) -->
                                     <StackPanel Orientation="Horizontal" 
                                                 HorizontalAlignment="Left"
-                                                Visibility="{Binding DataContext.IsSmallIconView, RelativeSource={RelativeSource AncestorType=ListView}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                Visibility="{Binding DataContext.IsSmallIconView, ElementName=FileIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <!-- Icon -->
                                         <Grid VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,6,0">
                                             <ui:SymbolIcon Symbol="{Binding Icon}" 
                                                            Foreground="{Binding IconColor}"
                                                            VerticalAlignment="Center"
                                                            HorizontalAlignment="Left"
-                                                           FontSize="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                           FontSize="{Binding DataContext.IconSize, ElementName=FileIconView}"
                                                            Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
                                             <Image Source="{Binding Thumbnail}"
-                                                   Width="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                                   Height="{Binding DataContext.IconSize, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                   Width="{Binding DataContext.IconSize, ElementName=FileIconView}"
+                                                   Height="{Binding DataContext.IconSize, ElementName=FileIconView}"
                                                    Stretch="Uniform"
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"

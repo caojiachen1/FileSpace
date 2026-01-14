@@ -1255,6 +1255,11 @@ namespace FileSpace.ViewModels
 
         private string GetPreviewStatusForFile(FileItemModel file)
         {
+            if (file == null)
+            {
+                return string.Empty;
+            }
+
             if (file.IsDirectory)
             {
                 return "文件夹信息";
@@ -1384,8 +1389,8 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void NewTab()
         {
-            // 在当前路径创建新标签页
-            var path = !string.IsNullOrEmpty(CurrentPath) ? CurrentPath : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            // 默认打开“此电脑”界面
+            var path = ThisPCPath;
             var newTab = new TabItemModel(path);
             Tabs.Add(newTab);
             SelectedTab = newTab;
