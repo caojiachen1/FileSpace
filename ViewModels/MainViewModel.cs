@@ -313,6 +313,67 @@ namespace FileSpace.ViewModels
             }
         }
 
+        [RelayCommand]
+        private void ReorderQuickAccessItems(Tuple<int, int> range)
+        {
+            int oldIndex = range.Item1;
+            int newIndex = range.Item2;
+            
+            if (oldIndex < 0 || oldIndex >= QuickAccessItems.Count ||
+                newIndex < 0 || newIndex > QuickAccessItems.Count ||
+                oldIndex == newIndex)
+                return;
+            
+            var item = QuickAccessItems[oldIndex];
+            QuickAccessItems.RemoveAt(oldIndex);
+            
+            // If we are moving forward, the index decreased by 1 after removal
+            if (oldIndex < newIndex && newIndex <= QuickAccessItems.Count + 1)
+            {
+                newIndex--;
+            }
+
+            if (newIndex >= 0 && newIndex <= QuickAccessItems.Count)
+            {
+                QuickAccessItems.Insert(newIndex, item);
+            }
+            
+            // Note: In a real app, you might want to save the final order to settings
+            SaveQuickAccessOrder();
+        }
+
+        [RelayCommand]
+        private void ReorderFileItems(Tuple<int, int> range)
+        {
+            int oldIndex = range.Item1;
+            int newIndex = range.Item2;
+            
+            if (oldIndex < 0 || oldIndex >= Files.Count ||
+                newIndex < 0 || newIndex > Files.Count ||
+                oldIndex == newIndex)
+                return;
+            
+            var item = Files[oldIndex];
+            Files.RemoveAt(oldIndex);
+
+            // If we are moving forward, the index decreased by 1 after removal
+            if (oldIndex < newIndex && newIndex <= Files.Count + 1)
+            {
+                newIndex--;
+            }
+
+            if (newIndex >= 0 && newIndex <= Files.Count)
+            {
+                Files.Insert(newIndex, item);
+            }
+        }
+
+        private void SaveQuickAccessOrder()
+        {
+            _settingsService.Settings.QuickAccessPaths = QuickAccessItems.Select(i => i.Path).ToList();
+            _settingsService.SaveSettings();
+        }
+
         // Update selected files info when selection changes
         partial void OnSelectedFilesChanged(ObservableCollection<FileItemModel> value)
         {
@@ -431,62 +492,74 @@ namespace FileSpace.ViewModels
             {
                 // Get pinned paths from settings
                 var pinnedPaths = _settingsService.Settings.PinnedQuickAccessPaths;
+                var savedOrder = _settingsService.Settings.QuickAccessPaths;
 
                 QuickAccessItems.Clear();
 
                 // Desktop
                 var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                if (Directory.Exists(desktopPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50", pinnedPaths.Contains(desktopPath)));
-                }
+                var desktopItem = Directory.Exists(desktopPath) ? new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50", pinnedPaths.Contains(desktopPath)) : null;
                 
                 // Documents
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                if (Directory.Exists(documentsPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3", pinnedPaths.Contains(documentsPath)));
-                }
+                var documentsItem = Directory.Exists(documentsPath) ? new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3", pinnedPaths.Contains(documentsPath)) : null;
                 
                 // Downloads
                 var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                if (Directory.Exists(downloadsPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800", pinnedPaths.Contains(downloadsPath)));
-                }
+                var downloadsItem = Directory.Exists(downloadsPath) ? new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800", pinnedPaths.Contains(downloadsPath)) : null;
                 
                 // Pictures
                 var picturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-                if (Directory.Exists(picturesPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63", pinnedPaths.Contains(picturesPath)));
-                }
+                var picturesItem = Directory.Exists(picturesPath) ? new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63", pinnedPaths.Contains(picturesPath)) : null;
                 
                 // Music
                 var musicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
-                if (Directory.Exists(musicPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0", pinnedPaths.Contains(musicPath)));
-                }
+                var musicItem = Directory.Exists(musicPath) ? new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0", pinnedPaths.Contains(musicPath)) : null;
                 
                 // Videos
                 var videosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
-                if (Directory.Exists(videosPath))
-                {
-                    QuickAccessItems.Add(new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722", pinnedPaths.Contains(videosPath)));
-                }
-                
+                var videosItem = Directory.Exists(videosPath) ? new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722", pinnedPaths.Contains(videosPath)) : null;
+
+                var defaultItems = new List<QuickAccessItem? > { desktopItem, documentsItem, downloadsItem, picturesItem, musicItem, videosItem }
+                    .Where(i => i != null).Cast<QuickAccessItem>().ToList();
+
                 // Recent paths from settings
                 var recentPaths = _settingsService.GetRecentPaths().Take(3);
                 foreach (var path in recentPaths)
                 {
-                    if (Directory.Exists(path) && !QuickAccessItems.Any(q => q.Path == path))
+                    if (Directory.Exists(path) && !defaultItems.Any(q => q.Path == path))
                     {
                         var name = Path.GetFileName(path);
                         if (string.IsNullOrEmpty(name))
-                            name = path; // For drive roots
+                            name = path;
                         
-                        QuickAccessItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", pinnedPaths.Contains(path)));
+                        defaultItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", pinnedPaths.Contains(path)));
+                    }
+                }
+
+                if (savedOrder != null && savedOrder.Any())
+                {
+                    // Apply saved order
+                    foreach (var path in savedOrder)
+                    {
+                        var item = defaultItems.FirstOrDefault(i => i.Path == path);
+                        if (item != null)
+                        {
+                            QuickAccessItems.Add(item);
+                            defaultItems.Remove(item);
+                        }
+                    }
+                    // Add any remaining items that weren't in saved order
+                    foreach (var item in defaultItems)
+                    {
+                        QuickAccessItems.Add(item);
+                    }
+                }
+                else
+                {
+                    foreach (var item in defaultItems)
+                    {
+                        QuickAccessItems.Add(item);
                     }
                 }
             }

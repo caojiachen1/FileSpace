@@ -8,7 +8,9 @@ using System.Linq;
 using FileSpace.ViewModels;
 using FileSpace.Models;
 using FileSpace.Services;
+using FileSpace.Utils;
 using System.IO;
+using System.Windows.Documents;
 
 namespace FileSpace.Views
 {
@@ -22,6 +24,14 @@ namespace FileSpace.Views
         // 保存用户自定义的面板大小
         private double _leftPanelWidth = 250;
         private double _rightPanelWidth = 300;
+        
+        // 拖拽起始点
+        private Point _dragStartPoint;
+        
+        // 拖拽指示器
+        private InsertionIndicatorAdorner? _insertionAdorner;
+        private int _lastAdornerIndex = -1;
+        private UIElement? _lastAdornerContainer;
         
         // 单击重命名计时器
         private System.Windows.Threading.DispatcherTimer _renameTimer;
@@ -408,8 +418,9 @@ namespace FileSpace.Views
             }
         }
 
-        private static T? FindAncestor<T>(DependencyObject current) where T : class
+        private static T? FindAncestor<T>(DependencyObject? current) where T : class
         {
+            if (current == null) return null;
             do
             {
                 if (current is T ancestor)
@@ -1005,6 +1016,327 @@ namespace FileSpace.Views
                 }
             }
         }
+
+        #region Drag and Drop Reordering
+
+        private void QuickAccessListView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void QuickAccessListView_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                Point mousePos = e.GetPosition(null);
+                Vector diff = _dragStartPoint - mousePos;
+
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    System.Windows.Controls.ListView listView = (System.Windows.Controls.ListView)sender;
+                    var listViewItem = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+
+                    if (listViewItem != null)
+                    {
+                        QuickAccessItem? item = listView.ItemContainerGenerator.ItemFromContainer(listViewItem) as QuickAccessItem;
+                        if (item != null)
+                        {
+                            DataObject dragData = new DataObject("QuickAccessItem", item);
+                            DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void QuickAccessListView_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("QuickAccessItem"))
+            {
+                e.Effects = DragDropEffects.Move;
+                var listView = (System.Windows.Controls.ListView)sender;
+                var targetItem = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+
+                int insertionIndex = -1;
+                if (targetItem != null)
+                {
+                    insertionIndex = listView.ItemContainerGenerator.IndexFromContainer(targetItem);
+                    Point mousePos = e.GetPosition(targetItem);
+                    if (mousePos.Y > targetItem.ActualHeight / 2)
+                    {
+                        insertionIndex++;
+                    }
+                }
+                else if (listView.Items.Count > 0)
+                {
+                    var lastItem = listView.ItemContainerGenerator.ContainerFromIndex(listView.Items.Count - 1) as FrameworkElement;
+                    if (lastItem != null)
+                    {
+                        Point posInListView = e.GetPosition(listView);
+                        Point lastItemPos = lastItem.TranslatePoint(new Point(0, 0), listView);
+                        if (posInListView.Y >= lastItemPos.Y + lastItem.ActualHeight / 2)
+                        {
+                            insertionIndex = listView.Items.Count;
+                        }
+                    }
+                }
+
+                if (insertionIndex != -1)
+                {
+                    UpdateInsertionAdorner(listView, insertionIndex);
+                }
+                else
+                {
+                    RemoveInsertionAdorner();
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void QuickAccessListView_DragLeave(object sender, DragEventArgs e)
+        {
+            // Only remove if we're truly leaving the listview
+            var listView = (System.Windows.Controls.ListView)sender;
+            Point pos = e.GetPosition(listView);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > listView.ActualWidth || pos.Y > listView.ActualHeight)
+            {
+                RemoveInsertionAdorner();
+            }
+        }
+
+        private void QuickAccessListView_Drop(object sender, DragEventArgs e)
+        {
+            RemoveInsertionAdorner();
+            if (e.Data.GetDataPresent("QuickAccessItem"))
+            {
+                QuickAccessItem? droppedItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
+                System.Windows.Controls.ListView listView = (System.Windows.Controls.ListView)sender;
+
+                if (droppedItem != null)
+                {
+                    int oldIndex = ViewModel.QuickAccessItems.IndexOf(droppedItem);
+                    int newIndex = -1;
+
+                    var targetItem = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                    if (targetItem != null)
+                    {
+                        newIndex = listView.ItemContainerGenerator.IndexFromContainer(targetItem);
+                        Point mousePos = e.GetPosition(targetItem);
+                        if (mousePos.Y > targetItem.ActualHeight / 2)
+                        {
+                            newIndex++;
+                        }
+                    }
+                    else if (listView.Items.Count > 0)
+                    {
+                        var lastItem = listView.ItemContainerGenerator.ContainerFromIndex(listView.Items.Count - 1) as FrameworkElement;
+                        if (lastItem != null)
+                        {
+                            Point posInListView = e.GetPosition(listView);
+                            Point lastItemPos = lastItem.TranslatePoint(new Point(0, 0), listView);
+                            if (posInListView.Y >= lastItemPos.Y + lastItem.ActualHeight / 2)
+                            {
+                                newIndex = ViewModel.QuickAccessItems.Count;
+                            }
+                        }
+                    }
+
+                    if (oldIndex != -1 && newIndex != -1 && oldIndex != newIndex)
+                    {
+                        // 插入位置修正：如果要移动到原位置之后，Insert 会将其移动到目标索引位置，但因为前面删除了一个，所以逻辑索引没问题
+                        ViewModel.ReorderQuickAccessItemsCommand.Execute(new Tuple<int, int>(oldIndex, newIndex));
+                    }
+                }
+            }
+        }
+
+        private void FileDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void FileDataGrid_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                Point mousePos = e.GetPosition(null);
+                Vector diff = _dragStartPoint - mousePos;
+
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    System.Windows.Controls.DataGrid dataGrid = (System.Windows.Controls.DataGrid)sender;
+                    var row = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+
+                    if (row != null)
+                    {
+                        FileItemModel? item = row.Item as FileItemModel;
+                        if (item != null)
+                        {
+                            DataObject dragData = new DataObject("FileItemModel", item);
+                            DragDrop.DoDragDrop(row, dragData, DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void FileDataGrid_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                e.Effects = DragDropEffects.Move;
+                var dataGrid = (System.Windows.Controls.DataGrid)sender;
+                var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+
+                int insertionIndex = -1;
+                if (targetRow != null)
+                {
+                    insertionIndex = dataGrid.ItemContainerGenerator.IndexFromContainer(targetRow);
+                    Point mousePos = e.GetPosition(targetRow);
+                    if (mousePos.Y > targetRow.ActualHeight / 2)
+                    {
+                        insertionIndex++;
+                    }
+                }
+                else if (dataGrid.Items.Count > 0)
+                {
+                    var lastRow = dataGrid.ItemContainerGenerator.ContainerFromIndex(dataGrid.Items.Count - 1) as FrameworkElement;
+                    if (lastRow != null)
+                    {
+                        Point posInDataGrid = e.GetPosition(dataGrid);
+                        Point lastRowPos = lastRow.TranslatePoint(new Point(0, 0), dataGrid);
+                        if (posInDataGrid.Y >= lastRowPos.Y + lastRow.ActualHeight / 2)
+                        {
+                            insertionIndex = dataGrid.Items.Count;
+                        }
+                    }
+                }
+
+                if (insertionIndex != -1)
+                {
+                    UpdateInsertionAdorner(dataGrid, insertionIndex);
+                }
+                else
+                {
+                    RemoveInsertionAdorner();
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void FileDataGrid_DragLeave(object sender, DragEventArgs e)
+        {
+            // Only remove if we're truly leaving the datagrid
+            var dataGrid = (System.Windows.Controls.DataGrid)sender;
+            Point pos = e.GetPosition(dataGrid);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > dataGrid.ActualWidth || pos.Y > dataGrid.ActualHeight)
+            {
+                RemoveInsertionAdorner();
+            }
+        }
+
+        private void FileDataGrid_Drop(object sender, DragEventArgs e)
+        {
+            RemoveInsertionAdorner();
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                FileItemModel? droppedItem = e.Data.GetData("FileItemModel") as FileItemModel;
+                System.Windows.Controls.DataGrid dataGrid = (System.Windows.Controls.DataGrid)sender;
+
+                if (droppedItem != null)
+                {
+                    int oldIndex = ViewModel.Files.IndexOf(droppedItem);
+                    int newIndex = -1;
+
+                    var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                    if (targetRow != null)
+                    {
+                        newIndex = dataGrid.ItemContainerGenerator.IndexFromContainer(targetRow);
+                        Point mousePos = e.GetPosition(targetRow);
+                        if (mousePos.Y > targetRow.ActualHeight / 2)
+                        {
+                            newIndex++;
+                        }
+                    }
+                    else if (dataGrid.Items.Count > 0)
+                    {
+                        var lastRow = dataGrid.ItemContainerGenerator.ContainerFromIndex(dataGrid.Items.Count - 1) as FrameworkElement;
+                        if (lastRow != null)
+                        {
+                            Point posInDataGrid = e.GetPosition(dataGrid);
+                            Point lastRowPos = lastRow.TranslatePoint(new Point(0, 0), dataGrid);
+                            if (posInDataGrid.Y >= lastRowPos.Y + lastRow.ActualHeight / 2)
+                            {
+                                newIndex = ViewModel.Files.Count;
+                            }
+                        }
+                    }
+
+                    if (oldIndex != -1 && newIndex != -1 && oldIndex != newIndex)
+                    {
+                        ViewModel.ReorderFileItemsCommand.Execute(new Tuple<int, int>(oldIndex, newIndex));
+                    }
+                }
+            }
+        }
+
+        private void UpdateInsertionAdorner(System.Windows.Controls.ItemsControl container, int index)
+        {
+            if (_insertionAdorner != null && _lastAdornerContainer == container && _lastAdornerIndex == index)
+            {
+                return;
+            }
+
+            var layer = AdornerLayer.GetAdornerLayer(container);
+            if (layer == null) return;
+
+            if (_insertionAdorner == null || _insertionAdorner.AdornedElement != container)
+            {
+                RemoveInsertionAdorner();
+                _insertionAdorner = new InsertionIndicatorAdorner(container);
+                layer.Add(_insertionAdorner);
+            }
+
+            _lastAdornerContainer = container;
+            _lastAdornerIndex = index;
+
+            FrameworkElement? itemContainer = null;
+            bool isBottom = false;
+
+            if (index < container.Items.Count)
+            {
+                itemContainer = container.ItemContainerGenerator.ContainerFromIndex(index) as FrameworkElement;
+            }
+            else if (container.Items.Count > 0)
+            {
+                itemContainer = container.ItemContainerGenerator.ContainerFromIndex(container.Items.Count - 1) as FrameworkElement;
+                isBottom = true;
+            }
+
+            if (itemContainer != null)
+            {
+                Point point = itemContainer.TranslatePoint(new Point(0, 0), container);
+                double y = isBottom ? point.Y + itemContainer.ActualHeight : point.Y;
+                y = Math.Max(0, Math.Min(y, (container as FrameworkElement)?.ActualHeight ?? double.MaxValue));
+                _insertionAdorner.SetPositions(new Point(0, y), new Point(itemContainer.ActualWidth, y));
+            }
+        }
+
+        private void RemoveInsertionAdorner()
+        {
+            if (_insertionAdorner != null)
+            {
+                var layer = AdornerLayer.GetAdornerLayer(_insertionAdorner.AdornedElement);
+                layer?.Remove(_insertionAdorner);
+                _insertionAdorner = null;
+                _lastAdornerIndex = -1;
+                _lastAdornerContainer = null;
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// 清除TreeView的选中状态

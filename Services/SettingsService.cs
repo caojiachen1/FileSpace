@@ -329,6 +329,11 @@ namespace FileSpace.Services
         public List<string> PinnedQuickAccessPaths { get; set; } = new();
 
         /// <summary>
+        /// 快速访问路径列表（保存用户排序）
+        /// </summary>
+        public List<string> QuickAccessPaths { get; set; } = new();
+
+        /// <summary>
         /// 快捷键设置
         /// </summary>
         public Dictionary<string, string> KeyBindings { get; set; } = new();

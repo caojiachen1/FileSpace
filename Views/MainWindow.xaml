@@ -701,6 +701,12 @@
                                   SelectionMode="Single"
                                   HorizontalAlignment="Stretch"
                                   Width="Auto"
+                                  AllowDrop="True"
+                                  PreviewMouseLeftButtonDown="QuickAccessListView_PreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="QuickAccessListView_PreviewMouseMove"
+                                  DragOver="QuickAccessListView_DragOver"
+                                  DragLeave="QuickAccessListView_DragLeave"
+                                  Drop="QuickAccessListView_Drop"
                                   MouseDown="QuickAccessListView_MouseDown"
                                   SelectionChanged="QuickAccessListView_SelectionChanged">
                             <ListView.ItemTemplate>
@@ -1091,6 +1097,12 @@
                                  CanUserResizeRows="False"
                                  CanUserSortColumns="True"
                                  IsReadOnly="True"
+                                 AllowDrop="True"
+                                 PreviewMouseLeftButtonDown="FileDataGrid_PreviewMouseLeftButtonDown"
+                                 PreviewMouseMove="FileDataGrid_PreviewMouseMove"
+                                 DragOver="FileDataGrid_DragOver"
+                                 DragLeave="FileDataGrid_DragLeave"
+                                 Drop="FileDataGrid_Drop"
                                  RowStyle="{StaticResource FileDataGridRowStyle}"
                                  CellStyle="{StaticResource FileDataGridCellStyle}"
                                  Visibility="{Binding IsDetailsView, Converter={StaticResource BooleanToVisibilityConverter}}">
