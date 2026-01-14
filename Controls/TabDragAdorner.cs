@@ -20,14 +20,14 @@ namespace FileSpace.Controls
         private double _shadowBlur = 15;
         private double _shadowDepth = 5;
 
-        public TabDragAdorner(UIElement adornedElement, Point offset) : base(adornedElement)
+        public TabDragAdorner(UIElement adornedElement, UIElement visualToClone, Point offset) : base(adornedElement)
         {
             IsHitTestVisible = false;
             _offset = offset;
-            _originalSize = new Size(adornedElement.RenderSize.Width, adornedElement.RenderSize.Height);
+            _originalSize = new Size(visualToClone.RenderSize.Width, visualToClone.RenderSize.Height);
 
             // 创建视觉画刷来克隆被拖拽的元素外观
-            _visualBrush = new VisualBrush(adornedElement)
+            _visualBrush = new VisualBrush(visualToClone)
             {
                 Stretch = Stretch.None,
                 AlignmentX = AlignmentX.Left,

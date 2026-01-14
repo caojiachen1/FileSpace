@@ -133,12 +133,12 @@ namespace FileSpace.Controls
             // 保存所有标签的原始位置
             SaveOriginalPositions();
 
-            // 创建拖拽装饰器
+            // 创建拖拽装饰器 - 附着在容器上而不是具体的标签上，以获得正确的坐标系
             var startPos = _draggedElement.TranslatePoint(
                 new Point(_draggedElement.ActualWidth / 2, _draggedElement.ActualHeight / 2), 
                 _tabsContainer
             );
-            _dragAdorner = new TabDragAdorner(_draggedElement, startPos);
+            _dragAdorner = new TabDragAdorner(_tabsContainer, _draggedElement, startPos);
             _adornerLayer.Add(_dragAdorner);
 
             // 创建插入指示器
