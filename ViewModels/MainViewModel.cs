@@ -255,6 +255,64 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private ObservableCollection<QuickAccessItem> _quickAccessItems = new();
 
+        [RelayCommand]
+        private void TogglePinQuickAccess(QuickAccessItem? item)
+        {
+            if (item == null) return;
+            
+            item.IsPinned = !item.IsPinned;
+            
+            // Save to settings for persistence
+            _settingsService.TogglePinnedPath(item.Path);
+            
+            // Success status text
+            StatusText = $"已{(item.IsPinned ? "置顶" : "取消置顶")}: {item.Name}";
+        }
+
+        [RelayCommand]
+        private void OpenPropertiesForPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            
+            var propertiesViewModel = new PropertiesViewModel(path);
+            var window = new PropertiesWindow(propertiesViewModel);
+            window.Show();
+        }
+
+        [RelayCommand]
+        private void OpenInExplorerForPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            
+            ExplorerService.Instance.OpenInExplorer(path, true, path);
+        }
+
+        [RelayCommand]
+        private void CopyPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            
+            System.Windows.Clipboard.SetText(path);
+            StatusText = $"已复制路径: {path}";
+        }
+
+        [RelayCommand]
+        private void AnalyzeFolderForPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            
+            try
+            {
+                var analysisViewModel = new FolderAnalysisViewModel(path);
+                var window = new FolderAnalysisWindow(analysisViewModel);
+                window.Show();
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"分析文件夹失败: {ex.Message}";
+            }
+        }
+
         // Update selected files info when selection changes
         partial void OnSelectedFilesChanged(ObservableCollection<FileItemModel> value)
         {
@@ -371,48 +429,51 @@ namespace FileSpace.ViewModels
         {
             try
             {
+                // Get pinned paths from settings
+                var pinnedPaths = _settingsService.Settings.PinnedQuickAccessPaths;
+
                 QuickAccessItems.Clear();
 
                 // Desktop
                 var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 if (Directory.Exists(desktopPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50"));
+                    QuickAccessItems.Add(new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50", pinnedPaths.Contains(desktopPath)));
                 }
                 
                 // Documents
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 if (Directory.Exists(documentsPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3"));
+                    QuickAccessItems.Add(new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3", pinnedPaths.Contains(documentsPath)));
                 }
                 
                 // Downloads
                 var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
                 if (Directory.Exists(downloadsPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800"));
+                    QuickAccessItems.Add(new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800", pinnedPaths.Contains(downloadsPath)));
                 }
                 
                 // Pictures
                 var picturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
                 if (Directory.Exists(picturesPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63"));
+                    QuickAccessItems.Add(new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63", pinnedPaths.Contains(picturesPath)));
                 }
                 
                 // Music
                 var musicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
                 if (Directory.Exists(musicPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0"));
+                    QuickAccessItems.Add(new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0", pinnedPaths.Contains(musicPath)));
                 }
                 
                 // Videos
                 var videosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
                 if (Directory.Exists(videosPath))
                 {
-                    QuickAccessItems.Add(new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722"));
+                    QuickAccessItems.Add(new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722", pinnedPaths.Contains(videosPath)));
                 }
                 
                 // Recent paths from settings
@@ -425,13 +486,13 @@ namespace FileSpace.ViewModels
                         if (string.IsNullOrEmpty(name))
                             name = path; // For drive roots
                         
-                        QuickAccessItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C"));
+                        QuickAccessItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", pinnedPaths.Contains(path)));
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // If initialization fails, just continue with empty quick access
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize Quick Access: {ex.Message}");
             }
         }
 

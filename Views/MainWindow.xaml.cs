@@ -993,9 +993,16 @@ namespace FileSpace.Views
         /// </summary>
         private void QuickAccessItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (sender is Grid grid && grid.Tag is string path)
+            if (sender is Grid grid)
             {
-                ViewModel.NavigateToPathCommand.Execute(path);
+                if (grid.Tag is string path)
+                {
+                    ViewModel.NavigateToPathCommand.Execute(path);
+                }
+                else if (grid.Tag is QuickAccessItem item)
+                {
+                    ViewModel.NavigateToPathCommand.Execute(item.Path);
+                }
             }
         }
 

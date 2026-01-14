@@ -704,17 +704,88 @@
                                   MouseDown="QuickAccessListView_MouseDown"
                                   SelectionChanged="QuickAccessListView_SelectionChanged">
                             <ListView.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate DataType="{x:Type models:QuickAccessItem}">
                                     <Grid Background="Transparent" 
                                           MouseLeftButtonUp="QuickAccessItem_MouseLeftButtonUp"
-                                          Tag="{Binding Path}">
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" 
+                                          Tag="{Binding}"
+                                          HorizontalAlignment="Stretch"
+                                          Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ScrollContentPresenter}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="打开" Command="{Binding DataContext.NavigateToPathCommand, Source={x:Reference QuickAccessListView}}" CommandParameter="{Binding Path}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="Open24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="置顶" 
+                                                          Command="{Binding DataContext.TogglePinQuickAccessCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding}"
+                                                          Visibility="{Binding IsPinned, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="Pin24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="取消置顶" 
+                                                          Command="{Binding DataContext.TogglePinQuickAccessCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding}"
+                                                          Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="PinOff24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="在资源管理器中查看" 
+                                                          Command="{Binding DataContext.OpenInExplorerForPathCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding Path}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="FolderOpen24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="复制路径" 
+                                                          Command="{Binding DataContext.CopyPathCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding Path}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="Link24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <MenuItem Header="分析文件夹" 
+                                                          Command="{Binding DataContext.AnalyzeFolderForPathCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding Path}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="Folder24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="属性" 
+                                                          Command="{Binding DataContext.OpenPropertiesForPathCommand, Source={x:Reference QuickAccessListView}}" 
+                                                          CommandParameter="{Binding Path}">
+                                                    <MenuItem.Icon>
+                                                        <ui:SymbolIcon Symbol="Settings24"/>
+                                                    </MenuItem.Icon>
+                                                </MenuItem>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
+                                        
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" 
                                                     Margin="8,0">
                                             <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,8,0" FontSize="18"
                                                            Foreground="{Binding IconColor}" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="14"/>
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="14"
+                                                       TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
+
+                                        <ui:SymbolIcon Grid.Column="1" Symbol="Pin24" Filled="True"
+                                                       Margin="0,0,12,0" FontSize="12" 
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       Visibility="{Binding IsPinned, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                       VerticalAlignment="Center"/>
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>

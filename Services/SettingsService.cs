@@ -174,6 +174,34 @@ namespace FileSpace.Services
         }
 
         /// <summary>
+        /// 切换快速访问路径置顶状态
+        /// </summary>
+        public void TogglePinnedPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+            
+            if (_settings.PinnedQuickAccessPaths.Contains(path))
+            {
+                _settings.PinnedQuickAccessPaths.Remove(path);
+            }
+            else
+            {
+                _settings.PinnedQuickAccessPaths.Add(path);
+            }
+            
+            SaveSettings();
+        }
+
+        /// <summary>
+        /// 检查路径是否已置顶
+        /// </summary>
+        public bool IsPathPinned(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            return _settings.PinnedQuickAccessPaths.Contains(path);
+        }
+
+        /// <summary>
         /// 验证设置的有效性
         /// </summary>
         public bool ValidateSettings()
@@ -294,6 +322,11 @@ namespace FileSpace.Services
         /// 最近访问的路径
         /// </summary>
         public List<string> RecentPaths { get; set; } = new();
+
+        /// <summary>
+        /// 已置顶的快速访问路径
+        /// </summary>
+        public List<string> PinnedQuickAccessPaths { get; set; } = new();
 
         /// <summary>
         /// 快捷键设置
