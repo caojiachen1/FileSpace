@@ -262,9 +262,30 @@ namespace FileSpace.ViewModels
             
             item.IsPinned = !item.IsPinned;
             
+            // For generic folders (not the system defaults), update the icon based on pinned status
+            var defaultFolderPaths = new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+            };
+
+            if (!defaultFolderPaths.Contains(item.Path))
+            {
+                item.Icon = item.IsPinned ? SymbolRegular.Folder24 : SymbolRegular.FolderOpen24;
+            }
+            
             // Save to settings for persistence
             _settingsService.TogglePinnedPath(item.Path);
             
+            // We no longer re-order the list automatically. 
+            // All items can be in any position.
+            
+            SaveQuickAccessOrder();
+
             // Success status text
             StatusText = $"已{(item.IsPinned ? "置顶" : "取消置顶")}: {item.Name}";
         }
@@ -338,7 +359,6 @@ namespace FileSpace.ViewModels
                 QuickAccessItems.Insert(newIndex, item);
             }
             
-            // Note: In a real app, you might want to save the final order to settings
             SaveQuickAccessOrder();
         }
 
@@ -490,83 +510,113 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                // Get pinned paths from settings
+                // Get pinned paths and saved order from settings
                 var pinnedPaths = _settingsService.Settings.PinnedQuickAccessPaths;
                 var savedOrder = _settingsService.Settings.QuickAccessPaths;
 
+                // Default folders to suggest
+                var defaultFolderPaths = new[]
+                {
+                    Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+                };
+
                 QuickAccessItems.Clear();
 
-                // Desktop
-                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                var desktopItem = Directory.Exists(desktopPath) ? new QuickAccessItem("桌面", desktopPath, SymbolRegular.Desktop24, "#FF4CAF50", pinnedPaths.Contains(desktopPath)) : null;
+                // Build a list of unique candidate paths
+                // Priority: Saved Order > Pinned > Default Folders > Recent Paths
+                var candidatePaths = new List<string>();
                 
-                // Documents
-                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var documentsItem = Directory.Exists(documentsPath) ? new QuickAccessItem("文档", documentsPath, SymbolRegular.Document24, "#FF2196F3", pinnedPaths.Contains(documentsPath)) : null;
-                
-                // Downloads
-                var downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-                var downloadsItem = Directory.Exists(downloadsPath) ? new QuickAccessItem("下载", downloadsPath, SymbolRegular.ArrowDownload24, "#FFFF9800", pinnedPaths.Contains(downloadsPath)) : null;
-                
-                // Pictures
-                var picturesPath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-                var picturesItem = Directory.Exists(picturesPath) ? new QuickAccessItem("图片", picturesPath, SymbolRegular.Image24, "#FFE91E63", pinnedPaths.Contains(picturesPath)) : null;
-                
-                // Music
-                var musicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
-                var musicItem = Directory.Exists(musicPath) ? new QuickAccessItem("音乐", musicPath, SymbolRegular.MusicNote124, "#FF9C27B0", pinnedPaths.Contains(musicPath)) : null;
-                
-                // Videos
-                var videosPath = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
-                var videosItem = Directory.Exists(videosPath) ? new QuickAccessItem("视频", videosPath, SymbolRegular.Video24, "#FFFF5722", pinnedPaths.Contains(videosPath)) : null;
+                if (savedOrder != null) candidatePaths.AddRange(savedOrder);
+                foreach (var p in pinnedPaths) if (!candidatePaths.Contains(p)) candidatePaths.Add(p);
+                foreach (var p in defaultFolderPaths) if (!candidatePaths.Contains(p)) candidatePaths.Add(p);
+                foreach (var p in _settingsService.GetRecentPaths()) if (!candidatePaths.Contains(p)) candidatePaths.Add(p);
 
-                var defaultItems = new List<QuickAccessItem? > { desktopItem, documentsItem, downloadsItem, picturesItem, musicItem, videosItem }
-                    .Where(i => i != null).Cast<QuickAccessItem>().ToList();
-
-                // Recent paths from settings
-                var recentPaths = _settingsService.GetRecentPaths().Take(3);
-                foreach (var path in recentPaths)
+                // Create items and validate existence
+                var candidates = new List<QuickAccessItem>();
+                foreach (var path in candidatePaths)
                 {
-                    if (Directory.Exists(path) && !defaultItems.Any(q => q.Path == path))
+                    if (Directory.Exists(path))
                     {
                         var name = Path.GetFileName(path);
-                        if (string.IsNullOrEmpty(name))
-                            name = path;
+                        if (string.IsNullOrEmpty(name)) name = path;
                         
-                        defaultItems.Add(new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", pinnedPaths.Contains(path)));
+                        // Default properties
+                        SymbolRegular icon = SymbolRegular.Folder24;
+                        string color = "#FFE6A23C";
+                        bool isPinned = pinnedPaths.Contains(path);
+
+                        // Special icons for default folders
+                        if (path == defaultFolderPaths[0]) { name = "桌面"; icon = SymbolRegular.Desktop24; color = "#FF4CAF50"; }
+                        else if (path == defaultFolderPaths[1]) { name = "文档"; icon = SymbolRegular.Document24; color = "#FF2196F3"; }
+                        else if (path == defaultFolderPaths[2]) { name = "下载"; icon = SymbolRegular.ArrowDownload24; color = "#FFFF9800"; }
+                        else if (path == defaultFolderPaths[3]) { name = "图片"; icon = SymbolRegular.Image24; color = "#FFE91E63"; }
+                        else if (path == defaultFolderPaths[4]) { name = "音乐"; icon = SymbolRegular.MusicNote124; color = "#FF9C27B0"; }
+                        else if (path == defaultFolderPaths[5]) { name = "视频"; icon = SymbolRegular.Video24; color = "#FFFF5722"; }
+                        else if (!isPinned) { icon = SymbolRegular.FolderOpen24; }
+
+                        candidates.Add(new QuickAccessItem(name, path, icon, color, isPinned));
                     }
+                    
+                    if (candidates.Count >= 30) break; // Limit candidate pool for performance
                 }
 
-                if (savedOrder != null && savedOrder.Any())
+                // Final trim to exactly 15 items
+                var finalItems = candidates.Take(15).ToList();
+                foreach (var item in finalItems)
                 {
-                    // Apply saved order
-                    foreach (var path in savedOrder)
-                    {
-                        var item = defaultItems.FirstOrDefault(i => i.Path == path);
-                        if (item != null)
-                        {
-                            QuickAccessItems.Add(item);
-                            defaultItems.Remove(item);
-                        }
-                    }
-                    // Add any remaining items that weren't in saved order
-                    foreach (var item in defaultItems)
-                    {
-                        QuickAccessItems.Add(item);
-                    }
+                    QuickAccessItems.Add(item);
                 }
-                else
-                {
-                    foreach (var item in defaultItems)
-                    {
-                        QuickAccessItems.Add(item);
-                    }
-                }
+
+                // Save order to maintain consistency
+                SaveQuickAccessOrder();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to initialize Quick Access: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 当访问新路径时更新快速访问列表
+        /// </summary>
+        private void UpdateQuickAccessList(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+
+            // 如果已经在列表中，不需要操作（尊重用户的自定义排序）
+            if (QuickAccessItems.Any(i => i.Path == path)) return;
+
+            // 检查是否在排除列表中（如：此电脑、回收站等特殊的系统路径通常不作为最近访问）
+            if (path == "此电脑" || path == "Recycle Bin") return;
+
+            var name = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(name)) name = path;
+
+            var newItem = new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", false);
+
+            if (QuickAccessItems.Count < 15)
+            {
+                // 如果不满15个，直接添加到最后
+                QuickAccessItems.Add(newItem);
+            }
+            else
+            {
+                // 如果满了15个，移除最后一个“未置顶”的项目，然后添加新项目
+                // 如果全部都是置顶的，则不添加（保持总数15个）
+                var lastUnpinned = QuickAccessItems.LastOrDefault(i => !i.IsPinned);
+                if (lastUnpinned != null)
+                {
+                    QuickAccessItems.Remove(lastUnpinned);
+                    QuickAccessItems.Add(newItem);
+                }
+            }
+
+            SaveQuickAccessOrder();
         }
 
         partial void OnCurrentPathChanged(string value)
@@ -578,6 +628,7 @@ namespace FileSpace.ViewModels
             if (!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
             {
                 _settingsService.AddRecentPath(value);
+                UpdateQuickAccessList(value);
             }
             
             // 更新当前选中标签页的路径（如果不是标签页切换引起的）
