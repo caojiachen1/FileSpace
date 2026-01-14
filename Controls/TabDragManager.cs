@@ -145,8 +145,8 @@ namespace FileSpace.Controls
             _insertionIndicator = new TabInsertionIndicator(_tabsContainer);
             _adornerLayer.Add(_insertionIndicator);
 
-            // 设置原始元素为半透明（作为占位符效果）
-            _draggedElement.Opacity = 0.3;
+            // 隐藏原始元素（保持透明以便看清后面，但保留布局空间作为占位符）
+            _draggedElement.Opacity = 0;
 
             // 初始显示插入指示器
             _currentInsertIndex = _originalIndex;
