@@ -164,7 +164,8 @@
         <!-- Tab Area (on top of drag area) -->
         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Stretch">
             <!-- Tab Items -->
-            <ItemsControl x:Name="TabsContainer" ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tabs}">
+            <ItemsControl x:Name="TabsContainer" 
+                          ItemsSource="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Tabs}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Orientation="Horizontal"/>
@@ -180,7 +181,8 @@
                                 MinWidth="250"
                                 MaxWidth="250"
                                 MouseLeftButtonDown="OnTabMouseLeftButtonDown"
-                                MouseDown="OnTabMouseDown">
+                                MouseDown="OnTabMouseDown"
+                                MouseMove="OnTabMouseMove">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Background" Value="Transparent"/>

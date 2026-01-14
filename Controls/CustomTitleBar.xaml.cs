@@ -1,8 +1,10 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using FileSpace.Models;
 using Wpf.Ui.Controls;
 
@@ -11,6 +13,8 @@ namespace FileSpace.Controls
     public partial class CustomTitleBar : UserControl
     {
         private HwndSource? _hwndSource;
+        private Point _dragStartPoint;
+        private TabDragManager? _tabDragManager;
 
         public static readonly DependencyProperty IsMaxButtonHoveredProperty =
             DependencyProperty.Register("IsMaxButtonHovered", typeof(bool), typeof(CustomTitleBar), new PropertyMetadata(false));
@@ -92,6 +96,11 @@ namespace FileSpace.Controls
         {
             InitializeComponent();
             
+            // 初始化拖拽管理器
+            _tabDragManager = new TabDragManager();
+            _tabDragManager.DragCompleted += OnTabDragCompleted;
+            _tabDragManager.TabDetached += OnTabDetached;
+            
             this.Loaded += (s, e) =>
             {
                 var window = Window.GetWindow(this);
@@ -102,6 +111,64 @@ namespace FileSpace.Controls
                     _hwndSource?.AddHook(HwndSourceHook);
                 }
             };
+        }
+
+        private void OnTabDragCompleted(object? sender, TabDragCompletedEventArgs e)
+        {
+            // 拖拽完成后可以执行额外的逻辑
+        }
+
+        private void OnTabDetached(object? sender, TabDetachedEventArgs e)
+        {
+            // 只有多于一个标签时才允许分离
+            if (Tabs == null || Tabs.Count <= 1) return;
+
+            // 创建新窗口
+            CreateNewWindowWithTab(e.Tab, e.ScreenPosition);
+        }
+
+        private void CreateNewWindowWithTab(TabItemModel tab, Point screenPosition)
+        {
+            try
+            {
+                // 从当前标签集合中移除
+                Tabs?.Remove(tab);
+
+                // 获取当前窗口的应用程序实例
+                var app = Application.Current;
+                if (app == null) return;
+
+                // 创建新的主窗口
+                var newWindow = new Views.MainWindow();
+                
+                // 设置新窗口的位置
+                newWindow.Left = screenPosition.X - 125; // 居中显示
+                newWindow.Top = screenPosition.Y - 16;
+                
+                // 设置新窗口的大小（与当前窗口相同）
+                var currentWindow = Window.GetWindow(this);
+                if (currentWindow != null)
+                {
+                    newWindow.Width = currentWindow.ActualWidth;
+                    newWindow.Height = currentWindow.ActualHeight;
+                }
+
+                // 显示新窗口并设置标签
+                newWindow.Show();
+                
+                // 获取新窗口的 ViewModel 并添加标签
+                if (newWindow.DataContext is ViewModels.MainViewModel viewModel)
+                {
+                    // 清空默认标签，添加拖拽的标签
+                    viewModel.Tabs.Clear();
+                    viewModel.Tabs.Add(tab);
+                    viewModel.SelectedTab = tab;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"创建新窗口失败: {ex.Message}");
+            }
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)
@@ -237,9 +304,18 @@ namespace FileSpace.Controls
         {
             if (sender is Border border && border.DataContext is TabItemModel tab)
             {
+                _dragStartPoint = e.GetPosition(TabsContainer);
                 SelectTabCommand?.Execute(tab);
+                
+                // 使用新的拖拽管理器
+                _tabDragManager?.StartTracking(border, tab, TabsContainer, e);
                 e.Handled = true;
             }
+        }
+
+        private void OnTabMouseMove(object sender, MouseEventArgs e)
+        {
+            // 拖拽现在由 TabDragManager 处理
         }
 
         private void OnTabMouseDown(object sender, MouseButtonEventArgs e)
