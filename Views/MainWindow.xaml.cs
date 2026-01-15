@@ -84,15 +84,20 @@ namespace FileSpace.Views
 
         private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (ViewModel.IsRenaming)
+            if (ViewModel.IsRenaming || ViewModel.IsPathEditing)
             {
                 var obj = e.OriginalSource as DependencyObject;
+                bool clickedInsideEditor = false;
+
                 while (obj != null)
                 {
-                    if (obj is System.Windows.Controls.TextBox tb && 
-                       (tb.Name == "RenameTextBox" || tb.Name == "RenameTextBox_Large" || tb.Name == "RenameTextBox_Small"))
+                    if (obj is System.Windows.Controls.TextBox tb)
                     {
-                        return; // 点击在输入框内，不处理
+                        if (tb.Name == "RenameTextBox" || tb.Name == "RenameTextBox_Large" || tb.Name == "RenameTextBox_Small" || tb.Name == "AddressBarTextBox")
+                        {
+                            clickedInsideEditor = true;
+                            break;
+                        }
                     }
                     
                     if (obj is Visual || obj is System.Windows.Media.Media3D.Visual3D)
@@ -105,8 +110,20 @@ namespace FileSpace.Views
                     }
                 }
 
-                // 点击了外部，将焦点移开以触发确认重命名
-                FocusManager.SetFocusedElement(this, this);
+                if (!clickedInsideEditor)
+                {
+                    if (ViewModel.IsRenaming)
+                    {
+                        // 点击了外部，将焦点移开以触发确认重命名
+                        FocusManager.SetFocusedElement(this, this);
+                    }
+                    
+                    if (ViewModel.IsPathEditing)
+                    {
+                        // 点击了外部，退出路径编辑模式
+                        ViewModel.IsPathEditing = false;
+                    }
+                }
             }
         }
 
