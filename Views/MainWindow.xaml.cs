@@ -649,15 +649,83 @@ namespace FileSpace.Views
         }
 
         /// <summary>
+        /// 切换下拉菜单的显示状态，实现点击按钮再次点击时关闭菜单
+        /// </summary>
+        private void ToggleDropdownMenu(Wpf.Ui.Controls.Button button)
+        {
+            if (button.ContextMenu == null) return;
+
+            // 根据按钮名称映射到 ViewModel 中的状态属性
+            string? stateProperty = button.Name switch
+            {
+                "NewItemButton" => "IsNewItemMenuOpen",
+                "SortModeButton" => "IsSortModeMenuOpen",
+                "ViewModeButton" => "IsViewModeMenuOpen",
+                "MoreToolsButton" => "IsMoreToolsMenuOpen",
+                _ => null
+            };
+
+            // 检查当前状态
+            bool isAlreadyOpen = false;
+            if (stateProperty != null)
+            {
+                var prop = ViewModel.GetType().GetProperty(stateProperty);
+                if (prop != null)
+                {
+                    isAlreadyOpen = (bool)prop.GetValue(ViewModel)!;
+                }
+            }
+
+            if (isAlreadyOpen)
+            {
+                // 如果已经标记为打开，说明这次点击是为了关闭，ContextMenu 会自动关闭焦点，我们只需要直接返回
+                return;
+            }
+
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = PlacementMode.Bottom;
+
+            // 设置 ViewModel 状态
+            if (stateProperty != null)
+            {
+                var prop = ViewModel.GetType().GetProperty(stateProperty);
+                prop?.SetValue(ViewModel, true);
+            }
+
+            // 订阅关闭事件以重置标记
+            RoutedEventHandler? closedHandler = null;
+            closedHandler = (s, ev) =>
+            {
+                button.ContextMenu.Closed -= closedHandler;
+                // 稍微延迟重置状态，以避开按钮的 Click 事件周期
+                System.Windows.Threading.DispatcherTimer timer = new()
+                {
+                    Interval = TimeSpan.FromMilliseconds(100)
+                };
+                timer.Tick += (st, se) =>
+                {
+                    if (stateProperty != null)
+                    {
+                        var p = ViewModel.GetType().GetProperty(stateProperty);
+                        p?.SetValue(ViewModel, false);
+                    }
+                    timer.Stop();
+                };
+                timer.Start();
+            };
+            button.ContextMenu.Closed += closedHandler;
+
+            button.ContextMenu.IsOpen = true;
+        }
+
+        /// <summary>
         /// 视图模式按钮点击事件 - 显示下拉菜单
         /// </summary>
         private void ViewModeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Wpf.Ui.Controls.Button button && button.ContextMenu != null)
+            if (sender is Wpf.Ui.Controls.Button button)
             {
-                button.ContextMenu.PlacementTarget = button;
-                button.ContextMenu.Placement = PlacementMode.Bottom;
-                button.ContextMenu.IsOpen = true;
+                ToggleDropdownMenu(button);
             }
         }
 
@@ -666,11 +734,9 @@ namespace FileSpace.Views
         /// </summary>
         private void NewItemButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Wpf.Ui.Controls.Button button && button.ContextMenu != null)
+            if (sender is Wpf.Ui.Controls.Button button)
             {
-                button.ContextMenu.PlacementTarget = button;
-                button.ContextMenu.Placement = PlacementMode.Bottom;
-                button.ContextMenu.IsOpen = true;
+                ToggleDropdownMenu(button);
             }
         }
 
@@ -1373,6 +1439,62 @@ namespace FileSpace.Views
                 }
             }
             return null;
+        }
+
+        private void BreadcrumbArrow_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Wpf.Ui.Controls.Button button && button.Tag is BreadcrumbItem item)
+            {
+                // 如果菜单当前是打开的，并且用户点击了按钮，
+                // ContextMenu 会因为焦点丢失而关闭。
+                // 我们通过检查按钮是否刚刚因为菜单关闭而被标记为“非打开”来防止再次打开。
+                if (button.ContextMenu != null && button.ContextMenu.IsOpen)
+                {
+                    button.ContextMenu.IsOpen = false;
+                    return;
+                }
+
+                // 检查是否在极短时间内刚刚关闭过（防止点击按钮关闭菜单后立即又触发 Click 打开）
+                if (item.IsSubFolderMenuOpen)
+                {
+                    return;
+                }
+
+                if (ViewModel.LoadSubFoldersCommand.CanExecute(item))
+                {
+                    ViewModel.LoadSubFoldersCommand.Execute(item);
+                }
+
+                if (button.ContextMenu != null)
+                {
+                    button.ContextMenu.PlacementTarget = button;
+                    button.ContextMenu.Placement = PlacementMode.Bottom;
+                    
+                    // 同步状态：打开时设为 true
+                    item.IsSubFolderMenuOpen = true;
+                    
+                    // 订阅关闭事件
+                    RoutedEventHandler? closedHandler = null;
+                    closedHandler = (s, ev) =>
+                    {
+                        button.ContextMenu.Closed -= closedHandler;
+                        // 稍微延迟重置状态，以避开按钮的 Click 事件周期
+                        System.Windows.Threading.DispatcherTimer timer = new()
+                        {
+                            Interval = TimeSpan.FromMilliseconds(100)
+                        };
+                        timer.Tick += (st, se) =>
+                        {
+                            item.IsSubFolderMenuOpen = false;
+                            timer.Stop();
+                        };
+                        timer.Start();
+                    };
+                    button.ContextMenu.Closed += closedHandler;
+                    
+                    button.ContextMenu.IsOpen = true;
+                }
+            }
         }
     }
 }

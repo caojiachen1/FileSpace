@@ -321,9 +321,85 @@
                                                            Background="Transparent" BorderThickness="0"
                                                            Padding="8,4" FontSize="13"
                                                            ToolTip="{Binding Path}"/>
-                                                <ui:SymbolIcon Symbol="ChevronRight24" FontSize="12" 
-                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                               VerticalAlignment="Center" Margin="2,0"/>
+                                                <ui:Button Background="Transparent" BorderThickness="0" Padding="4" VerticalAlignment="Center"
+                                                           Click="BreadcrumbArrow_Click"
+                                                           Tag="{Binding}">
+                                                    <ui:Button.Content>
+                                                        <ui:SymbolIcon FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                            <ui:SymbolIcon.Style>
+                                                                <Style TargetType="ui:SymbolIcon">
+                                                                    <Setter Property="Symbol" Value="ChevronRight24"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsSubFolderMenuOpen}" Value="True">
+                                                                            <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </ui:SymbolIcon.Style>
+                                                        </ui:SymbolIcon>
+                                                    </ui:Button.Content>
+                                                    <ui:Button.ContextMenu>
+                                                        <ContextMenu ItemsSource="{Binding SubFolders}" MaxHeight="400"
+                                                                     MinWidth="120"
+                                                                     VirtualizingPanel.IsVirtualizing="False"
+                                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                                     ScrollViewer.CanContentScroll="True">
+                                                            <ContextMenu.Template>
+                                                                <ControlTemplate TargetType="{x:Type ContextMenu}">
+                                                                    <Border Background="{DynamicResource ContextMenuBackground}"
+                                                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                                            BorderThickness="1" CornerRadius="8"
+                                                                            SnapsToDevicePixels="True">
+                                                                        <Border.Effect>
+                                                                            <DropShadowEffect BlurRadius="15" Direction="270" Opacity="0.2" ShadowDepth="2"/>
+                                                                        </Border.Effect>
+                                                                        <ScrollViewer Margin="0,4" CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                                                                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                                                        </ScrollViewer>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </ContextMenu.Template>
+                                                            <ContextMenu.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <VirtualizingStackPanel IsItemsHost="True"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ContextMenu.ItemsPanel>
+                                                            <ContextMenu.ItemContainerStyle>
+                                                                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                                    <Setter Property="Header" Value="{Binding Name}"/>
+                                                                    <Setter Property="Command" Value="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                                    <Setter Property="CommandParameter" Value="{Binding Path}"/>
+                                                                    <Setter Property="Padding" Value="12,6"/>
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="{x:Type MenuItem}">
+                                                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                                                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                                                                        BorderThickness="{TemplateBinding BorderThickness}" 
+                                                                                        CornerRadius="4" SnapsToDevicePixels="True">
+                                                                                    <ContentPresenter x:Name="ContentPresenter" 
+                                                                                                      ContentSource="Header" 
+                                                                                                      Margin="{TemplateBinding Padding}" 
+                                                                                                      RecognizesAccessKey="True" 
+                                                                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
+                                                                                                      VerticalAlignment="Center"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                                    </Trigger>
+                                                                                    <Trigger Property="IsEnabled" Value="False">
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Style>
+                                                            </ContextMenu.ItemContainerStyle>
+                                                        </ContextMenu>
+                                                    </ui:Button.ContextMenu>
+                                                </ui:Button>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -361,7 +437,18 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>
                                     <TextBlock Text="新建" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
+                                    <ui:SymbolIcon FontSize="12" Margin="4,0,0,0">
+                                        <ui:SymbolIcon.Style>
+                                            <Style TargetType="ui:SymbolIcon">
+                                                <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNewItemMenuOpen}" Value="True">
+                                                        <Setter Property="Symbol" Value="ChevronUp24"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:SymbolIcon.Style>
+                                    </ui:SymbolIcon>
                                 </StackPanel>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>
@@ -413,7 +500,18 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon Symbol="ArrowSort24" FontSize="16" Margin="0,0,4,0"/>
                                     <TextBlock Text="排序" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
+                                    <ui:SymbolIcon FontSize="12" Margin="4,0,0,0">
+                                        <ui:SymbolIcon.Style>
+                                            <Style TargetType="ui:SymbolIcon">
+                                                <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSortModeMenuOpen}" Value="True">
+                                                        <Setter Property="Symbol" Value="ChevronUp24"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:SymbolIcon.Style>
+                                    </ui:SymbolIcon>
                                 </StackPanel>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>
@@ -513,7 +611,18 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="16" Margin="0,0,4,0"/>
                                     <TextBlock Text="视图" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0"/>
+                                    <ui:SymbolIcon FontSize="12" Margin="4,0,0,0">
+                                        <ui:SymbolIcon.Style>
+                                            <Style TargetType="ui:SymbolIcon">
+                                                <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsViewModeMenuOpen}" Value="True">
+                                                        <Setter Property="Symbol" Value="ChevronUp24"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ui:SymbolIcon.Style>
+                                    </ui:SymbolIcon>
                                 </StackPanel>
                             </ui:Button.Content>
                             <ui:Button.ContextMenu>

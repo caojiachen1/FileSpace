@@ -102,6 +102,54 @@ namespace FileSpace.Services
             }
         }
 
+        public async Task<List<BreadcrumbItem>> GetSubDirectoriesAsync(string path)
+        {
+            return await Task.Run(async () =>
+            {
+                var subDirs = new List<BreadcrumbItem>();
+                try
+                {
+                    if (path == "此电脑")
+                    {
+                        var (tree, initialPath, status) = await DriveService.Instance.LoadInitialDataAsync();
+                        foreach (var drive in tree)
+                        {
+                            subDirs.Add(new BreadcrumbItem(drive.Name, drive.FullPath, drive.Icon));
+                        }
+                        return subDirs;
+                    }
+
+                    if (path == "Linux")
+                    {
+                        var distros = await WslService.Instance.GetDistributionsAsync();
+                        foreach (var (name, distroPath) in distros)
+                        {
+                            subDirs.Add(new BreadcrumbItem(name, distroPath, SymbolRegular.Server24));
+                        }
+                        return subDirs;
+                    }
+
+                    if (!Directory.Exists(path))
+                        return subDirs;
+
+                    var dirInfo = new DirectoryInfo(path);
+                    foreach (var di in dirInfo.EnumerateDirectories())
+                    {
+                        try
+                        {
+                            if (!ShouldShowItem(di.Attributes))
+                                continue;
+
+                            subDirs.Add(new BreadcrumbItem(di.Name, di.FullName));
+                        }
+                        catch { continue; }
+                    }
+                }
+                catch { }
+                return subDirs.OrderBy(d => d.Name).ToList();
+            });
+        }
+
         public async Task<(List<FileItemModel> Files, string StatusMessage)> LoadFilesAsync(string currentPath)
         {
             var files = new List<FileItemModel>();

@@ -147,6 +147,19 @@ namespace FileSpace.ViewModels
         [NotifyCanExecuteChangedFor(nameof(StartRenameCommand))]
         private bool _isRenaming;
 
+        // Dropdown menu states for UI indicators
+        [ObservableProperty]
+        private bool _isNewItemMenuOpen;
+
+        [ObservableProperty]
+        private bool _isSortModeMenuOpen;
+
+        [ObservableProperty]
+        private bool _isViewModeMenuOpen;
+
+        [ObservableProperty]
+        private bool _isMoreToolsMenuOpen;
+
         [ObservableProperty]
         private FileItemModel? _renamingFile;
 
@@ -1445,6 +1458,20 @@ namespace FileSpace.ViewModels
             {
                 NavigateToPath(path);
             }
+        }
+
+        [RelayCommand]
+        private async Task LoadSubFolders(BreadcrumbItem item)
+        {
+            if (item == null || item.IsLoaded) return;
+
+            var subDirs = await FileSystemService.Instance.GetSubDirectoriesAsync(item.Path);
+            item.SubFolders.Clear();
+            foreach (var dir in subDirs)
+            {
+                item.SubFolders.Add(dir);
+            }
+            item.IsLoaded = true;
         }
 
         // 标签页管理命令
