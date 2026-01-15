@@ -98,9 +98,8 @@ namespace FileSpace.Controls
         {
             if (_tabDragManager != null)
             {
-                // 我们在 CustomTitleBar 中复用已有的 TabDragManager 的指示器功能
-                // 或者直接操作指示器
-                _tabDragManager.ShowExternalIndicator(localX);
+                // 显式传递当前容器，以支持跨窗口稳定识别
+                _tabDragManager.ShowExternalIndicator(TabsContainer, localX);
             }
         }
 

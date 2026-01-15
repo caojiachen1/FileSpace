@@ -103,15 +103,16 @@ namespace FileSpace.Controls
                 _dragAdorner.UpdatePosition(currentPos);
             }
 
-            // 检查是否拖离标签栏区域
+            // 检查是否拖离标签栏区域 - 增加模糊识别范围
             bool wasDetached = _isDetached;
             
-            // 垂直方向：超出容器上下边缘一定距离
-            bool verticalDetach = currentPos.Y < -DetachThreshold || currentPos.Y > _tabsContainer.ActualHeight + DetachThreshold;
+            // 垂直方向：向上（Y为负）维持适度的模糊判定空间，向下维持适当阈值
+            // 阈值设为 -50px，足以覆盖整个标题栏高度，但不会过于粘滞
+            bool verticalDetach = currentPos.Y < -50 || currentPos.Y > _tabsContainer.ActualHeight + 50;
             
-            // 水平方向：如果超出了左右边缘较远也可以认为分离
-            // 但通常标签页拖拽较多是在水平方向移动，所以水平分离阈值应该更高
-            bool horizontalDetach = currentPos.X < -100 || currentPos.X > _tabsContainer.ActualWidth + 100;
+            // 水平方向：收紧判定范围
+            // 即使鼠标略微超过标签容器宽度（如在“+”号按钮上），仍保持重排模式
+            bool horizontalDetach = currentPos.X < -50 || currentPos.X > _tabsContainer.ActualWidth + 120;
 
             _isDetached = verticalDetach || horizontalDetach;
 
@@ -163,24 +164,37 @@ namespace FileSpace.Controls
 
             foreach (Window window in Application.Current.Windows)
             {
-                if (window == parentWindow) continue;
+                // 跳过隐藏、最小化或当前窗口
+                if (window == parentWindow || !window.IsVisible || window.WindowState == WindowState.Minimized) continue;
 
-                var windowRect = new Rect(window.Left, window.Top, window.Width, window.Height);
-                if (windowRect.Contains(screenPos))
+                try
                 {
-                    var titleBar = FindVisualChild<CustomTitleBar>(window);
-                    if (titleBar != null && titleBar.TabsContainerControl != null)
+                    // 使用 PointFromScreen 判定 mouse 是否在窗口范围内，这比读取 Left/Top 更准确（尤其在窗口最大化或多分屏 DPI 不同时）
+                    var windowPos = window.PointFromScreen(screenPos);
+                    if (windowPos.X >= 0 && windowPos.X <= window.ActualWidth &&
+                        windowPos.Y >= 0 && windowPos.Y <= window.ActualHeight)
                     {
-                        var container = titleBar.TabsContainerControl;
-                        var localPos = container.PointFromScreen(screenPos);
-
-                        if (localPos.Y >= -30 && localPos.Y <= container.ActualHeight + 30)
+                        var titleBar = FindVisualChild<CustomTitleBar>(window);
+                        if (titleBar != null && titleBar.TabsContainerControl != null)
                         {
-                            targetTitleBar = titleBar;
-                            targetX = localPos.X;
-                            break;
+                            var container = titleBar.TabsContainerControl;
+                            var localPos = container.PointFromScreen(screenPos);
+
+                            // 极宽的 X 方向判定范围（约增加一个标签的宽度），提供极其模糊/ forgiving 的体验
+                            if (localPos.Y >= -30 && localPos.Y <= container.ActualHeight + 40 &&
+                                localPos.X >= -200 && localPos.X <= container.ActualWidth + 250)
+                            {
+                                targetTitleBar = titleBar;
+                                targetX = localPos.X;
+                                break;
+                            }
                         }
                     }
+                }
+                catch
+                {
+                    // 转换失败（可能窗口正在关闭），尝试下一个
+                    continue;
                 }
             }
 
@@ -228,10 +242,8 @@ namespace FileSpace.Controls
             // 隐藏原始元素（保持透明以便看清后面，但保留布局空间作为占位符）
             _draggedElement.Opacity = 0;
 
-            // 初始显示插入指示器
-            _currentInsertIndex = _originalIndex;
-            UpdateInsertIndicatorPosition();
-            _insertionIndicator.Show();
+            // 初始状态下根据鼠标当前位置计算一次
+            UpdateInsertPosition(_dragStartPoint.X);
         }
 
         private void SaveOriginalPositions()
@@ -321,9 +333,10 @@ namespace FileSpace.Controls
             if (tabs == null) return;
 
             var tabElements = GetAllTabElements();
-            int newInsertIndex = _originalIndex;
 
-            // 计算新的插入索引
+            // 1. 决定目标落位索引（用于驱动标签平滑平移）
+            // 我们依然根据中点来判定，以保证标签平移效果灵敏
+            int targetIndex = _originalIndex;
             double accumulatedX = 0;
             for (int i = 0; i < tabElements.Count; i++)
             {
@@ -333,22 +346,31 @@ namespace FileSpace.Controls
 
                 if (mouseX < centerX)
                 {
-                    newInsertIndex = i;
+                    targetIndex = i;
                     break;
                 }
-                newInsertIndex = i + 1;
+                targetIndex = i + 1;
                 accumulatedX += containerWidth;
             }
+            targetIndex = Math.Max(0, Math.Min(targetIndex, tabs.Count));
 
-            // 限制在有效范围内
-            newInsertIndex = Math.Max(0, Math.Min(newInsertIndex, tabs.Count));
-
-            if (newInsertIndex != _currentInsertIndex)
+            if (targetIndex != _currentInsertIndex)
             {
-                _currentInsertIndex = newInsertIndex;
+                _currentInsertIndex = targetIndex;
                 AnimateTabShifts();
-                UpdateInsertIndicatorPosition();
             }
+
+            // 2. 更新指示器位置
+            // 只要在非分离状态下（即鼠标在标签栏有效范围内），就始终显示指示器
+            // 指示器位置直接对应当前的插入索引位置，这样视觉上最直观且“大差不差”都能成功
+            double finalIndicatorX = 0;
+            for (int i = 0; i < _currentInsertIndex && i < tabElements.Count; i++)
+            {
+                finalIndicatorX += tabElements[i].ActualWidth;
+            }
+
+            _insertionIndicator?.UpdatePosition(finalIndicatorX);
+            _insertionIndicator?.Show();
         }
 
         private List<FrameworkElement> GetAllTabElements()
@@ -442,28 +464,6 @@ namespace FileSpace.Controls
             }
         }
 
-        private void UpdateInsertIndicatorPosition()
-        {
-            if (_insertionIndicator == null || _tabsContainer == null) return;
-
-            double xPos = 0;
-            var tabElements = GetAllTabElements();
-
-            if (_currentInsertIndex == 0)
-            {
-                xPos = 0;
-            }
-            else
-            {
-                for (int i = 0; i < _currentInsertIndex && i < tabElements.Count; i++)
-                {
-                    xPos += tabElements[i].ActualWidth;
-                }
-            }
-
-            _insertionIndicator.UpdatePosition(xPos);
-        }
-
         private void OnMouseUp(object sender, MouseButtonEventArgs e)
         {
             CompleteDrag(cancelled: false);
@@ -549,49 +549,58 @@ namespace FileSpace.Controls
 
             foreach (Window window in Application.Current.Windows)
             {
-                // 跳过当前窗口
-                if (window == currentWindow) continue;
+                // 跳过隐藏、最小化或当前窗口
+                if (window == currentWindow || !window.IsVisible || window.WindowState == WindowState.Minimized) continue;
 
-                // 物理位置检查
-                var windowRect = new Rect(window.Left, window.Top, window.Width, window.Height);
-                if (windowRect.Contains(screenPos))
+                // 物理位置检查 - 使用 PointFromScreen 替代 window.Left/Top 以支持最大化窗口和多 DPI 环境
+                try
                 {
-                    // 尝试在窗口中找到 CustomTitleBar
-                    var titleBar = FindVisualChild<CustomTitleBar>(window);
-                    if (titleBar != null && titleBar.TabsContainerControl != null)
+                    var windowPos = window.PointFromScreen(screenPos);
+                    if (windowPos.X >= 0 && windowPos.X <= window.ActualWidth &&
+                        windowPos.Y >= 0 && windowPos.Y <= window.ActualHeight)
                     {
-                        var container = titleBar.TabsContainerControl;
-                        var localPos = container.PointFromScreen(screenPos);
-
-                        // 检查是否在标签栏范围内（给予垂直方向较大的容差）
-                        if (localPos.Y >= -30 && localPos.Y <= container.ActualHeight + 30)
+                        // 尝试在窗口中找到 CustomTitleBar
+                        var titleBar = FindVisualChild<CustomTitleBar>(window);
+                        if (titleBar != null && titleBar.TabsContainerControl != null)
                         {
-                            // 1. 获取源标题栏并移除标签（处理选中状态切换）
-                            var sourceTitleBar = FindVisualParent<CustomTitleBar>(_tabsContainer);
-                            var sourceTabs = GetTabsSource();
-                            
-                            if (sourceTabs != null)
+                            var container = titleBar.TabsContainerControl;
+                            var localPos = container.PointFromScreen(screenPos);
+
+                            // 检查是否在标签栏范围内（极宽判定范围，允许鼠标左右偏移约一个标签宽度）
+                            if (localPos.Y >= -30 && localPos.Y <= container.ActualHeight + 40 &&
+                                localPos.X >= -200 && localPos.X <= container.ActualWidth + 250)
                             {
-                                bool wasLastTab = sourceTabs.Count == 1;
+                                // 1. 获取源标题栏并移除标签（处理选中状态切换）
+                                var sourceTitleBar = FindVisualParent<CustomTitleBar>(_tabsContainer);
+                                var sourceTabs = GetTabsSource();
                                 
-                                if (sourceTitleBar != null)
-                                    sourceTitleBar.RemoveTab(_draggedTab);
-                                else
-                                    sourceTabs.Remove(_draggedTab);
-
-                                // 2. 插入到目标窗口
-                                titleBar.InsertTabAt(localPos.X, _draggedTab);
-
-                                // 3. 如果原窗口没有标签了，关闭原窗口
-                                if (wasLastTab)
+                                if (sourceTabs != null)
                                 {
-                                    currentWindow?.Close();
+                                    bool wasLastTab = sourceTabs.Count == 1;
+                                    
+                                    if (sourceTitleBar != null)
+                                        sourceTitleBar.RemoveTab(_draggedTab);
+                                    else
+                                        sourceTabs.Remove(_draggedTab);
+
+                                    // 2. 插入到目标窗口
+                                    titleBar.InsertTabAt(localPos.X, _draggedTab);
+
+                                    // 3. 如果原窗口没有标签了，关闭原窗口
+                                    if (wasLastTab)
+                                    {
+                                        currentWindow?.Close();
+                                    }
                                 }
+                                
+                                return true;
                             }
-                            
-                            return true;
                         }
                     }
+                }
+                catch
+                {
+                    continue;
                 }
             }
             return false;
@@ -852,9 +861,16 @@ namespace FileSpace.Controls
             return _tabsContainer?.ItemsSource as System.Collections.ObjectModel.ObservableCollection<TabItemModel>;
         }
 
-        public void ShowExternalIndicator(double localX)
+        public void ShowExternalIndicator(ItemsControl container, double localX)
         {
-            if (_tabsContainer == null) return;
+            if (container == null) return;
+            
+            // 确保同步当前容器
+            if (_tabsContainer != container)
+            {
+                _tabsContainer = container;
+                _adornerLayer = null;
+            }
 
             if (_adornerLayer == null)
                 _adornerLayer = AdornerLayer.GetAdornerLayer(_tabsContainer);
@@ -867,20 +883,27 @@ namespace FileSpace.Controls
                 _adornerLayer.Add(_insertionIndicator);
             }
 
-            // 计算插入位置
-            double xPos = 0;
+            // 使用更稳健的索引判定算法，确保任何位置都能正确映射到插入位置
             var tabElements = GetAllTabElements();
+            int insertIndex = 0;
+            double xCursor = 0;
 
-            foreach (var container in tabElements)
+            foreach (var element in tabElements)
             {
-                if (localX < xPos + container.ActualWidth / 2)
-                {
+                if (localX < xCursor + element.ActualWidth / 2)
                     break;
-                }
-                xPos += container.ActualWidth;
+                xCursor += element.ActualWidth;
+                insertIndex++;
             }
 
-            _insertionIndicator.UpdatePosition(xPos);
+            // 计算指示器的视觉位置
+            double finalIndicatorX = 0;
+            for (int i = 0; i < insertIndex && i < tabElements.Count; i++)
+            {
+                finalIndicatorX += tabElements[i].ActualWidth;
+            }
+
+            _insertionIndicator.UpdatePosition(finalIndicatorX);
             _insertionIndicator.Show();
         }
 
