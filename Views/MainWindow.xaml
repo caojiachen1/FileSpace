@@ -251,7 +251,7 @@
         <!-- Custom Title Bar with Tabs -->
         <controls:CustomTitleBar Grid.Row="0" x:Name="AppTitleBar"
                                  Tabs="{Binding Tabs}"
-                                 SelectedTab="{Binding SelectedTab}"
+                                 SelectedTab="{Binding SelectedTab, Mode=TwoWay}"
                                  NewTabCommand="{Binding NewTabCommand}"
                                  CloseTabCommand="{Binding CloseTabCommand}"
                                  SelectTabCommand="{Binding SelectTabCommand}"/>

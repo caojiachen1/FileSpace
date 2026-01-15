@@ -37,10 +37,12 @@ namespace FileSpace.Views
         private System.Windows.Threading.DispatcherTimer _renameTimer;
         private object? _potentialRenameItem;
 
-        public MainWindow()
+        public MainWindow() : this(null) { }
+
+        public MainWindow(TabItemModel? initialTab)
         {
             InitializeComponent();
-            ViewModel = new MainViewModel();
+            ViewModel = new MainViewModel(initialTab);
             DataContext = ViewModel;
             
             // 初始化重命名计时器

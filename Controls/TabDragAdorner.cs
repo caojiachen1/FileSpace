@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 
 namespace FileSpace.Controls
 {
@@ -11,7 +12,7 @@ namespace FileSpace.Controls
     /// </summary>
     public class TabDragAdorner : Adorner
     {
-        private readonly VisualBrush _visualBrush;
+        private readonly ImageBrush _imageBrush;
         private Point _offset;
         private double _scale = 1.0;
         private double _opacity = 0.85;
@@ -24,15 +25,41 @@ namespace FileSpace.Controls
         {
             IsHitTestVisible = false;
             _offset = offset;
-            _originalSize = new Size(visualToClone.RenderSize.Width, visualToClone.RenderSize.Height);
+            
+            // 获取元素尺寸
+            double width = visualToClone.RenderSize.Width;
+            double height = visualToClone.RenderSize.Height;
+            if (width <= 0) width = 250;
+            if (height <= 0) height = 32;
+            
+            _originalSize = new Size(width, height);
 
-            // 创建视觉画刷来克隆被拖拽的元素外观
-            _visualBrush = new VisualBrush(visualToClone)
+            // 使用 RenderTargetBitmap 捕获静态快照，避免源元素隐藏时预览也消失
+            try
             {
-                Stretch = Stretch.None,
-                AlignmentX = AlignmentX.Left,
-                AlignmentY = AlignmentY.Top
-            };
+                RenderTargetBitmap bmp = new RenderTargetBitmap(
+                    (int)Math.Ceiling(width), 
+                    (int)Math.Ceiling(height), 
+                    96, 96, 
+                    PixelFormats.Pbgra32);
+                bmp.Render(visualToClone);
+                
+                // 使用 ImageBrush 而不是直接使用 ImageSource
+                _imageBrush = new ImageBrush(bmp)
+                {
+                    Stretch = Stretch.None,
+                    AlignmentX = AlignmentX.Left,
+                    AlignmentY = AlignmentY.Top
+                };
+            }
+            catch
+            {
+                // 回退到空画刷
+                _imageBrush = new ImageBrush()
+                {
+                    Stretch = Stretch.None
+                };
+            }
 
             // 开始时播放"提起"动画
             PlayLiftAnimation();
@@ -100,8 +127,8 @@ namespace FileSpace.Controls
                 drawingContext.DrawRoundedRectangle(shadowBrush, null, shadowRect, 10, 10);
             }
 
-            // 绘制主体内容
-            drawingContext.DrawRoundedRectangle(_visualBrush, null, rect, 8, 8);
+            // 绘制主体内容（带圆角）
+            drawingContext.DrawRoundedRectangle(_imageBrush, null, rect, 8, 8);
             
             // 如果是分离模式，添加窗口边框效果
             if (_isDetached)

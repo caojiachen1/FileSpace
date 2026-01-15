@@ -452,7 +452,9 @@ namespace FileSpace.ViewModels
         private NavigationService _navigationService;
         private readonly SettingsService _settingsService;
 
-        public MainViewModel()
+        public MainViewModel() : this(null) { }
+
+        public MainViewModel(TabItemModel? initialTab)
         {
             _settingsService = SettingsService.Instance;
             _navigationUtils = new NavigationUtils(_backHistory);
@@ -466,7 +468,16 @@ namespace FileSpace.ViewModels
             // Initialize Quick Access items
             InitializeQuickAccessItems();
             
-            LoadInitialData();
+            if (initialTab != null)
+            {
+                Tabs.Add(initialTab);
+                SelectedTab = initialTab;
+                CurrentPath = initialTab.Path;
+            }
+            else
+            {
+                LoadInitialData();
+            }
 
             // Subscribe to background size calculation events
             BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted += OnSizeCalculationCompleted;

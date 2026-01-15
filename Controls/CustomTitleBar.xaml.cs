@@ -29,7 +29,7 @@ namespace FileSpace.Controls
 
         public static readonly DependencyProperty SelectedTabProperty =
             DependencyProperty.Register("SelectedTab", typeof(TabItemModel), typeof(CustomTitleBar), 
-                new PropertyMetadata(null));
+                new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
 
         // Commands for tab operations
         public static readonly DependencyProperty NewTabCommandProperty =
@@ -92,6 +92,114 @@ namespace FileSpace.Controls
             set => SetValue(SelectTabCommandProperty, value);
         }
 
+        public ItemsControl TabsContainerControl => TabsContainer;
+
+        public void ShowInsertionIndicator(double localX)
+        {
+            if (_tabDragManager != null)
+            {
+                // 我们在 CustomTitleBar 中复用已有的 TabDragManager 的指示器功能
+                // 或者直接操作指示器
+                _tabDragManager.ShowExternalIndicator(localX);
+            }
+        }
+
+        public void HideInsertionIndicator()
+        {
+            _tabDragManager?.HideExternalIndicator();
+        }
+
+        public void InsertTabAt(double localX, TabItemModel tab)
+        {
+            if (Tabs == null) return;
+
+            // 计算插入索引
+            int index = 0;
+            double accumulatedX = 0;
+
+            var itemsPanel = GetItemsPanel(TabsContainer);
+            if (itemsPanel != null)
+            {
+                foreach (FrameworkElement child in itemsPanel.Children)
+                {
+                    if (localX < accumulatedX + child.ActualWidth / 2)
+                        break;
+                    accumulatedX += child.ActualWidth;
+                    index++;
+                }
+            }
+
+            index = Math.Max(0, Math.Min(index, Tabs.Count));
+
+            // 添加标签并确保选中它
+            Tabs.Insert(index, tab);
+            SelectedTab = tab;
+        }
+
+        /// <summary>
+        /// 从当前集合移除标签，并根据业务逻辑（如选中上一个）更新选中项
+        /// </summary>
+        public void RemoveTab(TabItemModel tab)
+        {
+            if (Tabs == null || !Tabs.Contains(tab)) return;
+
+            int index = Tabs.IndexOf(tab);
+            bool wasSelected = (SelectedTab == tab);
+
+            // 如果移除的是当前选中的，先尝试切走选中状态
+            if (wasSelected && Tabs.Count > 1)
+            {
+                // 默认选择被拖拽标签的上一个标签 (index - 1)
+                int newIndex = Math.Max(0, index - 1);
+                if (newIndex >= Tabs.Count) newIndex = Tabs.Count - 1;
+                
+                var nextToSelect = Tabs[newIndex];
+                // 如果恰好是要移除的这个，找另一个
+                if (nextToSelect == tab)
+                {
+                    if (index + 1 < Tabs.Count) nextToSelect = Tabs[index + 1];
+                    else if (index - 1 >= 0) nextToSelect = Tabs[index - 1];
+                }
+
+                if (nextToSelect != tab)
+                {
+                    SelectedTab = nextToSelect;
+                    // 给 VM 一个切换的机会
+                    SelectTabCommand?.Execute(nextToSelect);
+                }
+            }
+
+            // 执行移除
+            Tabs.Remove(tab);
+            
+            // 确保被移除的标签不再被标记为选中
+            tab.IsSelected = false;
+        }
+
+        private System.Windows.Controls.Panel? GetItemsPanel(ItemsControl itemsControl)
+        {
+            var itemsPresenter = FindVisualChild<ItemsPresenter>(itemsControl);
+            if (itemsPresenter != null && VisualTreeHelper.GetChildrenCount(itemsPresenter) > 0)
+            {
+                return VisualTreeHelper.GetChild(itemsPresenter, 0) as System.Windows.Controls.Panel;
+            }
+            return null;
+        }
+
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                    return result;
+                var childResult = FindVisualChild<T>(child);
+                if (childResult != null)
+                    return childResult;
+            }
+            return null;
+        }
+
         public CustomTitleBar()
         {
             InitializeComponent();
@@ -131,19 +239,21 @@ namespace FileSpace.Controls
         {
             try
             {
-                // 从当前标签集合中移除
-                Tabs?.Remove(tab);
+                if (Tabs == null) return;
+
+                // 使用统一的移除逻辑，处理选中状态切换
+                RemoveTab(tab);
 
                 // 获取当前窗口的应用程序实例
                 var app = Application.Current;
                 if (app == null) return;
 
-                // 创建新的主窗口
-                var newWindow = new Views.MainWindow();
+                // 创建新的主窗口，并传入分离的标签
+                var newWindow = new Views.MainWindow(tab);
                 
                 // 设置新窗口的位置
-                newWindow.Left = screenPosition.X - 125; // 居中显示
-                newWindow.Top = screenPosition.Y - 16;
+                newWindow.Left = screenPosition.X - 200; // 稍微向左偏移，让鼠标大概在标签栏位置
+                newWindow.Top = screenPosition.Y - 20;
                 
                 // 设置新窗口的大小（与当前窗口相同）
                 var currentWindow = Window.GetWindow(this);
@@ -153,17 +263,9 @@ namespace FileSpace.Controls
                     newWindow.Height = currentWindow.ActualHeight;
                 }
 
-                // 显示新窗口并设置标签
+                // 显示新窗口
                 newWindow.Show();
-                
-                // 获取新窗口的 ViewModel 并添加标签
-                if (newWindow.DataContext is ViewModels.MainViewModel viewModel)
-                {
-                    // 清空默认标签，添加拖拽的标签
-                    viewModel.Tabs.Clear();
-                    viewModel.Tabs.Add(tab);
-                    viewModel.SelectedTab = tab;
-                }
+                newWindow.Activate();
             }
             catch (Exception ex)
             {
