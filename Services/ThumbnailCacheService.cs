@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
+using System.Windows;
 using FileSpace.Utils;
 
 namespace FileSpace.Services
@@ -241,20 +242,37 @@ namespace FileSpace.Services
 
             try
             {
-                return await Task.Run(() =>
+                // 1. 异步读取文件字节 (真正异步，不占用线程池)
+                byte[] imageBytes = await File.ReadAllBytesAsync(cacheFilePath, cancellationToken);
+                
+                // 2. 切换到 UI 线程创建 BitmapImage
+                return await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.UriSource = new Uri(cacheFilePath, UriKind.Absolute);
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    return bitmap as ImageSource;
-                }, cancellationToken);
+                    try
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.StreamSource = new MemoryStream(imageBytes);
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+                        return bitmap as ImageSource;
+                    }
+                    catch (Exception)
+                    {
+                        // 图像数据可能损坏
+                        return null;
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
             }
-            catch
+            catch (OperationCanceledException)
             {
-                // 缓存文件可能损坏，删除它
+                throw; // 允许取消
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadFromDiskCacheAsync Error: {ex.Message}");
+                // 缓存文件可能损坏，尝试删除它
                 try { File.Delete(cacheFilePath); } catch { }
                 return null;
             }
