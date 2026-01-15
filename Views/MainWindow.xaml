@@ -298,18 +298,19 @@
                         </ui:Button>
                     </StackPanel>
                     
-                    <!-- Address Bar -->
                     <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" 
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
-                            BorderThickness="1" CornerRadius="4" Margin="10,6">
-                        <Grid Height="26" VerticalAlignment="Center">
+                            BorderThickness="1" CornerRadius="4" Margin="10,6"
+                            PreviewMouseLeftButtonDown="AddressBarBorder_PreviewMouseLeftButtonDown">
+                        <Grid MinHeight="26" VerticalAlignment="Stretch" Background="Transparent">
                             <!-- Breadcrumb Navigation -->
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                          Background="Transparent"
                                           Visibility="{Binding IsPathEditing, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                 <ItemsControl ItemsSource="{Binding BreadcrumbItems}" Background="Transparent">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal"/>
+                                            <StackPanel Orientation="Horizontal" Background="Transparent"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
@@ -435,7 +436,12 @@
                             <ui:TextBox x:Name="AddressBarTextBox" Text="{Binding CurrentPath, UpdateSourceTrigger=PropertyChanged}" 
                                         Background="Transparent" BorderThickness="0"
                                         Visibility="{Binding IsPathEditing, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        KeyDown="AddressBarTextBox_KeyDown" Margin="4,2,4,2"/>
+                                        KeyDown="AddressBar_KeyDown" 
+                                        LostFocus="AddressBar_LostFocus"
+                                        Loaded="AddressBar_Loaded"
+                                        Padding="8,0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                                        VerticalContentAlignment="Center"
+                                        Margin="0" FontSize="13"/>
                         </Grid>
                     </Border>
                     

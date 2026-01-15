@@ -872,7 +872,7 @@ namespace FileSpace.Views
         private void OnFocusAddressBarRequested(object? sender, EventArgs e)
         {
             // 设置焦点到地址栏
-            var addressBar = FindName("AddressBar") as Wpf.Ui.Controls.TextBox;
+            var addressBar = FindName("AddressBarTextBox") as Wpf.Ui.Controls.TextBox;
             addressBar?.Focus();
             addressBar?.SelectAll();
         }
@@ -1038,24 +1038,25 @@ namespace FileSpace.Views
             }
         }
 
-        /// <summary>
-        /// 处理地址栏键盘事件
-        /// </summary>
-        private void AddressBarTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void AddressBarBorder_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            // 如果已经在编辑模式，不做处理
+            if (ViewModel.IsPathEditing) return;
+
+            // 检查点击的是否是按钮或按钮内部
+            var obj = e.OriginalSource as DependencyObject;
+            while (obj != null && obj != sender)
             {
-                var textBox = sender as Wpf.Ui.Controls.TextBox;
-                if (textBox != null && !string.IsNullOrWhiteSpace(textBox.Text))
+                if (obj is System.Windows.Controls.Button || obj is System.Windows.Controls.Primitives.ButtonBase)
                 {
-                    ViewModel.NavigateToPathCommand.Execute(textBox.Text);
-                    ViewModel.IsPathEditing = false;
+                    return; // 点击的是面包屑按钮或下拉箭头，不进入编辑模式
                 }
+                obj = VisualTreeHelper.GetParent(obj);
             }
-            else if (e.Key == Key.Escape)
-            {
-                ViewModel.IsPathEditing = false;
-            }
+
+            // 点击的是空白区域，进入编辑模式
+            ViewModel.IsPathEditing = true;
+            e.Handled = true;
         }
 
         private void QuickAccessListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
