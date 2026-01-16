@@ -8,6 +8,7 @@ using FileSpace.Models;
 using FileSpace.Utils;
 using magika;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace FileSpace.Services
 {
@@ -21,7 +22,116 @@ namespace FileSpace.Services
         private static readonly Lazy<PreviewService> _instance = new(() => new PreviewService());
         public static PreviewService Instance => _instance.Value;
 
+        // 预览缩略图缓存
+        private static readonly Dictionary<string, BitmapSource> _previewThumbnailCache = new();
+        private static readonly object _cacheLock = new();
+
         private PreviewService() { }
+
+        /// <summary>
+        /// 生成高质量的预览缩略图（带缓存）
+        /// </summary>
+        private static BitmapSource? GenerateHighQualityThumbnail(string filePath)
+        {
+            lock (_cacheLock)
+            {
+                // 先检查缓存
+                if (_previewThumbnailCache.TryGetValue(filePath, out var cachedThumbnail))
+                {
+                    return cachedThumbnail;
+                }
+
+                // 生成新的高质量缩略图
+                const int thumbnailSize = 256; // 256x256的高质量缩略图
+                var thumbnail = ThumbnailUtils.GetThumbnail(filePath, thumbnailSize, thumbnailSize);
+                
+                // 缓存缩略图
+                if (thumbnail != null)
+                {
+                    _previewThumbnailCache[filePath] = thumbnail;
+                }
+                
+                return thumbnail;
+            }
+        }
+
+        /// <summary>
+        /// 清理预览缩略图缓存
+        /// </summary>
+        public static void ClearPreviewThumbnailCache()
+        {
+            lock (_cacheLock)
+            {
+                _previewThumbnailCache.Clear();
+            }
+        }
+
+        /// <summary>
+        /// 从缓存中移除特定文件的缩略图
+        /// </summary>
+        public static void RemoveFromPreviewThumbnailCache(string filePath)
+        {
+            lock (_cacheLock)
+            {
+                _previewThumbnailCache.Remove(filePath);
+            }
+        }
+
+        /// <summary>
+        /// 创建预览容器的子元素，优先使用高质量缩略图，没有则使用图标
+        /// </summary>
+        private static UIElement CreatePreviewVisual(FileItemModel file)
+        {
+            // 优先生成高质量缩略图
+            var highQualityThumbnail = GenerateHighQualityThumbnail(file.FullPath);
+            if (highQualityThumbnail != null)
+            {
+                var image = new Image
+                {
+                    Source = highQualityThumbnail,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT * 0.95,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT * 0.95
+                };
+                
+                // 设置高质量渲染选项
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Fant);
+                RenderOptions.SetEdgeMode(image, EdgeMode.Aliased);
+                
+                return image;
+            }
+            
+            // 如果高质量缩略图生成失败，尝试使用现有的缩略图
+            if (file.Thumbnail != null)
+            {
+                var image = new Image
+                {
+                    Source = file.Thumbnail,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT * 0.95,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT * 0.95
+                };
+                
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Fant);
+                RenderOptions.SetEdgeMode(image, EdgeMode.Aliased);
+                
+                return image;
+            }
+            
+            // 没有缩略图时使用图标
+            return new Wpf.Ui.Controls.SymbolIcon 
+            { 
+                Symbol = file.Icon, 
+                FontSize = 80, 
+                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
 
         public async Task<object?> GeneratePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
@@ -69,12 +179,7 @@ namespace FileSpace.Services
                 Background = PREVIEW_BACKGROUND_BRUSH, 
                 Margin = new Thickness(0),
                 CornerRadius = new CornerRadius(0),
-                Child = new Wpf.Ui.Controls.SymbolIcon 
-                { 
-                    Symbol = file.Icon, 
-                    FontSize = 80, 
-                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
-                }
+                Child = CreatePreviewVisual(file)
             };
             panel.Children.Add(previewContainer);
 
@@ -174,13 +279,8 @@ namespace FileSpace.Services
             }
             else
             {
-                // Fallback: show the file icon if no content preview is available
-                previewContainer.Child = new Wpf.Ui.Controls.SymbolIcon 
-                { 
-                    Symbol = file.Icon, 
-                    FontSize = 80, 
-                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
-                };
+                // Fallback: show the file thumbnail/icon if no content preview is available
+                previewContainer.Child = CreatePreviewVisual(file);
             }
             
             panel.Children.Add(previewContainer);
@@ -343,12 +443,7 @@ namespace FileSpace.Services
                 Background = PREVIEW_BACKGROUND_BRUSH, 
                 Margin = new Thickness(0),
                 CornerRadius = new CornerRadius(0),
-                Child = new Wpf.Ui.Controls.SymbolIcon 
-                { 
-                    Symbol = file.Icon, 
-                    FontSize = 80, 
-                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
-                }
+                Child = CreatePreviewVisual(file)
             };
             panel.Children.Add(previewContainer);
 
