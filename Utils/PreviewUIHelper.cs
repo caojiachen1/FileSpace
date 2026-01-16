@@ -26,10 +26,10 @@ namespace FileSpace.Utils
         {
             var grid = new Grid
             {
-                Margin = new Thickness(0, 2, 0, 2)
+                Margin = new Thickness(0, 4, 0, 4)
             };
 
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120, GridUnitType.Pixel) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80, GridUnitType.Pixel) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             var propertyBlock = new TextBlock
@@ -37,9 +37,10 @@ namespace FileSpace.Utils
                 Text = property,
                 FontWeight = FontWeights.Normal,
                 HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                FontSize = 13
             };
 
             var valueBlock = new TextBlock
@@ -47,12 +48,13 @@ namespace FileSpace.Utils
                 Text = value,
                 FontWeight = FontWeights.Normal,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Top,
+                VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Right,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 TextWrapping = TextWrapping.NoWrap,
                 ToolTip = value, // Show full value in tooltip
-                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                FontSize = 13
             };
 
             Grid.SetColumn(propertyBlock, 0);
@@ -91,9 +93,46 @@ namespace FileSpace.Utils
 
         public static StackPanel CreateLoadingIndicator()
         {
-            var panel = new StackPanel();
+            var panel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            panel.Children.Add(new Wpf.Ui.Controls.ProgressRing { IsIndeterminate = true, Width = 30, Height = 30, Margin = new Thickness(0, 0, 0, 10) });
             panel.Children.Add(CreateInfoTextBlock("正在加载预览..."));
             return panel;
+        }
+
+        public static Border CreateSectionHeader(string text)
+        {
+            var border = new Border
+            {
+                Margin = new Thickness(0, 20, 0, 10),
+                Padding = new Thickness(0, 0, 0, 5)
+            };
+            
+            var textBlock = new TextBlock
+            {
+                Text = text,
+                FontSize = 14,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+            };
+            
+            border.Child = textBlock;
+            return border;
+        }
+
+        public static Wpf.Ui.Controls.Button CreateActionButton(string text, Wpf.Ui.Controls.SymbolRegular icon, System.Windows.Input.ICommand? command = null, object? commandParameter = null)
+        {
+            var button = new Wpf.Ui.Controls.Button
+            {
+                Content = text,
+                Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = icon },
+                Margin = new Thickness(0, 10, 0, 5),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(12, 6, 12, 6),
+                Command = command,
+                CommandParameter = commandParameter,
+                Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary
+            };
+            return button;
         }
 
         public static StackPanel CreateErrorPanel(string title, string message)
