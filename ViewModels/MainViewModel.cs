@@ -567,26 +567,34 @@ namespace FileSpace.ViewModels
                 var candidates = new List<QuickAccessItem>();
                 foreach (var path in candidatePaths)
                 {
-                    if (Directory.Exists(path))
+                    bool isDir = Directory.Exists(path);
+                    bool isFile = !isDir && File.Exists(path);
+
+                    if (isDir || isFile)
                     {
                         var name = Path.GetFileName(path);
                         if (string.IsNullOrEmpty(name)) name = path;
                         
                         // Default properties
-                        SymbolRegular icon = SymbolRegular.Folder24;
-                        string color = "#FFE6A23C";
+                        SymbolRegular icon = isDir ? SymbolRegular.Folder24 : SymbolRegular.Document24;
+                        string color = isDir ? "#FFE6A23C" : "#FF607D8B";
                         bool isPinned = pinnedPaths.Contains(path);
 
                         // Special icons for default folders
-                        if (path == defaultFolderPaths[0]) { name = "桌面"; icon = SymbolRegular.Desktop24; color = "#FF4CAF50"; }
-                        else if (path == defaultFolderPaths[1]) { name = "文档"; icon = SymbolRegular.Document24; color = "#FF2196F3"; }
-                        else if (path == defaultFolderPaths[2]) { name = "下载"; icon = SymbolRegular.ArrowDownload24; color = "#FFFF9800"; }
-                        else if (path == defaultFolderPaths[3]) { name = "图片"; icon = SymbolRegular.Image24; color = "#FFE91E63"; }
-                        else if (path == defaultFolderPaths[4]) { name = "音乐"; icon = SymbolRegular.MusicNote124; color = "#FF9C27B0"; }
-                        else if (path == defaultFolderPaths[5]) { name = "视频"; icon = SymbolRegular.Video24; color = "#FFFF5722"; }
-                        else if (!isPinned) { icon = SymbolRegular.FolderOpen24; }
+                        if (isDir)
+                        {
+                            if (path == defaultFolderPaths[0]) { name = "桌面"; icon = SymbolRegular.Desktop24; color = "#FF4CAF50"; }
+                            else if (path == defaultFolderPaths[1]) { name = "文档"; icon = SymbolRegular.Document24; color = "#FF2196F3"; }
+                            else if (path == defaultFolderPaths[2]) { name = "下载"; icon = SymbolRegular.ArrowDownload24; color = "#FFFF9800"; }
+                            else if (path == defaultFolderPaths[3]) { name = "图片"; icon = SymbolRegular.Image24; color = "#FFE91E63"; }
+                            else if (path == defaultFolderPaths[4]) { name = "音乐"; icon = SymbolRegular.MusicNote124; color = "#FF9C27B0"; }
+                            else if (path == defaultFolderPaths[5]) { name = "视频"; icon = SymbolRegular.Video24; color = "#FFFF5722"; }
+                            else if (!isPinned) { icon = SymbolRegular.FolderOpen24; }
+                        }
 
-                        candidates.Add(new QuickAccessItem(name, path, icon, color, isPinned));
+                        var item = new QuickAccessItem(name, path, icon, color, isPinned);
+                        item.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+                        candidates.Add(item);
                     }
                     
                     if (candidates.Count >= 30) break; // Limit candidate pool for performance
@@ -624,7 +632,12 @@ namespace FileSpace.ViewModels
             var name = Path.GetFileName(path);
             if (string.IsNullOrEmpty(name)) name = path;
 
-            var newItem = new QuickAccessItem(name, path, SymbolRegular.FolderOpen24, "#FFE6A23C", false);
+            bool isDir = Directory.Exists(path);
+            var icon = isDir ? SymbolRegular.FolderOpen24 : SymbolRegular.Document24;
+            var color = isDir ? "#FFE6A23C" : "#FF607D8B";
+
+            var newItem = new QuickAccessItem(name, path, icon, color, false);
+            newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
 
             if (QuickAccessItems.Count < 15)
             {

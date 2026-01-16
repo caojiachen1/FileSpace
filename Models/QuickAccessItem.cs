@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Wpf.Ui.Controls;
+using System.Windows.Media;
 
 namespace FileSpace.Models
 {
@@ -16,6 +17,9 @@ namespace FileSpace.Models
 
         [ObservableProperty]
         private string _iconColor = "#FF607D8B";
+
+        [ObservableProperty]
+        private ImageSource? _thumbnail;
 
         [ObservableProperty]
         private bool _isPinned;
