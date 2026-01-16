@@ -1304,6 +1304,7 @@
                                  KeyDown="FileListView_KeyDown"
                                  AutoGenerateColumns="False"
                                  HeadersVisibility="Column"
+                                 RowHeaderWidth="0"
                                  GridLinesVisibility="None"
                                  CanUserAddRows="False"
                                  CanUserDeleteRows="False"
@@ -1397,7 +1398,7 @@
                                         <Grid>
                                             <!-- Normal display -->
                                             <StackPanel Orientation="Horizontal" Margin="2,0,0,0"
-                                                       Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                       Visibility="{Binding DataContext.IsRenaming, ElementName=FileDataGrid, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                                 <Grid Margin="0,0,5,0">
                                                     <ui:SymbolIcon Symbol="{Binding Icon}" 
                                                                    FontSize="16"
@@ -1419,7 +1420,7 @@
                                             
                                             <!-- Rename mode -->
                                             <StackPanel Orientation="Horizontal" Margin="2,0,0,0"
-                                                       Visibility="{Binding DataContext.IsRenaming, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                       Visibility="{Binding DataContext.IsRenaming, ElementName=FileDataGrid, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                 <Grid Margin="0,0,5,0">
                                                     <ui:SymbolIcon Symbol="{Binding Icon}" 
                                                                    FontSize="16"
@@ -1459,7 +1460,7 @@
                                                     
                                                     <!-- Show textbox for the item being renamed -->
                                                     <TextBox x:Name="RenameTextBox" 
-                                                             Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ui:DataGrid}, UpdateSourceTrigger=PropertyChanged}"
+                                                             Text="{Binding DataContext.NewFileName, ElementName=FileDataGrid, UpdateSourceTrigger=PropertyChanged}"
                                                              KeyDown="RenameTextBox_KeyDown"
                                                              LostFocus="RenameTextBox_LostFocus"
                                                              IsVisibleChanged="RenameTextBox_IsVisibleChanged"
@@ -1521,15 +1522,15 @@
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <controls:VirtualizingWrapPanel 
-                                    ItemWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                    ItemHeight="{Binding DataContext.IconItemHeight, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                    ItemWidth="{Binding DataContext.IconItemWidth, ElementName=FileIconView}"
+                                    ItemHeight="{Binding DataContext.IconItemHeight, ElementName=FileIconView}"/>
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemPreviewMouseLeftButtonDown"/>
-                                <Setter Property="Width" Value="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"/>
-                                <Setter Property="Height" Value="{Binding DataContext.IconItemHeight, RelativeSource={RelativeSource AncestorType=ListView}}"/>
+                                <Setter Property="Width" Value="{Binding DataContext.IconItemWidth, ElementName=FileIconView}"/>
+                                <Setter Property="Height" Value="{Binding DataContext.IconItemHeight, ElementName=FileIconView}"/>
                                 <Setter Property="Padding" Value="4"/>
                                 <Setter Property="Margin" Value="2"/>
                                 <Setter Property="Background" Value="Transparent"/>
@@ -1684,7 +1685,7 @@
                                                                 <DataTrigger.Binding>
                                                                     <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                         <Binding/>
-                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                        <Binding Path="DataContext.RenamingFile" ElementName="FileIconView"/>
                                                                     </MultiBinding>
                                                                 </DataTrigger.Binding>
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -1696,7 +1697,7 @@
 
                                             <!-- Rename mode -->
                                             <TextBox x:Name="RenameTextBox_Small" 
-                                                     Text="{Binding DataContext.NewFileName, RelativeSource={RelativeSource AncestorType=ListView}, UpdateSourceTrigger=PropertyChanged}"
+                                                     Text="{Binding DataContext.NewFileName, ElementName=FileIconView, UpdateSourceTrigger=PropertyChanged}"
                                                      KeyDown="RenameTextBox_KeyDown"
                                                      LostFocus="RenameTextBox_LostFocus"
                                                      IsVisibleChanged="RenameTextBox_IsVisibleChanged"
@@ -1717,7 +1718,7 @@
                                                                 <DataTrigger.Binding>
                                                                     <MultiBinding Converter="{StaticResource EqualityConverter}">
                                                                         <Binding/>
-                                                                        <Binding Path="DataContext.RenamingFile" RelativeSource="{RelativeSource AncestorType=ListView}"/>
+                                                                        <Binding Path="DataContext.RenamingFile" ElementName="FileIconView"/>
                                                                     </MultiBinding>
                                                                 </DataTrigger.Binding>
                                                                 <Setter Property="Visibility" Value="Visible"/>
