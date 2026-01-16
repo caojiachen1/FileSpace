@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -46,6 +47,9 @@ namespace FileSpace.Controls
         private int _itemsPerRow;
         private int _firstVisibleIndex;
         private int _lastVisibleIndex;
+        
+        // 用于跟踪已生成的容器
+        private readonly Dictionary<int, UIElement> _realizedContainers = new Dictionary<int, UIElement>();
 
         #endregion
 
@@ -72,6 +76,7 @@ namespace FileSpace.Controls
             var itemCount = itemsControl.Items.Count;
             if (itemCount == 0)
             {
+                CleanupContainers();
                 _extent = new Size(0, 0);
                 _viewport = availableSize;
                 UpdateScrollInfo(availableSize);
@@ -91,32 +96,89 @@ namespace FileSpace.Controls
             _viewport = availableSize;
 
             // 计算可见项目范围
-            CalculateVisibleRange(availableSize);
+            CalculateVisibleRange(availableSize, itemCount);
 
             // 获取 ItemContainerGenerator
-            var generator = ItemContainerGenerator as IItemContainerGenerator;
+            var generator = ItemContainerGenerator;
             if (generator == null) return availableSize;
 
+            // 清理不再可见的容器
+            CleanupContainers();
+
             // 为可见项目生成容器
-            using (generator.StartAt(generator.GeneratorPositionFromIndex(_firstVisibleIndex), GeneratorDirection.Forward, true))
+            var startPos = generator.GeneratorPositionFromIndex(_firstVisibleIndex);
+            int childIndex = (startPos.Offset == 0) ? startPos.Index : startPos.Index + 1;
+            
+            using (generator.StartAt(startPos, GeneratorDirection.Forward, true))
             {
                 for (int i = _firstVisibleIndex; i <= _lastVisibleIndex && i < itemCount; i++)
                 {
-                    var child = generator.GenerateNext(out bool isNewlyRealized) as UIElement;
-                    if (child != null)
+                    bool newlyRealized;
+                    var child = generator.GenerateNext(out newlyRealized) as UIElement;
+                    
+                    if (child == null) continue;
+
+                    if (newlyRealized)
                     {
-                        if (isNewlyRealized)
+                        // 新生成的容器
+                        if (childIndex >= InternalChildren.Count)
                         {
                             AddInternalChild(child);
-                            generator.PrepareItemContainer(child);
                         }
-                        child.Measure(new Size(ItemWidth, ItemHeight));
+                        else
+                        {
+                            InsertInternalChild(childIndex, child);
+                        }
+                        generator.PrepareItemContainer(child);
+                        childIndex++;
                     }
+                    else
+                    {
+                        // 已存在的容器，确保它在可视树中
+                        int oldIndex = InternalChildren.IndexOf(child);
+                        if (oldIndex < 0)
+                        {
+                            // 容器不在可视树中，添加它
+                            if (childIndex >= InternalChildren.Count)
+                            {
+                                AddInternalChild(child);
+                            }
+                            else
+                            {
+                                InsertInternalChild(childIndex, child);
+                            }
+                            childIndex++;
+                        }
+                        else if (oldIndex != childIndex)
+                        {
+                            // 容器在错误的位置，移动它
+                            RemoveInternalChildRange(oldIndex, 1);
+                            if (oldIndex < childIndex) childIndex--;
+                            
+                            if (childIndex >= InternalChildren.Count)
+                            {
+                                AddInternalChild(child);
+                            }
+                            else
+                            {
+                                InsertInternalChild(childIndex, child);
+                            }
+                            childIndex++;
+                        }
+                        else
+                        {
+                            // 容器已在正确位置
+                            childIndex++;
+                        }
+                    }
+
+                    // 测量子元素
+                    child.Measure(new Size(ItemWidth, ItemHeight));
+                    
+                    // 记录已实现的容器
+                    _realizedContainers[i] = child;
                 }
             }
-
-            // 回收不可见的容器
-            RecycleContainers();
 
             UpdateScrollInfo(availableSize);
             return new Size(panelWidth, Math.Min(totalHeight, availableSize.Height));
@@ -124,22 +186,34 @@ namespace FileSpace.Controls
 
         protected override Size ArrangeOverride(Size finalSize)
         {
+            if (_itemsPerRow == 0) return finalSize;
+
             var generator = ItemContainerGenerator;
             if (generator == null) return finalSize;
 
-            for (int i = 0; i < InternalChildren.Count; i++)
+            foreach (UIElement child in InternalChildren)
             {
-                var child = InternalChildren[i];
-                var itemIndex = generator.IndexFromGeneratorPosition(new GeneratorPosition(i, 0));
-                if (itemIndex < 0) continue;
+                // 找到这个子元素对应的项索引
+                int itemIndex = -1;
+                foreach (var kvp in _realizedContainers)
+                {
+                    if (kvp.Value == child)
+                    {
+                        itemIndex = kvp.Key;
+                        break;
+                    }
+                }
 
-                var row = itemIndex / _itemsPerRow;
-                var col = itemIndex % _itemsPerRow;
+                if (itemIndex >= 0)
+                {
+                    var row = itemIndex / _itemsPerRow;
+                    var col = itemIndex % _itemsPerRow;
 
-                var x = col * ItemWidth;
-                var y = row * ItemHeight - _offset.Y;
+                    var x = col * ItemWidth;
+                    var y = row * ItemHeight - _offset.Y;
 
-                child.Arrange(new Rect(x, y, ItemWidth, ItemHeight));
+                    child.Arrange(new Rect(x, y, ItemWidth, ItemHeight));
+                }
             }
 
             return finalSize;
@@ -149,43 +223,58 @@ namespace FileSpace.Controls
 
         #region Virtualization
 
-        private void CalculateVisibleRange(Size availableSize)
+        private void CalculateVisibleRange(Size availableSize, int itemCount)
         {
-            var itemsControl = ItemsControl.GetItemsOwner(this);
-            if (itemsControl == null || _itemsPerRow == 0)
+            if (_itemsPerRow == 0)
             {
                 _firstVisibleIndex = 0;
                 _lastVisibleIndex = -1;
                 return;
             }
 
-            var itemCount = itemsControl.Items.Count;
             var viewportHeight = double.IsInfinity(availableSize.Height) ? SystemParameters.PrimaryScreenHeight : availableSize.Height;
 
-            // 计算第一个可见行
-            var firstVisibleRow = (int)(_offset.Y / ItemHeight);
+            // 计算第一个可见行（向下取整）
+            var firstVisibleRow = Math.Max(0, (int)(_offset.Y / ItemHeight));
             _firstVisibleIndex = Math.Max(0, firstVisibleRow * _itemsPerRow);
 
-            // 计算最后一个可见行 (多加几行作为缓冲区以减少闪烁)
-            var visibleRows = (int)Math.Ceiling(viewportHeight / ItemHeight) + 2;
-            var lastVisibleRow = firstVisibleRow + visibleRows;
+            // 计算最后一个可见行（向上取整，并额外增加缓冲行）
+            var visibleRows = (int)Math.Ceiling(viewportHeight / ItemHeight);
+            var lastVisibleRow = firstVisibleRow + visibleRows + 1; // 增加一行缓冲
             _lastVisibleIndex = Math.Min(itemCount - 1, (lastVisibleRow + 1) * _itemsPerRow - 1);
         }
 
-        private void RecycleContainers()
+        private void CleanupContainers()
         {
             var generator = ItemContainerGenerator;
             if (generator == null) return;
 
-            for (int i = InternalChildren.Count - 1; i >= 0; i--)
+            // 找出不再可见的项
+            var itemsToRemove = new List<int>();
+            foreach (var kvp in _realizedContainers)
             {
-                var position = new GeneratorPosition(i, 0);
-                var itemIndex = generator.IndexFromGeneratorPosition(position);
-
-                if (itemIndex < _firstVisibleIndex || itemIndex > _lastVisibleIndex)
+                if (kvp.Key < _firstVisibleIndex || kvp.Key > _lastVisibleIndex)
                 {
-                    // 直接移除不可见的容器（WPF 会自动回收）
-                    RemoveInternalChildRange(i, 1);
+                    itemsToRemove.Add(kvp.Key);
+                }
+            }
+
+            // 移除不可见的容器
+            foreach (var itemIndex in itemsToRemove)
+            {
+                if (_realizedContainers.TryGetValue(itemIndex, out var container))
+                {
+                    var childIndex = InternalChildren.IndexOf(container);
+                    if (childIndex >= 0)
+                    {
+                        var generatorPosition = generator.GeneratorPositionFromIndex(itemIndex);
+                        if (generatorPosition.Index >= 0)
+                        {
+                            // 通知生成器移除容器
+                            RemoveInternalChildRange(childIndex, 1);
+                        }
+                    }
+                    _realizedContainers.Remove(itemIndex);
                 }
             }
         }
@@ -196,6 +285,13 @@ namespace FileSpace.Controls
             {
                 case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
                     _offset = new Point(0, 0);
+                    _realizedContainers.Clear();
+                    break;
+                    
+                case System.Collections.Specialized.NotifyCollectionChangedAction.Remove:
+                case System.Collections.Specialized.NotifyCollectionChangedAction.Replace:
+                    // 清理可能受影响的容器
+                    _realizedContainers.Clear();
                     break;
             }
             base.OnItemsChanged(sender, args);
@@ -262,38 +358,31 @@ namespace FileSpace.Controls
 
         public Rect MakeVisible(Visual visual, Rect rectangle)
         {
-            if (visual is UIElement element)
+            if (visual is UIElement element && _itemsPerRow > 0)
             {
-                // 查找元素在 InternalChildren 中的位置
-                int childIndex = -1;
-                for (int i = 0; i < InternalChildren.Count; i++)
+                // 查找元素对应的项索引
+                int itemIndex = -1;
+                foreach (var kvp in _realizedContainers)
                 {
-                    if (InternalChildren[i] == element)
+                    if (kvp.Value == element)
                     {
-                        childIndex = i;
+                        itemIndex = kvp.Key;
                         break;
                     }
                 }
-
-                if (childIndex >= 0)
-                {
-                    var generator = ItemContainerGenerator;
-                    var position = new GeneratorPosition(childIndex, 0);
-                    var itemIndex = generator.IndexFromGeneratorPosition(position);
                     
-                    if (itemIndex >= 0 && _itemsPerRow > 0)
-                    {
-                        var row = itemIndex / _itemsPerRow;
-                        var targetY = row * ItemHeight;
+                if (itemIndex >= 0)
+                {
+                    var row = itemIndex / _itemsPerRow;
+                    var targetY = row * ItemHeight;
 
-                        if (targetY < _offset.Y)
-                        {
-                            SetVerticalOffset(targetY);
-                        }
-                        else if (targetY + ItemHeight > _offset.Y + _viewport.Height)
-                        {
-                            SetVerticalOffset(targetY + ItemHeight - _viewport.Height);
-                        }
+                    if (targetY < _offset.Y)
+                    {
+                        SetVerticalOffset(targetY);
+                    }
+                    else if (targetY + ItemHeight > _offset.Y + _viewport.Height)
+                    {
+                        SetVerticalOffset(targetY + ItemHeight - _viewport.Height);
                     }
                 }
             }
