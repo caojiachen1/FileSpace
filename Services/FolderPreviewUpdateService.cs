@@ -11,19 +11,35 @@ namespace FileSpace.Services
     {
         public void UpdateDirectoryPreviewWithSize(object? previewContent, FolderSizeInfo sizeInfo)
         {
-            if (previewContent is StackPanel panel)
+            if (previewContent is Panel panel)
             {
-                // Find all Grid children that are property rows
-                var grids = panel.Children.OfType<Grid>().ToList();
+                var grids = new List<Grid>();
+                FindGridsInPanel(panel, grids);
                 
-                // Find the size status row (总大小:)
                 foreach (var grid in grids)
                 {
-                    if (grid.Children.Count >= 2 && grid.Children[1] is TextBlock valueBlock)
+                    if (grid.Children.Count >= 2 && 
+                        grid.Children[0] is TextBlock labelBlock && 
+                        grid.Children[1] is TextBlock valueBlock)
                     {
-                        var text = valueBlock.Text;
-                        // Match any size-related status
-                        if (text.StartsWith("准备计算") || text.StartsWith("正在后台计算") || text.StartsWith("总大小:"))
+                        var labelText = labelBlock.Text ?? "";
+                        var valueText = valueBlock.Text ?? "";
+
+                        // 1. Update File count row
+                        if (labelText.Contains("包含文件"))
+                        {
+                            valueBlock.Text = $"{sizeInfo.FileCount:N0} 个";
+                        }
+                        // 2. Update Directory count row
+                        else if (labelText.Contains("包含目录") || labelText.Contains("包含文件夹"))
+                        {
+                            valueBlock.Text = $"{sizeInfo.DirectoryCount:N0} 个";
+                        }
+                        // 3. Update Size row
+                        else if (labelText.StartsWith("大小") || labelText.StartsWith("总大小") || 
+                            valueText.Contains("正在计算") || 
+                            valueText.Contains("正在后台计算") || 
+                            valueText.Contains("准备计算"))
                         {
                             if (!string.IsNullOrEmpty(sizeInfo.Error))
                             {
@@ -33,42 +49,36 @@ namespace FileSpace.Services
                             {
                                 valueBlock.Text = sizeInfo.FormattedSize;
                             }
-                            break;
                         }
-                    }
-                }
-
-                // Update file and folder counts if calculation succeeded
-                if (string.IsNullOrEmpty(sizeInfo.Error))
-                {
-                    foreach (var grid in grids)
-                    {
-                        if (grid.Children.Count >= 2)
+                        // 4. Update Status row if exists
+                        else if (labelText.Contains("计算状态"))
                         {
-                            if (grid.Children[0] is TextBlock labelBlock && grid.Children[1] is TextBlock valueBlock2)
+                            if (sizeInfo.InaccessibleItems > 0)
                             {
-                                if (labelBlock.Text == "直接包含文件:")
-                                {
-                                    valueBlock2.Text = $"{sizeInfo.FileCount:N0} 个";
-                                }
-                                else if (labelBlock.Text == "直接包含文件夹:")
-                                {
-                                    valueBlock2.Text = $"{sizeInfo.DirectoryCount:N0} 个";
-                                }
-                                else if (labelBlock.Text == "计算状态:")
-                                {
-                                    if (sizeInfo.InaccessibleItems > 0)
-                                    {
-                                        valueBlock2.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
-                                    }
-                                    else
-                                    {
-                                        valueBlock2.Text = "";
-                                    }
-                                }
+                                valueBlock.Text = $"无法访问 {sizeInfo.InaccessibleItems} 个项目";
+                            }
+                            else
+                            {
+                                valueBlock.Text = "";
                             }
                         }
                     }
+                }
+            }
+        }
+
+        private void FindGridsInPanel(Panel panel, List<Grid> grids)
+        {
+            foreach (var child in panel.Children)
+            {
+                if (child is Grid grid)
+                {
+                    grids.Add(grid);
+                }
+                
+                if (child is Panel childPanel)
+                {
+                    FindGridsInPanel(childPanel, grids);
                 }
             }
         }
