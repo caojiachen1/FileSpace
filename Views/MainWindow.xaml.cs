@@ -141,6 +141,26 @@ namespace FileSpace.Views
             {
                 rightColumn.Width = new GridLength(_rightPanelWidth);
             }
+
+            // 预热下拉菜单以消除第一次打开时的卡顿
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // 预热工具栏菜单
+                var buttons = new[] { NewItemButton, SortModeButton, ViewModeButton, MoreToolsButton };
+                foreach (var btn in buttons)
+                {
+                    if (btn?.ContextMenu != null)
+                    {
+                        btn.ContextMenu.ApplyTemplate();
+                        var count = btn.ContextMenu.Items.Count;
+                    }
+                }
+
+                // 预热主列表菜单
+                if (FileDataGrid?.ContextMenu != null) FileDataGrid.ContextMenu.ApplyTemplate();
+                if (FileIconView?.ContextMenu != null) FileIconView.ContextMenu.ApplyTemplate();
+                if (QuickAccessListView?.ContextMenu != null) QuickAccessListView.ContextMenu.ApplyTemplate();
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
 
         /// <summary>
@@ -672,26 +692,15 @@ namespace FileSpace.Views
         {
             if (button.ContextMenu == null) return;
 
-            // 根据按钮名称映射到 ViewModel 中的状态属性
-            string? stateProperty = button.Name switch
-            {
-                "NewItemButton" => "IsNewItemMenuOpen",
-                "SortModeButton" => "IsSortModeMenuOpen",
-                "ViewModeButton" => "IsViewModeMenuOpen",
-                "MoreToolsButton" => "IsMoreToolsMenuOpen",
-                _ => null
-            };
-
             // 检查当前状态
-            bool isAlreadyOpen = false;
-            if (stateProperty != null)
+            bool isAlreadyOpen = button.Name switch
             {
-                var prop = ViewModel.GetType().GetProperty(stateProperty);
-                if (prop != null)
-                {
-                    isAlreadyOpen = (bool)prop.GetValue(ViewModel)!;
-                }
-            }
+                "NewItemButton" => ViewModel.IsNewItemMenuOpen,
+                "SortModeButton" => ViewModel.IsSortModeMenuOpen,
+                "ViewModeButton" => ViewModel.IsViewModeMenuOpen,
+                "MoreToolsButton" => ViewModel.IsMoreToolsMenuOpen,
+                _ => false
+            };
 
             if (isAlreadyOpen)
             {
@@ -703,11 +712,7 @@ namespace FileSpace.Views
             button.ContextMenu.Placement = PlacementMode.Bottom;
 
             // 设置 ViewModel 状态
-            if (stateProperty != null)
-            {
-                var prop = ViewModel.GetType().GetProperty(stateProperty);
-                prop?.SetValue(ViewModel, true);
-            }
+            SetMenuOpenStatus(button.Name, true);
 
             // 订阅关闭事件以重置标记
             RoutedEventHandler? closedHandler = null;
@@ -721,11 +726,7 @@ namespace FileSpace.Views
                 };
                 timer.Tick += (st, se) =>
                 {
-                    if (stateProperty != null)
-                    {
-                        var p = ViewModel.GetType().GetProperty(stateProperty);
-                        p?.SetValue(ViewModel, false);
-                    }
+                    SetMenuOpenStatus(button.Name, false);
                     timer.Stop();
                 };
                 timer.Start();
@@ -733,6 +734,17 @@ namespace FileSpace.Views
             button.ContextMenu.Closed += closedHandler;
 
             button.ContextMenu.IsOpen = true;
+        }
+
+        private void SetMenuOpenStatus(string buttonName, bool isOpen)
+        {
+            switch (buttonName)
+            {
+                case "NewItemButton": ViewModel.IsNewItemMenuOpen = isOpen; break;
+                case "SortModeButton": ViewModel.IsSortModeMenuOpen = isOpen; break;
+                case "ViewModeButton": ViewModel.IsViewModeMenuOpen = isOpen; break;
+                case "MoreToolsButton": ViewModel.IsMoreToolsMenuOpen = isOpen; break;
+            }
         }
 
         /// <summary>
