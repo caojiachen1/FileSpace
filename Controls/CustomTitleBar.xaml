@@ -6,9 +6,12 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:local="clr-namespace:FileSpace.Controls"
              xmlns:models="clr-namespace:FileSpace.Models"
+             xmlns:converters="clr-namespace:FileSpace.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="34" d:DesignWidth="800">
     <UserControl.Resources>
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        
         <!-- Custom Title Bar Button Style -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -201,9 +204,15 @@
                                     </Grid.ColumnDefinitions>
                                     
                                     <!-- Folder Icon -->
-                                    <ui:SymbolIcon Grid.Column="0" Symbol="Folder24" FontSize="14" 
-                                                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
-                                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Grid Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <ui:SymbolIcon Symbol="Folder24" FontSize="14" 
+                                                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                       Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="16" Height="16"
+                                               Stretch="Uniform"
+                                               Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                    </Grid>
                                     
                                     <!-- Tab Title -->
                                     <TextBlock Grid.Column="1" Text="{Binding DisplayName}" 

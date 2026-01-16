@@ -78,7 +78,11 @@ namespace FileSpace.Services
                         IconColor = "#FCC624",
                         HasSubDirectories = true
                     };
-                    linuxItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32);
+                    // Try different paths for Linux icon
+                    linuxItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32) 
+                                       ?? ThumbnailUtils.GetThumbnail("shell:::{62112AA6-DB4A-462E-A713-7D10A86D864C}", 32, 32)
+                                       ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
+                                       ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
                     directoryTree.Add(linuxItem);
                 }
 

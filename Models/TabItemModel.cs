@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Media;
+using FileSpace.Utils;
 
 namespace FileSpace.Models
 {
@@ -14,6 +16,9 @@ namespace FileSpace.Models
 
         [ObservableProperty]
         private string _displayName = string.Empty;
+
+        [ObservableProperty]
+        private ImageSource? _thumbnail;
 
         [ObservableProperty]
         private bool _isSelected;
@@ -66,6 +71,34 @@ namespace FileSpace.Models
             // 获取文件夹名称
             var directoryName = System.IO.Path.GetFileName(value.TrimEnd('\\'));
             DisplayName = string.IsNullOrEmpty(directoryName) ? value : directoryName;
+
+            // 更新图标
+            UpdateThumbnail();
+        }
+
+        private void UpdateThumbnail()
+        {
+            if (string.IsNullOrEmpty(Path))
+            {
+                Thumbnail = null;
+                return;
+            }
+
+            if (Path == "此电脑")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 32, 32);
+            }
+            else if (Path == "Linux")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("shell:::{62112AA6-DB4A-462E-A713-7D10A86D864C}", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
+            }
+            else
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail(Path, 32, 32);
+            }
         }
 
         public TabItemModel()

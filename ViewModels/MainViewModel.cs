@@ -1003,7 +1003,10 @@ namespace FileSpace.ViewModels
                                 AvailableFreeSpace = 0,
                                 PercentUsed = 0 
                             };
-                            model.Thumbnail = ThumbnailUtils.GetThumbnail(path, 64, 64);
+                            // Also try to get specific distro icon, fallback to wsl$ if needed
+                            model.Thumbnail = ThumbnailUtils.GetThumbnail(path, 64, 64) 
+                                           ?? ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 64, 64)
+                                           ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 64, 64);
                             LinuxDistros.Add(model);
                         }
                     }

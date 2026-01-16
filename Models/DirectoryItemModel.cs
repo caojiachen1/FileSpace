@@ -104,13 +104,31 @@ namespace FileSpace.Models
             }
 
             // Set specific icon/thumbnail if available
-            if (fullPath != "此电脑" && fullPath != "Linux")
-            {
-                Thumbnail = ThumbnailUtils.GetThumbnail(fullPath, 32, 32);
-            }
+            UpdateThumbnail();
             
             // Check if has subdirectories without loading them
             _ = CheckHasSubDirectoriesAsync();
+        }
+
+        private void UpdateThumbnail()
+        {
+            if (string.IsNullOrEmpty(FullPath)) return;
+
+            if (FullPath == "此电脑")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 32, 32);
+            }
+            else if (FullPath == "Linux")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("shell:::{62112AA6-DB4A-462E-A713-7D10A86D864C}", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
+                         ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
+            }
+            else
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail(FullPath, 32, 32);
+            }
         }
 
         partial void OnIsExpandedChanged(bool value)
