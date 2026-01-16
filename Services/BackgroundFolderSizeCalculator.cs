@@ -166,15 +166,15 @@ namespace FileSpace.Services
                                 }
                                 else
                                 {
-                                    statusBlock.Text = $"总大小: {result.FormattedSize}";
+                                    statusBlock.Text = result.FormattedSize;
                                     // Update counts in their original positions
                                     if (fileCountBlock != null)
                                     {
-                                        fileCountBlock.Text = $"总共包含文件: {result.FileCount:N0} 个";
+                                        fileCountBlock.Text = $"{result.FileCount:N0} 个";
                                     }
                                     if (dirCountBlock != null)
                                     {
-                                        dirCountBlock.Text = $"直接包含文件夹: {result.DirectoryCount:N0} 个";
+                                        dirCountBlock.Text = $"{result.DirectoryCount:N0} 个";
                                     }
                                     if (progressBlock != null && result.InaccessibleItems > 0)
                                     {

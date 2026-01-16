@@ -1838,22 +1838,12 @@
                     Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     
-                    <!-- Size Calculation Progress -->
-                    <StackPanel Grid.Row="0" Margin="10,10,10,5" 
-                                Visibility="{Binding IsSizeCalculating, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <ui:ProgressRing IsIndeterminate="True" Width="20" Height="20" Margin="0,0,0,5"/>
-                        <TextBlock Text="{Binding SizeCalculationProgress}" FontSize="11"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                    
-                    <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" Margin="10,10,5,10">
+                    <ScrollViewer Grid.Row="0" x:Name="PreviewScrollViewer" Margin="0,0,0,0">
                         <!-- Loading Overlay -->
-                        <Grid Margin="0,0,15,0">
+                        <Grid Margin="0">
                             <ContentPresenter Content="{Binding PreviewContent}"/>
                             
                             <!-- Loading Indicator with better styling -->

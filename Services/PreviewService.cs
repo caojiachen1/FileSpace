@@ -55,86 +55,43 @@ namespace FileSpace.Services
         private async Task<StackPanel> GenerateFileInfoOnlyAsync(FileItemModel file, FilePreviewType fileType, string reason, CancellationToken cancellationToken)
         {
             var fileInfo = new FileInfo(file.FullPath);
-            var panel = new StackPanel();
-
-            // Add warning
-            var warningBlock = PreviewUIHelper.CreateInfoTextBlock($"⚠️ {reason}");
-            warningBlock.Foreground = Brushes.Orange;
-            warningBlock.FontWeight = FontWeights.Bold;
-            panel.Children.Add(warningBlock);
-            panel.Children.Add(PreviewUIHelper.CreateInfoTextBlock(""));
-
-            // Add common file information using property-value rows
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件名:", fileInfo.Name, fileInfo.Name));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径:", 
-                TruncatePathForDisplay(fileInfo.FullName), 
-                fileInfo.FullName));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件大小:", FileUtils.FormatFileSize(fileInfo.Length)));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件类型:", file.Type));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间:", fileInfo.CreationTime.ToString("yyyy-MM-dd HH:mm:ss")));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间:", fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")));
-
-            // Add file type specific information
-            await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
-
-            // Add instruction
-            var instructionBlock = PreviewUIHelper.CreateInfoTextBlock("双击文件使用默认程序打开");
-            instructionBlock.Foreground = Brushes.LightBlue;
-            instructionBlock.FontStyle = FontStyles.Italic;
-            panel.Children.Add(instructionBlock);
-
-            return panel;
-        }
-
-        private async Task<StackPanel> GenerateFileInfoAndPreviewAsync(FileItemModel file, FilePreviewType fileType, CancellationToken cancellationToken)
-        {
-            var fileInfo = new FileInfo(file.FullPath);
             var panel = new StackPanel { Margin = new Thickness(0) };
 
-            // 1. Visual Preview (Fixed Height Part)
+            // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
             var previewContainer = new Border
             {
                 Height = 300,
-                Background = Brushes.Black,
-                Margin = new Thickness(-10, -10, -10, 15), // Adjust for parent margin
-                ClipToBounds = true,
-                CornerRadius = new CornerRadius(4)
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), 
+                Margin = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                Child = new Wpf.Ui.Controls.SymbolIcon 
+                { 
+                    Symbol = file.Icon, 
+                    FontSize = 80, 
+                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
+                }
             };
-            
-            var previewContentPanel = new StackPanel();
-            await AddPreviewContentAsync(previewContentPanel, fileInfo, fileType, cancellationToken);
-            
-            // If the preview is an image, make sure it's centered in the black border
-            if (fileType == FilePreviewType.Image && previewContentPanel.Children.Count > 0)
-            {
-                var img = previewContentPanel.Children[0] as Image;
-                if (img != null)
-                {
-                    previewContentPanel.Children.Remove(img);
-                    img.MaxHeight = 300;
-                    img.VerticalAlignment = VerticalAlignment.Center;
-                    previewContainer.Child = img;
-                }
-                else
-                {
-                    previewContainer.Child = previewContentPanel;
-                }
-            }
-            else
-            {
-                previewContainer.Child = previewContentPanel;
-            }
-            
             panel.Children.Add(previewContainer);
 
-            // 2. File Name and Icon
+            // Container for details
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
+
+            // Warning message
+            var warningBlock = PreviewUIHelper.CreateInfoTextBlock($"⚠️ {reason}");
+            warningBlock.Foreground = Brushes.Orange;
+            warningBlock.FontWeight = FontWeights.Bold;
+            warningBlock.Margin = new Thickness(0, 0, 0, 10);
+            detailsPanel.Children.Add(warningBlock);
+
+            // File Name and Icon
             var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
             var icon = new Wpf.Ui.Controls.SymbolIcon 
             { 
                 Symbol = file.Icon, 
                 FontSize = 20, 
                 Margin = new Thickness(0, 0, 10, 0),
-                Foreground = (Brush)new BrushConverter().ConvertFromString(file.IconColor)
+                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
             };
             var nameBlock = new TextBlock
             {
@@ -147,24 +104,124 @@ namespace FileSpace.Services
             };
             namePanel.Children.Add(icon);
             namePanel.Children.Add(nameBlock);
-            panel.Children.Add(namePanel);
+            detailsPanel.Children.Add(namePanel);
 
-            // 3. Detailed Info Header
-            panel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
-
-            // 4. Common Metadata Rows
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", file.Type));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("大小", FileUtils.FormatFileSize(fileInfo.Length)));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件位置", 
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", file.Type));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("大小", FileUtils.FormatFileSize(fileInfo.Length)));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件位置", 
                 TruncatePathForDisplay(fileInfo.DirectoryName ?? ""), 
                 fileInfo.DirectoryName));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改日期", fileInfo.LastWriteTime.ToString("yyyy/M/d HH:mm")));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改日期", fileInfo.LastWriteTime.ToString("yyyy/M/d HH:mm")));
+
+            // Try to add properties button
+            try
+            {
+                var mainWindow = Application.Current.MainWindow;
+                var viewModel = mainWindow.DataContext;
+                var propertiesCommand = viewModel?.GetType().GetProperty("ShowPropertiesCommand")?.GetValue(viewModel) as System.Windows.Input.ICommand;
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand));
+            }
+            catch { }
+
+            return panel;
+        }
+
+        private async Task<StackPanel> GenerateFileInfoAndPreviewAsync(FileItemModel file, FilePreviewType fileType, CancellationToken cancellationToken)
+        {
+            var fileInfo = new FileInfo(file.FullPath);
+            var panel = new StackPanel { Margin = new Thickness(0) };
+
+            // 1. Visual Preview (Fixed Height Part) - No Margin to stick to borders
+            var previewContainer = new Border
+            {
+                Height = 300,
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), // Distinct light gray
+                Margin = new Thickness(0), // No margin to stick to edges
+                ClipToBounds = true,
+                CornerRadius = new CornerRadius(0)
+            };
+            
+            var previewContentPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            await AddPreviewContentAsync(previewContentPanel, fileInfo, fileType, cancellationToken);
+            
+            // If the preview is an image, make sure it's centered and detached from previous parent
+            if (fileType == FilePreviewType.Image && previewContentPanel.Children.Count > 0)
+            {
+                var img = previewContentPanel.Children[0] as Image;
+                if (img != null)
+                {
+                    // Detach from stack panel to avoid logical child error
+                    previewContentPanel.Children.Remove(img);
+                    img.MaxHeight = 300;
+                    img.VerticalAlignment = VerticalAlignment.Center;
+                    previewContainer.Child = img;
+                }
+                else
+                {
+                    previewContainer.Child = previewContentPanel;
+                }
+            }
+            else if (previewContentPanel.Children.Count > 0)
+            {
+                // For text or other previews, wrap in a container that allows specific styling if needed
+                previewContainer.Child = previewContentPanel;
+            }
+            else
+            {
+                // Fallback: show the file icon if no content preview is available
+                previewContainer.Child = new Wpf.Ui.Controls.SymbolIcon 
+                { 
+                    Symbol = file.Icon, 
+                    FontSize = 80, 
+                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
+                };
+            }
+            
+            panel.Children.Add(previewContainer);
+
+            // Container for everything else to keep margins for file details
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
+
+            // 2. File Name and Icon
+            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            var icon = new Wpf.Ui.Controls.SymbolIcon 
+            { 
+                Symbol = file.Icon, 
+                FontSize = 20, 
+                Margin = new Thickness(0, 0, 10, 0),
+                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
+            };
+            var nameBlock = new TextBlock
+            {
+                Text = file.Name,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 250,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            namePanel.Children.Add(icon);
+            namePanel.Children.Add(nameBlock);
+            detailsPanel.Children.Add(namePanel);
+
+            // 3. Detailed Info Header
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
+
+            // 4. Common Metadata Rows
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", file.Type));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("大小", FileUtils.FormatFileSize(fileInfo.Length)));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件位置", 
+                TruncatePathForDisplay(fileInfo.DirectoryName ?? ""), 
+                fileInfo.DirectoryName));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改日期", fileInfo.LastWriteTime.ToString("yyyy/M/d HH:mm")));
             
             // 5. File type specific information
-            await AddFileTypeSpecificInfoAsync(panel, fileInfo, fileType, cancellationToken);
+            await AddFileTypeSpecificInfoAsync(detailsPanel, fileInfo, fileType, cancellationToken);
 
             var aiDetectionRow = PreviewUIHelper.CreatePropertyValueRow("AI检测", "正在检测...");
-            panel.Children.Add(aiDetectionRow);
+            detailsPanel.Children.Add(aiDetectionRow);
 
             // 6. Properties Button
             try
@@ -176,11 +233,11 @@ namespace FileSpace.Services
                 
                 var propBtn = PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand);
                 propBtn.Margin = new Thickness(0, 20, 0, 0);
-                panel.Children.Add(propBtn);
+                detailsPanel.Children.Add(propBtn);
             }
             catch
             {
-                panel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24));
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24));
             }
 
             // Start AI detection asynchronously
@@ -274,21 +331,25 @@ namespace FileSpace.Services
             var dirInfo = new DirectoryInfo(file.FullPath);
             var panel = new StackPanel { Margin = new Thickness(0) };
 
-            // 1. Visual Icon (Fixed Height)
+            // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
             var previewContainer = new Border
             {
-                Height = 200,
-                Background = Brushes.Black,
-                Margin = new Thickness(-10, -10, -10, 15),
-                CornerRadius = new CornerRadius(4),
+                Height = 300,
+                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), 
+                Margin = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
                 Child = new Wpf.Ui.Controls.SymbolIcon 
                 { 
                     Symbol = file.Icon, 
                     FontSize = 80, 
-                    Foreground = (Brush)new BrushConverter().ConvertFromString(file.IconColor) 
+                    Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
                 }
             };
             panel.Children.Add(previewContainer);
+
+            // Container for everything else to keep margins for directory details
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
 
             // 2. Name
             var nameBlock = new TextBlock
@@ -299,52 +360,29 @@ namespace FileSpace.Services
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 0, 0, 10)
             };
-            panel.Children.Add(nameBlock);
+            detailsPanel.Children.Add(nameBlock);
 
             // 3. Detailed Info Header
-            panel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
 
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件夹", dirInfo.Name, dirInfo.Name));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径", 
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("文件夹", dirInfo.Name, dirInfo.Name));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRowWithTooltip("完整路径", 
                 TruncatePathForDisplay(dirInfo.FullName), 
                 dirInfo.FullName));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间", dirInfo.CreationTime.ToString("yyyy/M/d HH:mm")));
-            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间", dirInfo.LastWriteTime.ToString("yyyy/M/d HH:mm")));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("创建时间", dirInfo.CreationTime.ToString("yyyy/M/d HH:mm")));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("修改时间", dirInfo.LastWriteTime.ToString("yyyy/M/d HH:mm")));
 
-            // Quick directory count
-            var quickSummary = await Task.Run(() =>
-            {
-                int fileCount = 0;
-                int dirCount = 0;
-
-                try
-                {
-                    foreach (var f in dirInfo.EnumerateFiles())
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        fileCount++;
-                    }
-
-                    foreach (var d in dirInfo.EnumerateDirectories())
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        dirCount++;
-                    }
-                }
-                catch (UnauthorizedAccessException) { }
-
-                return new { FileCount = fileCount, DirCount = dirCount };
-            }, cancellationToken);
-
-            // Create fixed positions for content info
-            var fileCountRow = PreviewUIHelper.CreatePropertyValueRow("包含文件", $"{quickSummary.FileCount:N0} 个");
-            var dirCountRow = PreviewUIHelper.CreatePropertyValueRow("包含目录", $"{quickSummary.DirCount:N0} 个");
+            // Quick stats (initially)
+            var sizeRow = PreviewUIHelper.CreatePropertyValueRow("大小", "正在计算...");
+            var fileCountRow = PreviewUIHelper.CreatePropertyValueRow("包含文件", "正在计算...");
+            var dirCountRow = PreviewUIHelper.CreatePropertyValueRow("包含目录", "正在计算...");
             
-            panel.Children.Add(fileCountRow);
-            panel.Children.Add(dirCountRow);
+            detailsPanel.Children.Add(sizeRow);
+            detailsPanel.Children.Add(fileCountRow);
+            detailsPanel.Children.Add(dirCountRow);
 
-            // Add size calculation section
-            AddSizeCalculationSection(panel, dirInfo.FullName, fileCountRow, dirCountRow);
+            // Add size calculation section (updates the above rows in place)
+            AddSizeCalculationSection(detailsPanel, dirInfo.FullName, sizeRow, fileCountRow, dirCountRow);
 
             // Properties Button
             try
@@ -352,54 +390,44 @@ namespace FileSpace.Services
                 var mainWindow = Application.Current.MainWindow;
                 var viewModel = mainWindow.DataContext;
                 var propertiesCommand = viewModel?.GetType().GetProperty("ShowPropertiesCommand")?.GetValue(viewModel) as System.Windows.Input.ICommand;
-                panel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand));
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand));
             }
             catch { }
 
             return panel;
         }
 
-        private void AddSizeCalculationSection(StackPanel panel, string folderPath, Grid fileCountRow, Grid dirCountRow)
+        private void AddSizeCalculationSection(StackPanel panel, string folderPath, Grid sizeRow, Grid fileCountRow, Grid dirCountRow)
         {
-            var sizeHeaderBlock = PreviewUIHelper.CreateSectionHeader("大小统计");
-            panel.Children.Add(sizeHeaderBlock);
-
             var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
             var cachedSize = backgroundCalculator.GetCachedSize(folderPath);
             var isActiveCalculation = backgroundCalculator.IsCalculationActive(folderPath);
 
-            var sizeStatusRow = PreviewUIHelper.CreatePropertyValueRow("总大小", "");
-            var progressRow = PreviewUIHelper.CreatePropertyValueRow("计算状态", "");
-
             if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
             {
-                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, $"计算失败: {cachedSize.Error}");
-                // Keep original quick count display when calculation fails
+                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, $"计算失败: {cachedSize.Error}");
             }
             else if (cachedSize != null && cachedSize.IsCalculationComplete)
             {
-                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, cachedSize.FormattedSize);
-                // Update the existing rows in place with accurate counts
+                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, cachedSize.FormattedSize);
                 ((Grid)fileCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.FileCount:N0} 个");
                 ((Grid)dirCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.DirectoryCount:N0} 个");
-                if (cachedSize.InaccessibleItems > 0)
-                {
-                    ((Grid)progressRow).Children[1].SetValue(TextBlock.TextProperty, $"无法访问 {cachedSize.InaccessibleItems} 个项目");
-                }
             }
             else if (isActiveCalculation)
             {
-                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, "正在后台计算...");
+                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, "正在后台计算...");
             }
             else
             {
-                ((Grid)sizeStatusRow).Children[1].SetValue(TextBlock.TextProperty, "准备计算...");
+                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, "准备计算...");
                 backgroundCalculator.QueueFolderSizeCalculation(folderPath,
-                    new { PreviewPanel = panel, StatusRow = sizeStatusRow, ProgressRow = progressRow, FileCountRow = fileCountRow, DirCountRow = dirCountRow });
+                    new { 
+                        PreviewPanel = panel, 
+                        StatusBlock = ((Grid)sizeRow).Children[1] as TextBlock, 
+                        FileCountBlock = ((Grid)fileCountRow).Children[1] as TextBlock, 
+                        DirCountBlock = ((Grid)dirCountRow).Children[1] as TextBlock 
+                    });
             }
-
-            panel.Children.Add(sizeStatusRow);
-            panel.Children.Add(progressRow);
         }
 
         private static string TruncatePathForDisplay(string fullPath)
