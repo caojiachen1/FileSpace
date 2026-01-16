@@ -242,28 +242,20 @@ namespace FileSpace.Services
 
             try
             {
-                // 1. 异步读取文件字节 (真正异步，不占用线程池)
+                // 1. 异步读取文件字节
                 byte[] imageBytes = await File.ReadAllBytesAsync(cacheFilePath, cancellationToken);
                 
-                // 2. 切换到 UI 线程创建 BitmapImage
-                return await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    try
-                    {
-                        var bitmap = new BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                        bitmap.StreamSource = new MemoryStream(imageBytes);
-                        bitmap.EndInit();
-                        bitmap.Freeze();
-                        return bitmap as ImageSource;
-                    }
-                    catch (Exception)
-                    {
-                        // 图像数据可能损坏
-                        return null;
-                    }
-                }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
+                // 2. 在后台线程创建并冻结 BitmapImage，无需切换到 UI 线程
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = new MemoryStream(imageBytes);
+                bitmap.EndInit();
+                
+                if (bitmap.CanFreeze)
+                    bitmap.Freeze();
+                
+                return bitmap as ImageSource;
             }
             catch (OperationCanceledException)
             {

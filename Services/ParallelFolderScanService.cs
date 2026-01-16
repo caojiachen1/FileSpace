@@ -53,41 +53,59 @@ namespace FileSpace.Services
         {
             try
             {
-                var dirInfo = new DirectoryInfo(currentPath);
                 var isEmpty = true;
                 var subTasks = new List<Task>();
+                var filesInDir = new List<Win32Api.WIN32_FIND_DATAW>();
+                var subDirsInDir = new List<string>();
                 
                 // 更新进度
                 var currentFolderCount = Interlocked.Increment(ref _processedFolderCount);
-                if (currentFolderCount % 10 == 0) // 每10个文件夹更新一次进度
+                if (currentFolderCount % 10 == 0)
                 {
                     progress?.Report($"正在扫描第 {currentFolderCount} 个文件夹: {Path.GetFileName(currentPath)}");
                 }
-                
-                // 检查是否有文件
-                var hasFiles = dirInfo.EnumerateFiles().Any();
-                if (hasFiles)
-                {
-                    isEmpty = false;
-                    // 异步处理文件
-                    await ProcessFilesAsync(dirInfo, rootPath, result, depth, progress).ConfigureAwait(false);
-                }
-                
-                // 处理子目录
-                var subDirectories = dirInfo.EnumerateDirectories().ToList();
-                foreach (var subDir in subDirectories)
+
+                // Single Win32 pass to collect files and subdirs
+                string searchSpec = Path.Combine(currentPath, "*");
+                var handle = Win32Api.FindFirstFileExW(searchSpec, Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic, 
+                    out var findData, Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                if (!handle.IsInvalid)
                 {
                     try
                     {
-                        isEmpty = false;
-                        Interlocked.Increment(ref result.TotalFolderCount);
-                        
-                        var subDirTask = ScanDirectoryAsync(subDir.FullName, rootPath, result,
-                            progress, depth + 1);
-                        subTasks.Add(subDirTask);
+                        do
+                        {
+                            string fileName = findData.cFileName;
+                            if (fileName == "." || fileName == "..") continue;
+                            isEmpty = false;
+
+                            if (((FileAttributes)findData.dwFileAttributes).HasFlag(FileAttributes.Directory))
+                            {
+                                string subDirFull = Path.Combine(currentPath, fileName);
+                                subDirsInDir.Add(subDirFull);
+                                Interlocked.Increment(ref result.TotalFolderCount);
+                            }
+                            else
+                            {
+                                filesInDir.Add(findData);
+                            }
+                        } while (Win32Api.FindNextFileW(handle, out findData));
                     }
-                    catch (UnauthorizedAccessException) { }
-                    catch (Exception) { }
+                    finally { handle.Close(); }
+                }
+                
+                // Process files
+                if (filesInDir.Count > 0)
+                {
+                    await ProcessFilesListAsync(filesInDir, currentPath, rootPath, result, depth, progress).ConfigureAwait(false);
+                }
+                
+                // Process subdirectories
+                foreach (var subDir in subDirsInDir)
+                {
+                    var subDirTask = ScanDirectoryAsync(subDir, rootPath, result, progress, depth + 1);
+                    subTasks.Add(subDirTask);
                 }
                 
                 // 等待所有子目录扫描完成，但限制并发数
@@ -110,35 +128,26 @@ namespace FileSpace.Services
                     semaphore.Dispose();
                 }
                 
-                // 如果是根目录的直接子目录，记录其大小
                 if (depth == 1)
                 {
                     var subfolderSize = await CalculateSubfolderSizeAsync(currentPath).ConfigureAwait(false);
                     result.SubfolderSizes.TryAdd(currentPath, subfolderSize);
                 }
                 
-                // 检查是否为空目录
                 if (isEmpty && depth > 0)
                 {
                     Interlocked.Increment(ref result.EmptyFolderCount);
                 }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // 无权访问的目录
-                progress?.Report($"无权访问目录: {currentPath}");
             }
             catch (Exception ex)
             {
                 progress?.Report($"扫描目录出错 {currentPath}: {ex.Message}");
             }
         }
-        
-        /// <summary>
-        /// 异步处理目录中的文件
-        /// </summary>
-        private async Task ProcessFilesAsync(
-            DirectoryInfo dirInfo, 
+
+        private async Task ProcessFilesListAsync(
+            List<Win32Api.WIN32_FIND_DATAW> files,
+            string currentPath,
             string rootPath, 
             ParallelScanResult result,
             int depth,
@@ -146,75 +155,58 @@ namespace FileSpace.Services
         {
             await Task.Run(() =>
             {
-                try
+                var processedInThisBatch = 0;
+                Parallel.ForEach(files, new ParallelOptions { MaxDegreeOfParallelism = MAX_CONCURRENT_TASKS }, findData =>
                 {
-                    var files = dirInfo.EnumerateFiles().ToList();
-                    if (files.Count == 0) return;
-                    
-                    var processedCount = 0;
-                    
-                    // 使用并行处理文件
-                    Parallel.ForEach(files, new ParallelOptions
+                    try
                     {
-                        MaxDegreeOfParallelism = MAX_CONCURRENT_TASKS
-                    }, file =>
-                    {
-                        try
+                        string fileName = findData.cFileName;
+                        string fullPath = Path.Combine(currentPath, fileName);
+                        string relativePath = Path.GetRelativePath(rootPath, fullPath);
+                        string extension = Path.GetExtension(fileName);
+                        long size = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                        
+                        var fileInfo = new FileInfoData
                         {
-                            var relativePath = Path.GetRelativePath(rootPath, file.FullName);
-                            var fileType = GetFileType(file.Extension);
-                            
-                            // 创建文件信息
-                            var fileInfo = new FileInfoData
+                            Name = fileName,
+                            FullPath = fullPath,
+                            RelativePath = relativePath,
+                            Size = size,
+                            ModifiedDate = Win32Api.ToDateTime(findData.ftLastWriteTime),
+                            Depth = depth
+                        };
+                        
+                        result.AllFiles.Add(fileInfo);
+                        
+                        string fileType = GetFileType(extension);
+                        result.FileTypeStats.AddOrUpdate(fileType,
+                            new FileTypeStats { Count = 1, TotalSize = size },
+                            (key, existing) => new FileTypeStats
                             {
-                                Name = file.Name,
-                                FullPath = file.FullName,
-                                RelativePath = relativePath,
-                                Size = file.Length,
-                                ModifiedDate = file.LastWriteTime,
-                                Depth = depth
-                            };
-                            
-                            // 添加到全局文件列表
-                            result.AllFiles.Add(fileInfo);
-                            
-                            // 更新统计信息
-                            result.FileTypeStats.AddOrUpdate(fileType,
-                                new FileTypeStats { Count = 1, TotalSize = file.Length },
-                                (key, existing) => new FileTypeStats
-                                {
-                                    Count = existing.Count + 1,
-                                    TotalSize = existing.TotalSize + file.Length
-                                });
-                            
-                            var extension = string.IsNullOrEmpty(file.Extension) ? "(无扩展名)" : file.Extension.ToLower();
-                            result.ExtensionStats.AddOrUpdate(extension,
-                                new ExtensionStats { Count = 1, TotalSize = file.Length },
-                                (key, existing) => new ExtensionStats
-                                {
-                                    Count = existing.Count + 1,
-                                    TotalSize = existing.TotalSize + file.Length
-                                });
-                            
-                            // 检查空文件
-                            if (file.Length == 0)
+                                Count = existing.Count + 1,
+                                TotalSize = existing.TotalSize + size
+                            });
+                        
+                        var ext = string.IsNullOrEmpty(extension) ? "(无扩展名)" : extension.ToLower();
+                        result.ExtensionStats.AddOrUpdate(ext,
+                            new ExtensionStats { Count = 1, TotalSize = size },
+                            (key, existing) => new ExtensionStats
                             {
-                                result.EmptyFiles.Add(fileInfo);
-                            }
-                            
-                            // 更新进度
-                            var currentProcessed = Interlocked.Increment(ref processedCount);
-                            if (currentProcessed % PROGRESS_UPDATE_INTERVAL == 0)
-                            {
-                                var totalProcessed = Interlocked.Add(ref _processedFileCount, PROGRESS_UPDATE_INTERVAL);
-                                progress?.Report($"已处理 {totalProcessed} 个文件... {Path.GetFileName(file.FullName)}");
-                            }
+                                Count = existing.Count + 1,
+                                TotalSize = existing.TotalSize + size
+                            });
+                        
+                        if (size == 0) result.EmptyFiles.Add(fileInfo);
+                        
+                        var current = Interlocked.Increment(ref processedInThisBatch);
+                        if (current % PROGRESS_UPDATE_INTERVAL == 0)
+                        {
+                            Interlocked.Add(ref _processedFileCount, PROGRESS_UPDATE_INTERVAL);
+                            progress?.Report($"已扫描 {Interlocked.CompareExchange(ref _processedFileCount, 0, 0)} 个文件...");
                         }
-                        catch (UnauthorizedAccessException) { }
-                        catch (Exception) { }
-                    });
-                }
-                catch (Exception) { }
+                    }
+                    catch { }
+                });
             }).ConfigureAwait(false);
         }
         
@@ -225,26 +217,34 @@ namespace FileSpace.Services
         {
             return await Task.Run(() =>
             {
-                try
+                long totalSize = 0;
+                var stack = new Stack<string>();
+                stack.Push(folderPath);
+
+                while (stack.Count > 0)
                 {
-                    return Directory.EnumerateFiles(folderPath, "*", SearchOption.AllDirectories)
-                        .AsParallel()
-                        .Sum(filePath =>
+                    string current = stack.Pop();
+                    string searchSpec = Path.Combine(current, "*");
+                    var handle = Win32Api.FindFirstFileExW(searchSpec, Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic, 
+                        out var findData, Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+                    
+                    if (handle.IsInvalid) continue;
+                    try
+                    {
+                        do
                         {
-                            try
-                            {
-                                return new FileInfo(filePath).Length;
-                            }
-                            catch
-                            {
-                                return 0L;
-                            }
-                        });
+                            string name = findData.cFileName;
+                            if (name == "." || name == "..") continue;
+                            
+                            if (((FileAttributes)findData.dwFileAttributes).HasFlag(FileAttributes.Directory))
+                                stack.Push(Path.Combine(current, name));
+                            else
+                                totalSize += Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                        } while (Win32Api.FindNextFileW(handle, out findData));
+                    }
+                    finally { handle.Close(); }
                 }
-                catch
-                {
-                    return 0L;
-                }
+                return totalSize;
             }).ConfigureAwait(false);
         }
         

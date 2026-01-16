@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -1126,52 +1127,53 @@ namespace FileSpace.ViewModels
 
                 await Task.Run(async () =>
                 {
-                    var updates = new List<(FileItemModel model, ImageSource thumbnail)>();
-                    int processedSinceLastUpdate = 0;
+                    var updates = new ConcurrentBag<(FileItemModel model, ImageSource thumbnail)>();
+                    int processedCount = 0;
+                    
+                    // Degree of parallelism for thumbnail generation
+                    int dop = Math.Max(2, Environment.ProcessorCount / 2);
 
-                    foreach (var file in filesSnapshot)
+                    await Parallel.ForEachAsync(filesSnapshot, new ParallelOptions 
+                    { 
+                        MaxDegreeOfParallelism = dop,
+                        CancellationToken = token 
+                    }, async (file, ct) =>
                     {
-                        if (token.IsCancellationRequested) break;
-                        
-                        // If we already have a thumbnail and it's big enough, skip
-                        if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) continue;
+                        if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) return;
 
                         try
                         {
-                            var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, token);
+                            var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, ct);
                             if (thumbnail != null)
                             {
                                 updates.Add((file, thumbnail));
-                                processedSinceLastUpdate++;
-                            }
-                        }
-                        catch { /* Ignore failures for individual files */ }
-
-                        // Batch update UI every 20 items or if we've reached the end
-                        if (updates.Count >= 20 || (processedSinceLastUpdate > 0 && file == filesSnapshot.Last()))
-                        {
-                            var currentUpdates = updates.ToList();
-                            updates.Clear();
-                            
-                            await Application.Current.Dispatcher.InvokeAsync(() =>
-                            {
-                                foreach (var update in currentUpdates)
+                                
+                                var current = Interlocked.Increment(ref processedCount);
+                                // Batch update UI every 20 items or for last few items
+                                if (current % 20 == 0 || current >= filesSnapshot.Count - dop)
                                 {
-                                    if (!token.IsCancellationRequested)
+                                    var currentUpdates = new List<(FileItemModel model, ImageSource thumbnail)>();
+                                    while (updates.TryTake(out var update)) currentUpdates.Add(update);
+                                    
+                                    if (currentUpdates.Count > 0)
                                     {
-                                        update.model.Thumbnail = update.thumbnail;
-                                        update.model.LoadedThumbnailSize = targetSize;
+                                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                                        {
+                                            foreach (var up in currentUpdates)
+                                            {
+                                                if (!token.IsCancellationRequested)
+                                                {
+                                                    up.model.Thumbnail = up.thumbnail;
+                                                    up.model.LoadedThumbnailSize = targetSize;
+                                                }
+                                            }
+                                        }, System.Windows.Threading.DispatcherPriority.Background);
                                     }
                                 }
-                            }, System.Windows.Threading.DispatcherPriority.Background);
+                            }
                         }
-                        
-                        // Small yield to keep CPU from hammering too hard and allow other tasks
-                        if (processedSinceLastUpdate % 50 == 0)
-                        {
-                            await Task.Delay(1, token);
-                        }
-                    }
+                        catch { }
+                    });
                 }, token);
             }
             catch (OperationCanceledException) { }

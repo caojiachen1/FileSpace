@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Channels;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.Services
 {
@@ -196,72 +197,70 @@ namespace FileSpace.Services
 
         private void CalculateSize(string path, FolderSizeInfo result, FolderSizeProgress progress, IProgress<FolderSizeProgress> progressReporter)
         {
-            try
+            var stack = new Stack<string>();
+            stack.Push(path);
+
+            while (stack.Count > 0)
             {
-                var dirInfo = new DirectoryInfo(path);
-                bool isRootCalculation = string.IsNullOrEmpty(progress.CurrentPath);
+                var currentPath = stack.Pop();
+                var searchSpec = Path.Combine(currentPath, "*");
                 
-                // Calculate files in current directory
-                foreach (var file in dirInfo.EnumerateFiles())
+                var handle = Win32Api.FindFirstFileExW(
+                    searchSpec,
+                    Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                    out var findData,
+                    Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                    IntPtr.Zero,
+                    Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                if (handle.IsInvalid)
                 {
-                    try
-                    {
-                        result.TotalSize += file.Length;
-                        result.FileCount++;
-                        progress.ProcessedFiles++;
-                        
-                        // Report progress every 200 files
-                        if (progress.ProcessedFiles % 200 == 0)
-                        {
-                            progress.CurrentPath = file.FullName;
-                            progressReporter.Report(progress);
-                        }
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        result.InaccessibleItems++;
-                    }
-                    catch (Exception)
-                    {
-                        result.InaccessibleItems++;
-                    }
+                    result.InaccessibleItems++;
+                    continue;
                 }
 
-                // Recursively calculate subdirectories
-                foreach (var subDir in dirInfo.EnumerateDirectories())
+                try
                 {
-                    try
+                    do
                     {
-                        // Only count direct subdirectories for the root folder
-                        if (isRootCalculation)
+                        var fileName = findData.cFileName;
+                        if (fileName == "." || fileName == "..") continue;
+
+                        var attributes = (FileAttributes)findData.dwFileAttributes;
+                        var fullPath = Path.Combine(currentPath, fileName);
+
+                        if (attributes.HasFlag(FileAttributes.Directory))
                         {
-                            result.DirectoryCount++;
+                            if (currentPath == path) // Direct subdirectories of the root folder
+                            {
+                                result.DirectoryCount++;
+                            }
+                            
+                            progress.ProcessedDirectories++;
+                            stack.Push(fullPath);
                         }
-                        
-                        progress.ProcessedDirectories++;
-                        progress.CurrentPath = subDir.FullName;
-                        progressReporter.Report(progress);
-                        
-                        CalculateSize(subDir.FullName, result, progress, progressReporter);
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        result.InaccessibleItems++;
-                    }
-                    catch (Exception)
-                    {
-                        result.InaccessibleItems++;
-                    }
+                        else
+                        {
+                            result.TotalSize += Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                            result.FileCount++;
+                            progress.ProcessedFiles++;
+
+                            if (progress.ProcessedFiles % 500 == 0)
+                            {
+                                progress.CurrentPath = fullPath;
+                                progressReporter.Report(progress);
+                            }
+                        }
+                    } while (Win32Api.FindNextFileW(handle, out findData));
                 }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                result.Error = "访问被拒绝";
-                result.InaccessibleItems++;
-            }
-            catch (Exception ex)
-            {
-                result.Error = ex.Message;
+                catch
+                {
+                    result.InaccessibleItems++;
+                }
+                finally
+                {
+                    handle.Close();
+                }
             }
         }
 
