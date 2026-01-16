@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using FileSpace.Services;
+using FileSpace.Utils;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Models
@@ -24,6 +25,9 @@ namespace FileSpace.Models
 
         [ObservableProperty]
         private string _iconColor = "#FFE6A23C";
+
+        [ObservableProperty]
+        private System.Windows.Media.ImageSource? _thumbnail;
 
         [ObservableProperty]
         private ObservableCollection<DirectoryItemModel> _subDirectories = new();
@@ -97,6 +101,12 @@ namespace FileSpace.Models
                 {
                     Name = fullPath; // For cases like network shares
                 }
+            }
+
+            // Set specific icon/thumbnail if available
+            if (fullPath != "此电脑" && fullPath != "Linux")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail(fullPath, 32, 32);
             }
             
             // Check if has subdirectories without loading them

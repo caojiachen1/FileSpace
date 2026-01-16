@@ -33,6 +33,9 @@ namespace FileSpace.Models
         private SymbolRegular _icon;
 
         [ObservableProperty]
+        private ImageSource? _thumbnail;
+
+        [ObservableProperty]
         private string? _customDescription;
 
         public string Description

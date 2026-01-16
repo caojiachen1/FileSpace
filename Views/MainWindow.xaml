@@ -1070,9 +1070,16 @@
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding SubDirectories}">
                                 <StackPanel Orientation="Horizontal">
-                                    <!-- Colorful folder icon -->
-                                    <ui:SymbolIcon Symbol="{Binding Icon}" Margin="0,0,5,0" FontSize="18"
-                                                   Foreground="{Binding IconColor}"/>
+                                    <Grid Margin="0,0,5,0" VerticalAlignment="Center">
+                                        <!-- Colorful folder icon -->
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="18"
+                                                       Foreground="{Binding IconColor}"
+                                                       Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="18" Height="18"
+                                               Stretch="Uniform"
+                                               Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                    </Grid>
                                     
                                     <!-- Directory name -->
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
@@ -1210,7 +1217,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     
-                                    <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="40" Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <Grid Margin="0,0,12,0" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="40" 
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                       Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="40" Height="40"
+                                               Stretch="Uniform"
+                                               Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                    </Grid>
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
@@ -1274,7 +1289,15 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     
-                                    <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="40" Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    <Grid Margin="0,0,12,0" VerticalAlignment="Center">
+                                        <ui:SymbolIcon Symbol="{Binding Icon}" FontSize="40" 
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                                       Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                        <Image Source="{Binding Thumbnail}"
+                                               Width="40" Height="40"
+                                               Stretch="Uniform"
+                                               Visibility="{Binding Thumbnail, Converter={StaticResource NullToVisibilityConverter}}"/>
+                                    </Grid>
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>

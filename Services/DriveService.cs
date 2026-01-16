@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FileSpace.Models;
+using FileSpace.Utils;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
@@ -63,6 +64,7 @@ namespace FileSpace.Services
                     IconColor = "#FF2196F3",
                     IsExpanded = true
                 };
+                thisPCItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 32, 32);
 
                 directoryTree.Add(thisPCItem);
                 
@@ -76,6 +78,7 @@ namespace FileSpace.Services
                         IconColor = "#FCC624",
                         HasSubDirectories = true
                     };
+                    linuxItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32);
                     directoryTree.Add(linuxItem);
                 }
 
@@ -128,7 +131,8 @@ namespace FileSpace.Services
                             TotalSize = totalSize,
                             AvailableFreeSpace = freeSpace,
                             PercentUsed = percentUsed,
-                            Icon = icon
+                            Icon = icon,
+                            Thumbnail = ThumbnailUtils.GetThumbnail(drive.Name, 64, 64)
                         });
                     }
                 }

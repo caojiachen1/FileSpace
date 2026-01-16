@@ -992,7 +992,7 @@ namespace FileSpace.ViewModels
                         var distros = await WslService.Instance.GetDistributionsAsync();
                         foreach (var (name, path) in distros)
                         {
-                            LinuxDistros.Add(new DriveItemModel
+                            var model = new DriveItemModel
                             {
                                 Name = name,
                                 DriveLetter = path,
@@ -1002,7 +1002,9 @@ namespace FileSpace.ViewModels
                                 TotalSize = 0, 
                                 AvailableFreeSpace = 0,
                                 PercentUsed = 0 
-                            });
+                            };
+                            model.Thumbnail = ThumbnailUtils.GetThumbnail(path, 64, 64);
+                            LinuxDistros.Add(model);
                         }
                     }
                     
