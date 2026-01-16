@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.RegularExpressions;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.Services
 {
@@ -146,126 +147,130 @@ namespace FileSpace.Services
             CancellationToken cancellationToken,
             Action<int, int> progressCallback)
         {
-            try
+            await Task.Run(() =>
             {
-                var directory = new DirectoryInfo(directoryPath);
-                if (!directory.Exists) return;
+                Stack<string> stack = new Stack<string>();
+                stack.Push(directoryPath);
+                int searchedCount = 0;
+                int estimatedTotal = 1000;
 
-                var searchedCount = 0;
-                var estimatedTotal = 100;
-
-                // 搜索文件
-                if (options.SearchFiles)
+                while (stack.Count > 0)
                 {
-                    var files = directory.GetFiles();
-                    estimatedTotal += files.Length;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string currentPath = stack.Pop();
 
-                    foreach (var file in files)
+                    string searchSpec = Path.Combine(currentPath, "*");
+                    var handle = Win32Api.FindFirstFileExW(
+                        searchSpec,
+                        Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                        out var findData,
+                        Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                        IntPtr.Zero,
+                        Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                    if (handle.IsInvalid) continue;
+
+                    try
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        if (IsFileMatch(file, searchPattern, options))
+                        do
                         {
-                            var fileItem = CreateFileItemModel(file);
-                            lock (results)
+                            string fileName = findData.cFileName;
+                            if (fileName == "." || fileName == "..") continue;
+
+                            string fullPath = Path.Combine(currentPath, fileName);
+                            var attributes = (FileAttributes)findData.dwFileAttributes;
+                            bool isDirectory = attributes.HasFlag(FileAttributes.Directory);
+
+                            if (isDirectory)
                             {
-                                results.Add(fileItem);
-                            }
-                        }
+                                if (options.SearchDirectories && IsNameMatch(fileName, searchPattern, options))
+                                {
+                                    var dirItem = new FileItemModel
+                                    {
+                                        Name = fileName,
+                                        FullPath = fullPath,
+                                        IsDirectory = true,
+                                        ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm"),
+                                        Type = "文件夹",
+                                        Icon = Wpf.Ui.Controls.SymbolRegular.Folder24,
+                                        IconColor = "#FFE6A23C"
+                                    };
+                                    lock (results) { results.Add(dirItem); }
+                                }
 
-                        searchedCount++;
-                        if (searchedCount % 10 == 0)
-                        {
-                            progressCallback(searchedCount, estimatedTotal);
-                        }
+                                if (options.IncludeSubdirectories)
+                                {
+                                    stack.Push(fullPath);
+                                }
+                            }
+                            else
+                            {
+                                if (options.SearchFiles && IsWin32FileMatch(findData, searchPattern, options))
+                                {
+                                    string ext = Path.GetExtension(fileName);
+                                    var fileItem = new FileItemModel
+                                    {
+                                        Name = fileName,
+                                        FullPath = fullPath,
+                                        IsDirectory = false,
+                                        Size = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow),
+                                        ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm"),
+                                        Type = FileSystemService.GetFileTypePublic(ext),
+                                        Icon = FileSystemService.GetFileIconPublic(ext),
+                                        IconColor = FileSystemService.GetFileIconColorPublic(ext)
+                                    };
+                                    lock (results) { results.Add(fileItem); }
+                                }
+                            }
+
+                            searchedCount++;
+                            if (searchedCount % 100 == 0)
+                            {
+                                progressCallback(searchedCount, Math.Max(searchedCount + stack.Count * 20, estimatedTotal));
+                            }
+
+                        } while (Win32Api.FindNextFileW(handle, out findData));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error scanning {currentPath}: {ex.Message}");
+                    }
+                    finally
+                    {
+                        handle.Close();
                     }
                 }
-
-                // 搜索文件夹
-                if (options.SearchDirectories)
-                {
-                    var directories = directory.GetDirectories();
-                    estimatedTotal += directories.Length;
-
-                    foreach (var dir in directories)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        if (IsDirectoryMatch(dir, searchPattern, options))
-                        {
-                            var dirItem = CreateDirectoryItemModel(dir);
-                            lock (results)
-                            {
-                                results.Add(dirItem);
-                            }
-                        }
-
-                        searchedCount++;
-                        progressCallback(searchedCount, estimatedTotal);
-                    }
-
-                    // 递归搜索子目录
-                    if (options.IncludeSubdirectories)
-                    {
-                        foreach (var dir in directories)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            
-                            try
-                            {
-                                await SearchDirectoryRecursive(
-                                    dir.FullName,
-                                    searchPattern,
-                                    options,
-                                    results,
-                                    cancellationToken,
-                                    progressCallback);
-                            }
-                            catch (UnauthorizedAccessException)
-                            {
-                                // 忽略无权限访问的目录
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // 忽略无权限访问的目录
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // 忽略不存在的目录
-            }
+            }, cancellationToken);
         }
 
-        private bool IsFileMatch(FileInfo file, string searchPattern, SearchOptions options)
+        private bool IsWin32FileMatch(Win32Api.WIN32_FIND_DATAW findData, string searchPattern, SearchOptions options)
         {
             try
             {
                 // 文件名匹配
-                if (!IsNameMatch(file.Name, searchPattern, options))
+                if (!IsNameMatch(findData.cFileName, searchPattern, options))
                     return false;
 
                 // 文件大小过滤
-                if (options.MinSize.HasValue && file.Length < options.MinSize.Value)
+                long fileSize = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                if (options.MinSize.HasValue && fileSize < options.MinSize.Value)
                     return false;
 
-                if (options.MaxSize.HasValue && file.Length > options.MaxSize.Value)
+                if (options.MaxSize.HasValue && fileSize > options.MaxSize.Value)
                     return false;
 
                 // 修改时间过滤
-                if (options.ModifiedAfter.HasValue && file.LastWriteTime < options.ModifiedAfter.Value)
+                DateTime lastWriteTime = Win32Api.ToDateTime(findData.ftLastWriteTime);
+                if (options.ModifiedAfter.HasValue && lastWriteTime < options.ModifiedAfter.Value)
                     return false;
 
-                if (options.ModifiedBefore.HasValue && file.LastWriteTime > options.ModifiedBefore.Value)
+                if (options.ModifiedBefore.HasValue && lastWriteTime > options.ModifiedBefore.Value)
                     return false;
 
                 // 文件扩展名过滤
                 if (options.FileExtensions?.Any() == true)
                 {
-                    var extension = file.Extension.ToLowerInvariant();
+                    var extension = Path.GetExtension(findData.cFileName).ToLowerInvariant();
                     if (!options.FileExtensions.Contains(extension))
                         return false;
                 }

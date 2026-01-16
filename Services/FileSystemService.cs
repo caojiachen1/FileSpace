@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using FileSpace.Models;
+using FileSpace.Utils;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
@@ -38,51 +39,64 @@ namespace FileSpace.Services
             {
                 try
                 {
-                    var dirInfo = new DirectoryInfo(currentPath);
-                    foreach (var info in dirInfo.EnumerateFileSystemInfos())
-                    {
-                        if (cancellationToken.IsCancellationRequested) break;
+                    string searchPath = Path.Combine(currentPath, "*");
+                    var handle = Win32Api.FindFirstFileExW(
+                        searchPath,
+                        Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                        out var findData,
+                        Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                        IntPtr.Zero,
+                        Win32Api.FIND_FIRST_EX_LARGE_FETCH);
 
+                    if (!handle.IsInvalid)
+                    {
                         try
                         {
-                            if (!ShouldShowItem(info.Attributes))
-                                continue;
+                            do
+                            {
+                                if (cancellationToken.IsCancellationRequested) break;
+                                
+                                string fileName = findData.cFileName;
+                                if (fileName == "." || fileName == "..") continue;
 
-                            FileItemModel? item = null;
-                            if (info is DirectoryInfo di)
-                            {
-                                item = new FileItemModel
-                                {
-                                    Name = di.Name,
-                                    FullPath = di.FullName,
-                                    IsDirectory = true,
-                                    Icon = SymbolRegular.Folder24,
-                                    IconColor = "#FFE6A23C",
-                                    Type = "文件夹",
-                                    ModifiedTime = di.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                                };
-                            }
-                            else if (info is FileInfo fi)
-                            {
-                                item = new FileItemModel
-                                {
-                                    Name = fi.Name,
-                                    FullPath = fi.FullName,
-                                    IsDirectory = false,
-                                    Size = fi.Length,
-                                    Icon = GetFileIcon(fi.Extension),
-                                    IconColor = GetFileIconColor(fi.Extension),
-                                    Type = GetFileType(fi.Extension),
-                                    ModifiedTime = fi.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                                };
-                            }
+                                var attributes = (FileAttributes)findData.dwFileAttributes;
+                                if (!ShouldShowItem(attributes))
+                                    continue;
 
-                            if (item != null)
-                            {
+                                bool isDirectory = attributes.HasFlag(FileAttributes.Directory);
+                                string fullPath = Path.Combine(currentPath, fileName);
+                                string extension = isDirectory ? string.Empty : Path.GetExtension(fileName);
+                                
+                                FileItemModel item = new FileItemModel
+                                {
+                                    Name = fileName,
+                                    FullPath = fullPath,
+                                    IsDirectory = isDirectory,
+                                    ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm")
+                                };
+
+                                if (isDirectory)
+                                {
+                                    item.Icon = SymbolRegular.Folder24;
+                                    item.IconColor = "#FFE6A23C";
+                                    item.Type = "文件夹";
+                                }
+                                else
+                                {
+                                    item.Size = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                                    item.Icon = GetFileIcon(extension);
+                                    item.IconColor = GetFileIconColor(extension);
+                                    item.Type = GetFileType(extension);
+                                }
+
                                 await channel.Writer.WriteAsync(item, cancellationToken);
-                            }
+
+                            } while (Win32Api.FindNextFileW(handle, out findData));
                         }
-                        catch { continue; }
+                        finally
+                        {
+                            handle.Close();
+                        }
                     }
                 }
                 catch { }
@@ -132,17 +146,39 @@ namespace FileSpace.Services
                     if (!Directory.Exists(path))
                         return subDirs;
 
-                    var dirInfo = new DirectoryInfo(path);
-                    foreach (var di in dirInfo.EnumerateDirectories())
+                    string searchPath = Path.Combine(path, "*");
+                    var handle = Win32Api.FindFirstFileExW(
+                        searchPath,
+                        Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                        out var findData,
+                        Win32Api.FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories,
+                        IntPtr.Zero,
+                        Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                    if (!handle.IsInvalid)
                     {
                         try
                         {
-                            if (!ShouldShowItem(di.Attributes))
-                                continue;
+                            do
+                            {
+                                string fileName = findData.cFileName;
+                                if (fileName == "." || fileName == "..") continue;
 
-                            subDirs.Add(new BreadcrumbItem(di.Name, di.FullName));
+                                var attributes = (FileAttributes)findData.dwFileAttributes;
+                                if (attributes.HasFlag(FileAttributes.Directory))
+                                {
+                                    if (!ShouldShowItem(attributes))
+                                        continue;
+
+                                    string fullPath = Path.Combine(path, fileName);
+                                    subDirs.Add(new BreadcrumbItem(fileName, fullPath));
+                                }
+                            } while (Win32Api.FindNextFileW(handle, out findData));
                         }
-                        catch { continue; }
+                        finally
+                        {
+                            handle.Close();
+                        }
                     }
                 }
                 catch { }

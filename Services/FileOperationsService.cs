@@ -1,5 +1,6 @@
 using System.IO;
 using FileSpace.Models;
+using FileSpace.Utils;
 
 namespace FileSpace.Services
 {
@@ -150,10 +151,9 @@ namespace FileSpace.Services
 
         private static async Task<int> CountFilesAsync(List<string> paths)
         {
-            int count = 0;
-            
-            await Task.Run(() =>
+            return await Task.Run(() =>
             {
+                int count = 0;
                 foreach (var path in paths)
                 {
                     if (File.Exists(path))
@@ -162,20 +162,42 @@ namespace FileSpace.Services
                     }
                     else if (Directory.Exists(path))
                     {
-                        count += Directory.GetFiles(path, "*", SearchOption.AllDirectories).Length;
+                        Stack<string> stack = new Stack<string>();
+                        stack.Push(path);
+                        while (stack.Count > 0)
+                        {
+                            string current = stack.Pop();
+                            string searchSpec = Path.Combine(current, "*");
+                            var handle = Win32Api.FindFirstFileExW(searchSpec, Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic, 
+                                out var findData, Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+                            
+                            if (handle.IsInvalid) continue;
+                            try
+                            {
+                                do
+                                {
+                                    string name = findData.cFileName;
+                                    if (name == "." || name == "..") continue;
+                                    
+                                    if (((FileAttributes)findData.dwFileAttributes).HasFlag(FileAttributes.Directory))
+                                        stack.Push(Path.Combine(current, name));
+                                    else
+                                        count++;
+                                } while (Win32Api.FindNextFileW(handle, out findData));
+                            }
+                            finally { handle.Close(); }
+                        }
                     }
                 }
+                return count;
             });
-            
-            return count;
         }
 
         private static async Task<long> CalculateTotalSizeAsync(List<string> paths)
         {
-            long totalSize = 0;
-            
-            await Task.Run(() =>
+            return await Task.Run(() =>
             {
+                long totalSize = 0;
                 foreach (var path in paths)
                 {
                     if (File.Exists(path))
@@ -184,13 +206,35 @@ namespace FileSpace.Services
                     }
                     else if (Directory.Exists(path))
                     {
-                        totalSize += Directory.GetFiles(path, "*", SearchOption.AllDirectories)
-                            .Sum(file => new FileInfo(file).Length);
+                        Stack<string> stack = new Stack<string>();
+                        stack.Push(path);
+                        while (stack.Count > 0)
+                        {
+                            string current = stack.Pop();
+                            string searchSpec = Path.Combine(current, "*");
+                            var handle = Win32Api.FindFirstFileExW(searchSpec, Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic, 
+                                out var findData, Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch, IntPtr.Zero, Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+                            
+                            if (handle.IsInvalid) continue;
+                            try
+                            {
+                                do
+                                {
+                                    string name = findData.cFileName;
+                                    if (name == "." || name == "..") continue;
+                                    
+                                    if (((FileAttributes)findData.dwFileAttributes).HasFlag(FileAttributes.Directory))
+                                        stack.Push(Path.Combine(current, name));
+                                    else
+                                        totalSize += Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                                } while (Win32Api.FindNextFileW(handle, out findData));
+                            }
+                            finally { handle.Close(); }
+                        }
                     }
                 }
+                return totalSize;
             });
-            
-            return totalSize;
         }
 
         private static string GetUniqueFileName(string filePath)
