@@ -13,6 +13,11 @@ namespace FileSpace.Services
 {
     public class PreviewService
     {
+        // 预览区统一配置常量
+        private const double PREVIEW_CONTAINER_HEIGHT = 250;
+        private static readonly Color PREVIEW_BACKGROUND_COLOR = Color.FromRgb(50, 50, 50);
+        private static readonly SolidColorBrush PREVIEW_BACKGROUND_BRUSH = new(PREVIEW_BACKGROUND_COLOR);
+
         private static readonly Lazy<PreviewService> _instance = new(() => new PreviewService());
         public static PreviewService Instance => _instance.Value;
 
@@ -60,8 +65,8 @@ namespace FileSpace.Services
             // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
             var previewContainer = new Border
             {
-                Height = 300,
-                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), 
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH, 
                 Margin = new Thickness(0),
                 CornerRadius = new CornerRadius(0),
                 Child = new Wpf.Ui.Controls.SymbolIcon 
@@ -135,8 +140,8 @@ namespace FileSpace.Services
             // 1. Visual Preview (Fixed Height Part) - No Margin to stick to borders
             var previewContainer = new Border
             {
-                Height = 300,
-                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), // Distinct light gray
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH, // Distinct light gray
                 Margin = new Thickness(0), // No margin to stick to edges
                 ClipToBounds = true,
                 CornerRadius = new CornerRadius(0)
@@ -153,7 +158,7 @@ namespace FileSpace.Services
                 {
                     // Detach from stack panel to avoid logical child error
                     previewContentPanel.Children.Remove(img);
-                    img.MaxHeight = 300;
+                    img.MaxHeight = PREVIEW_CONTAINER_HEIGHT;
                     img.VerticalAlignment = VerticalAlignment.Center;
                     previewContainer.Child = img;
                 }
@@ -334,8 +339,8 @@ namespace FileSpace.Services
             // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
             var previewContainer = new Border
             {
-                Height = 300,
-                Background = new SolidColorBrush(Color.FromRgb(240, 240, 240)), 
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH, 
                 Margin = new Thickness(0),
                 CornerRadius = new CornerRadius(0),
                 Child = new Wpf.Ui.Controls.SymbolIcon 
