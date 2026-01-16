@@ -1520,7 +1520,9 @@
                               Visibility="{Binding IsIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left"/>
+                                <controls:VirtualizingWrapPanel 
+                                    ItemWidth="{Binding DataContext.IconItemWidth, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                    ItemHeight="{Binding DataContext.IconItemHeight, RelativeSource={RelativeSource AncestorType=ListView}}"/>
                             </ItemsPanelTemplate>
                         </ListView.ItemsPanel>
                         <ListView.ItemContainerStyle>

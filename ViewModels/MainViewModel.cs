@@ -12,6 +12,7 @@ using FileSpace.Views;
 using FileSpace.Utils;
 using FileSpace.Models;
 using Wpf.Ui.Controls;
+using System.Buffers;
 
 namespace FileSpace.ViewModels
 {
@@ -72,7 +73,7 @@ namespace FileSpace.ViewModels
         private ObservableCollection<DirectoryItemModel> _directoryTree = new();
 
         [ObservableProperty]
-        private ObservableCollection<FileItemModel> _files = new();
+        private RangeObservableCollection<FileItemModel> _files = new();
         
         [ObservableProperty]
         private ObservableCollection<DriveItemModel> _drives = new();
@@ -768,7 +769,7 @@ namespace FileSpace.ViewModels
                     var results = await FileSearchService.Instance.SearchFilesAsync("此电脑", $"*{searchText}*", options);
                     
                     var sortedResults = await Task.Run(() => SortList(results));
-                    await AddFilesBatchedAsync(sortedResults);
+                    Files.ReplaceAll(sortedResults);
                     
                     StatusText = $"全盘搜索完成，找到 {results.Count} 个匹配项";
                     
@@ -821,7 +822,7 @@ namespace FileSpace.ViewModels
 
                 Files.Clear();
                 var sortedResults = await Task.Run(() => SortList(allFiles));
-                await AddFilesBatchedAsync(sortedResults);
+                Files.ReplaceAll(sortedResults);
 
                 StatusText = $"找到 {allFiles.Count} 个匹配项";
 
@@ -1000,55 +1001,51 @@ namespace FileSpace.ViewModels
                 IsThisPCView = false;
                 IsLinuxView = false;
                 
-                // Clear existing files first to show intent
+                // 立即清空并显示加载状态
                 Files.Clear();
                 StatusText = "正在加载文件...";
 
-                var allLoadedFiles = new List<FileItemModel>();
+                // 预分配容量以减少内存重新分配
+                var allLoadedFiles = new List<FileItemModel>(4096);
                 int count = 0;
 
-                // Enumerate files progressively from background thread
+                // 使用高性能枚举从后台线程流式获取文件
                 await foreach (var item in FileSystemService.Instance.EnumerateFilesAsync(CurrentPath, token))
                 {
                     allLoadedFiles.Add(item);
                     count++;
 
-                    // For the very first items, show them quickly to provide immediate feedback
-                    if (count <= 30)
-                    {
-                        Files.Add(item);
-                    }
-                    // For larger directories, update status periodically
-                    else if (count % 200 == 0)
+                    // 每1000个文件更新一次状态，减少UI更新频率
+                    if (count % 1000 == 0)
                     {
                         StatusText = $"正在扫描目录... 已发现 {count} 个项目";
-                        await Task.Yield();
                     }
                 }
 
                 if (token.IsCancellationRequested) return;
 
-                // Once scan is complete, sort everything and update the UI collection properly
+                // 在后台线程排序
                 if (allLoadedFiles.Count > 0)
                 {
-                    StatusText = "正在整理列表...";
-                    var sortedList = await Task.Run(() => SortList(allLoadedFiles), token);
+                    StatusText = $"正在整理 {allLoadedFiles.Count} 个项目...";
                     
-                    // Clear the temporary items and show the full sorted list in batches
-                    Files.Clear();
-                    await AddFilesBatchedAsync(sortedList);
+                    var sortedList = await Task.Run(() => SortListOptimized(allLoadedFiles), token);
+                    
+                    if (token.IsCancellationRequested) return;
+
+                    // 使用 ReplaceAll 一次性替换整个集合，只触发一次 UI 更新
+                    Files.ReplaceAll(sortedList);
 
                     StatusText = $"{sortedList.Count} 个项目";
                 }
                 else
                 {
-                    Files.Clear();
                     StatusText = "0 个项目";
                 }
 
                 SelectAllCommand.NotifyCanExecuteChanged();
 
-                // Always load icons/thumbnails to match Windows Explorer behavior
+                // 异步加载缩略图
                 _ = LoadThumbnailsAsync();
             }
             catch (OperationCanceledException) { }
@@ -1059,58 +1056,71 @@ namespace FileSpace.ViewModels
         }
 
         /// <summary>
-        /// 对文件列表进行排序，不在 UI 线程执行
+        /// 使用高性能排序算法对文件列表排序（在后台线程执行）
         /// </summary>
-        private List<FileItemModel> SortList(IEnumerable<FileItemModel> unsortedFiles)
+        private List<FileItemModel> SortListOptimized(List<FileItemModel> unsortedFiles)
         {
-            return SortMode switch
+            // 使用 Span-based 排序，减少内存分配
+            var files = unsortedFiles.ToArray();
+            
+            // 定义比较器避免重复创建
+            Comparison<FileItemModel> comparison = SortMode switch
             {
                 "Name" => SortAscending
-                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                    }
+                    : (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : string.Compare(b.Name, a.Name, StringComparison.OrdinalIgnoreCase);
+                    },
                 "Size" => SortAscending
-                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        if (dirCompare != 0) return dirCompare;
+                        int sizeCompare = a.Size.CompareTo(b.Size);
+                        return sizeCompare != 0 ? sizeCompare : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                    }
+                    : (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        if (dirCompare != 0) return dirCompare;
+                        int sizeCompare = b.Size.CompareTo(a.Size);
+                        return sizeCompare != 0 ? sizeCompare : string.Compare(b.Name, a.Name, StringComparison.OrdinalIgnoreCase);
+                    },
                 "Type" => SortAscending
-                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
-                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
+                    ? (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase);
+                    }
+                    : (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
+                    },
                 "Date" => SortAscending
-                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.ModifiedDateTime).ToList()
-                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.ModifiedDateTime).ToList(),
-                _ => unsortedFiles.ToList()
+                    ? (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : a.ModifiedDateTime.CompareTo(b.ModifiedDateTime);
+                    }
+                    : (a, b) => {
+                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
+                    },
+                _ => (a, b) => 0
             };
+
+            // 使用 Array.Sort 的内省排序算法（比 LINQ OrderBy 更快）
+            Array.Sort(files, comparison);
+            
+            return new List<FileItemModel>(files);
         }
 
         /// <summary>
-        /// 批量添加文件到集合中，避免界面冻结
+        /// 对文件列表进行排序，不在 UI 线程执行（保留兼容性）
         /// </summary>
-        private async Task AddFilesBatchedAsync(IEnumerable<FileItemModel> items)
+        private List<FileItemModel> SortList(IEnumerable<FileItemModel> unsortedFiles)
         {
-            var list = items.ToList();
-            if (list.Count == 0) return;
-
-            // 如果项目较少且不是图标视图，快速添加
-            if (list.Count <= 100 && !IsIconView)
-            {
-                foreach (var item in list)
-                    Files.Add(item);
-                return;
-            }
-
-            // 根据视图模式调整批次大小
-            // 图标视图通常使用 WrapPanel，不支持 UI 虚拟化，因此单次添加过多会导致 UI 线程剧烈抖动
-            int batchSize = IsIconView ? 30 : 100;
-            int delay = IsIconView ? 5 : 1;
-
-            for (int i = 0; i < list.Count; i += batchSize)
-            {
-                var batch = list.Skip(i).Take(batchSize).ToList();
-                foreach (var item in batch)
-                    Files.Add(item);
-
-                // 让出 UI 线程处理时间，确保界面重绘
-                await Task.Delay(delay);
-            }
+            return SortListOptimized(unsortedFiles.ToList());
         }
 
         private async Task LoadThumbnailsAsync()

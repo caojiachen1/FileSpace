@@ -26,16 +26,16 @@ namespace FileSpace.Services
                 yield break;
             }
 
-            // Using Channels to stream items from background thread to UI thread
-            var channel = Channel.CreateBounded<FileItemModel>(new BoundedChannelOptions(500)
+            // 使用无界 Channel 以最大化吞吐量
+            var channel = Channel.CreateUnbounded<FileItemModel>(new UnboundedChannelOptions
             {
-                FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
-                SingleWriter = true
+                SingleWriter = true,
+                AllowSynchronousContinuations = true
             });
 
             // Start background producer
-            _ = Task.Run(async () =>
+            _ = Task.Run(() =>
             {
                 try
                 {
@@ -91,7 +91,8 @@ namespace FileSpace.Services
                                     item.Type = GetFileType(extension);
                                 }
 
-                                await channel.Writer.WriteAsync(item, cancellationToken);
+                                // TryWrite 在无界 Channel 中不会阻塞
+                                channel.Writer.TryWrite(item);
 
                             } while (Win32Api.FindNextFileW(handle, out findData));
                         }
