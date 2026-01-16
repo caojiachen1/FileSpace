@@ -116,6 +116,7 @@
                             <!-- Expansion toggle button with down arrow -->
                             <ToggleButton x:Name="Expander" Grid.Column="0"
                                           ClickMode="Press"
+                                          VerticalAlignment="Center"
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
                                           Visibility="{Binding HasSubDirectories, Converter={StaticResource BooleanToVisibilityConverter}}"
                                           Style="{StaticResource ExpandCollapseToggleStyle}"/>
@@ -126,7 +127,7 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Padding="{TemplateBinding Padding}"
-                                    Height="24"
+                                    Height="30"
                                     CornerRadius="3">
                                 <ContentPresenter x:Name="PART_Header" 
                                                   ContentSource="Header"
@@ -898,21 +899,22 @@
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
                     BorderThickness="0,1,0,0" CornerRadius="0"
                     Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                     
                     <!-- Quick Access Section -->
-                    <StackPanel Grid.Row="0" Margin="10,10,10,0" HorizontalAlignment="Stretch">
+                    <StackPanel Grid.Row="0" Margin="10,10,15,0" HorizontalAlignment="Stretch">
                         <!-- Quick Access Items -->
                         <ListView x:Name="QuickAccessListView" ItemsSource="{Binding QuickAccessItems}" 
                                   Background="Transparent" BorderThickness="0"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                   SelectionMode="Single"
                                   HorizontalAlignment="Stretch"
                                   Width="Auto"
@@ -1023,7 +1025,7 @@
                                     <Setter Property="VerticalContentAlignment" Value="Center"/>
                                     <Setter Property="Padding" Value="0"/>
                                     <Setter Property="Margin" Value="0,1"/>
-                                    <Setter Property="Height" Value="24"/>
+                                    <Setter Property="Height" Value="30"/>
                                     <Setter Property="Background" Value="Transparent"/>
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="Template">
@@ -1059,8 +1061,10 @@
                     
                     <!-- Directory Tree -->
                     <TreeView Grid.Row="3" x:Name="DirectoryTreeView" 
-                              Background="Transparent" BorderThickness="0" Margin="0,0,0,10"
+                              Background="Transparent" BorderThickness="0" Margin="0,0,15,10"
                               ItemsSource="{Binding DirectoryTree}"
+                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               SelectedItemChanged="DirectoryTreeView_SelectedItemChanged"
                               ItemContainerStyle="{StaticResource DirectoryTreeViewItemStyle}">
                         <TreeView.Resources>
@@ -1102,6 +1106,7 @@
                         </TreeView.ItemTemplate>
                     </TreeView>
                 </Grid>
+                </ScrollViewer>
             </Border>
 
             <GridSplitter Grid.Column="1" Width="2" HorizontalAlignment="Stretch" 
@@ -1846,9 +1851,9 @@
                                    TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     
-                    <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" Margin="10">
+                    <ScrollViewer Grid.Row="1" x:Name="PreviewScrollViewer" Margin="10,10,5,10">
                         <!-- Loading Overlay -->
-                        <Grid>
+                        <Grid Margin="0,0,15,0">
                             <ContentPresenter Content="{Binding PreviewContent}"/>
                             
                             <!-- Loading Indicator with better styling -->
