@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows;
+using System.Windows.Media;
 using FileSpace.Services;
 using FileSpace.Views;
 using FileSpace.Utils;
@@ -1061,12 +1062,6 @@ namespace FileSpace.ViewModels
         /// </summary>
         private List<FileItemModel> SortList(IEnumerable<FileItemModel> unsortedFiles)
         {
-            DateTime ParseModified(string s)
-            {
-                if (DateTime.TryParse(s, out var dt)) return dt;
-                return DateTime.MinValue;
-            }
-
             return SortMode switch
             {
                 "Name" => SortAscending
@@ -1079,8 +1074,8 @@ namespace FileSpace.ViewModels
                     ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
                     : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
                 "Date" => SortAscending
-                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
-                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
+                    ? unsortedFiles.OrderBy(f => f.IsDirectory).ThenBy(f => f.ModifiedDateTime).ToList()
+                    : unsortedFiles.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.ModifiedDateTime).ToList(),
                 _ => unsortedFiles.ToList()
             };
         }
@@ -1127,10 +1122,13 @@ namespace FileSpace.ViewModels
 
                 var filesSnapshot = Files.ToList();
                 double targetSize = IconSize;
-                if (targetSize <= 16) targetSize = 32; // Load at least 32px for details view to look sharp
+                if (targetSize <= 16) targetSize = 32;
 
                 await Task.Run(async () =>
                 {
+                    var updates = new List<(FileItemModel model, ImageSource thumbnail)>();
+                    int processedSinceLastUpdate = 0;
+
                     foreach (var file in filesSnapshot)
                     {
                         if (token.IsCancellationRequested) break;
@@ -1138,18 +1136,40 @@ namespace FileSpace.ViewModels
                         // If we already have a thumbnail and it's big enough, skip
                         if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) continue;
 
-                        // Get thumbnail or system icon via ThumbnailCacheService (with memory and disk cache)
-                        var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, token);
-                        if (thumbnail != null)
+                        try
                         {
+                            var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, token);
+                            if (thumbnail != null)
+                            {
+                                updates.Add((file, thumbnail));
+                                processedSinceLastUpdate++;
+                            }
+                        }
+                        catch { /* Ignore failures for individual files */ }
+
+                        // Batch update UI every 20 items or if we've reached the end
+                        if (updates.Count >= 20 || (processedSinceLastUpdate > 0 && file == filesSnapshot.Last()))
+                        {
+                            var currentUpdates = updates.ToList();
+                            updates.Clear();
+                            
                             await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                if (!token.IsCancellationRequested)
+                                foreach (var update in currentUpdates)
                                 {
-                                    file.Thumbnail = thumbnail;
-                                    file.LoadedThumbnailSize = targetSize;
+                                    if (!token.IsCancellationRequested)
+                                    {
+                                        update.model.Thumbnail = update.thumbnail;
+                                        update.model.LoadedThumbnailSize = targetSize;
+                                    }
                                 }
-                            });
+                            }, System.Windows.Threading.DispatcherPriority.Background);
+                        }
+                        
+                        // Small yield to keep CPU from hammering too hard and allow other tasks
+                        if (processedSinceLastUpdate % 50 == 0)
+                        {
+                            await Task.Delay(1, token);
                         }
                     }
                 }, token);

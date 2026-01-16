@@ -47,6 +47,9 @@ namespace FileSpace.Models
         [ObservableProperty]
         private string _modifiedTime = string.Empty;
 
+        [ObservableProperty]
+        private DateTime _modifiedDateTime;
+
         public string SizeString => IsDirectory ? (IsSizeCalculating ? "计算中..." : SizeText) : FileUtils.FormatFileSize(Size);
 
         partial void OnSizeChanged(long value)

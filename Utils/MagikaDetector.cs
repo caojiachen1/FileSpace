@@ -7,24 +7,33 @@ namespace FileSpace.Utils
 {
     public static class MagikaDetector
     {
+        private static readonly Lazy<Magika> _magikaInstance = new(() => new Magika());
+        private static readonly SemaphoreSlim _semaphore = new(1, 1);
+
         public static async Task<string> DetectFileTypeAsync(string filePath, CancellationToken cancellationToken)
         {
             try
             {
-                return await Task.Run(() =>
+                await _semaphore.WaitAsync(cancellationToken);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var magika = new Magika();
-                    var res = magika.IdentifyPath(filePath);
-                    
-                    // Don't show probability for unknown file types
-                    if (res.output.ct_label.Equals("unknown", StringComparison.OrdinalIgnoreCase))
+                    return await Task.Run(() =>
                     {
-                        return "unknown";
-                    }
-                    
-                    return $"{res.output.ct_label} ({res.output.score:P1})";
-                }, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var res = _magikaInstance.Value.IdentifyPath(filePath);
+                        
+                        if (res.output.ct_label.Equals("unknown", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return "unknown";
+                        }
+                        
+                        return $"{res.output.ct_label} ({res.output.score:P1})";
+                    }, cancellationToken);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
             }
             catch (OperationCanceledException)
             {

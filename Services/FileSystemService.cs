@@ -66,13 +66,15 @@ namespace FileSpace.Services
                                 bool isDirectory = attributes.HasFlag(FileAttributes.Directory);
                                 string fullPath = Path.Combine(currentPath, fileName);
                                 string extension = isDirectory ? string.Empty : Path.GetExtension(fileName);
+                                DateTime lastWrite = Win32Api.ToDateTime(findData.ftLastWriteTime);
                                 
                                 FileItemModel item = new FileItemModel
                                 {
                                     Name = fileName,
                                     FullPath = fullPath,
                                     IsDirectory = isDirectory,
-                                    ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm")
+                                    ModifiedDateTime = lastWrite,
+                                    ModifiedTime = lastWrite.ToString("yyyy-MM-dd HH:mm")
                                 };
 
                                 if (isDirectory)

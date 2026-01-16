@@ -13,6 +13,9 @@ namespace FileSpace.Services
         public event EventHandler<string>? OperationCompleted;
         public event EventHandler<string>? OperationFailed;
 
+        private DateTime _lastProgressReport = DateTime.MinValue;
+        private const int PROGRESS_REPORT_INTERVAL_MS = 50; // 50ms interval
+
         private FileOperationsService() { }
 
         public async Task<bool> CopyFilesAsync(IEnumerable<string> sourcePaths, string destinationDirectory, CancellationToken cancellationToken = default)
@@ -281,6 +284,13 @@ namespace FileSpace.Services
         private void ReportProgress(string sourcePath, string destPath, FileOperation operation, bool isDirectory, 
             long bytesTransferred, long totalBytes, int filesCompleted, int totalFiles, string currentFile)
         {
+            var now = DateTime.Now;
+            if ((now - _lastProgressReport).TotalMilliseconds < PROGRESS_REPORT_INTERVAL_MS && filesCompleted < totalFiles)
+            {
+                return;
+            }
+            _lastProgressReport = now;
+
             OperationProgress?.Invoke(this, new FileOperationEventArgs
             {
                 SourcePath = sourcePath,
