@@ -16,7 +16,7 @@ namespace FileSpace.Services
     {
         // 预览区统一配置常量
         private const double PREVIEW_CONTAINER_HEIGHT = 250;
-        private static readonly Color PREVIEW_BACKGROUND_COLOR = Color.FromRgb(50, 50, 50);
+        private static readonly Color PREVIEW_BACKGROUND_COLOR = Color.FromRgb(34, 34, 34);
         private static readonly SolidColorBrush PREVIEW_BACKGROUND_BRUSH = new(PREVIEW_BACKGROUND_COLOR);
 
         private static readonly Lazy<PreviewService> _instance = new(() => new PreviewService());
