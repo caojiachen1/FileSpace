@@ -128,7 +128,7 @@
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     Padding="{TemplateBinding Padding}"
                                     Height="30"
-                                    CornerRadius="3">
+                                    CornerRadius="0">
                                 <ContentPresenter x:Name="PART_Header" 
                                                   ContentSource="Header"
                                                   HorizontalAlignment="Left"
@@ -212,7 +212,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
+                                CornerRadius="0"
                                 SnapsToDevicePixels="True">
                             <ContentPresenter x:Name="ContentPresenter"
                                               Margin="{TemplateBinding Padding}"
@@ -1036,7 +1036,7 @@
                                                         BorderBrush="{TemplateBinding BorderBrush}"
                                                         BorderThickness="{TemplateBinding BorderThickness}"
                                                         Padding="{TemplateBinding Padding}"
-                                                        CornerRadius="3">
+                                                        CornerRadius="0">
                                                     <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                                                 </Border>
@@ -1200,7 +1200,7 @@
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListViewItem">
-                                            <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="4" BorderThickness="1" BorderBrush="Transparent" Padding="8,4">
+                                            <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="0" BorderThickness="1" BorderBrush="Transparent" Padding="8,4">
                                                 <ContentPresenter/>
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -1272,7 +1272,7 @@
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListViewItem">
-                                            <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="4" BorderThickness="1" BorderBrush="Transparent" Padding="8,4">
+                                            <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="0" BorderThickness="1" BorderBrush="Transparent" Padding="8,4">
                                                 <ContentPresenter/>
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -1581,7 +1581,7 @@
                                                     Background="{TemplateBinding Background}" 
                                                     BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}"
                                                     BorderThickness="0" 
-                                                    CornerRadius="6"
+                                                    CornerRadius="0"
                                                     Padding="{TemplateBinding Padding}">
                                                 <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
                                                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>

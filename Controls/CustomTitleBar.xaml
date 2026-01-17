@@ -114,7 +114,7 @@
         <!-- Tab Item Style (Windows 11 Explorer-like) -->
         <Style x:Key="TabItemStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="8,8,0,0"/>
+            <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="12,0,6,0"/>
             <Setter Property="Margin" Value="0,0,1,0"/>
             <Setter Property="MinWidth" Value="200"/>
@@ -178,7 +178,7 @@
                     <DataTemplate DataType="{x:Type models:TabItemModel}">
                         <Border x:Name="TabBorder" 
                                 Background="Transparent"
-                                CornerRadius="8,8,0,0"
+                                CornerRadius="0"
                                 Padding="14,0,6,0"
                                 Margin="0,0,1,0"
                                 MinWidth="250"
