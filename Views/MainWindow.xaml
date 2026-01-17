@@ -1235,8 +1235,8 @@
                                     </Grid>
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="6" Margin="0,6,0,6" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="6" Margin="0,3,0,3" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                                         <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                 </Grid>

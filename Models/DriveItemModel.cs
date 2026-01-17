@@ -59,7 +59,8 @@ namespace FileSpace.Models
                 number = number / 1024;
                 counter++;
             }
-            return string.Format("{0:n1} {1}", number, suffixes[counter]);
+            string format = counter == 4 ? "{0:n2} {1}" : "{0:n1} {1}";
+            return string.Format(format, number, suffixes[counter]);
         }
     }
 }
