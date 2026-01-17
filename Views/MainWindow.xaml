@@ -915,6 +915,7 @@
                                   Background="Transparent" BorderThickness="0"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                  PreviewMouseWheel="OnPreviewMouseWheel"
                                   SelectionMode="Single"
                                   HorizontalAlignment="Stretch"
                                   Width="Auto"
@@ -1065,6 +1066,7 @@
                               ItemsSource="{Binding DirectoryTree}"
                               ScrollViewer.VerticalScrollBarVisibility="Disabled"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="OnPreviewMouseWheel"
                               SelectedItemChanged="DirectoryTreeView_SelectedItemChanged"
                               ItemContainerStyle="{StaticResource DirectoryTreeViewItemStyle}">
                         <TreeView.Resources>

@@ -1526,5 +1526,34 @@ namespace FileSpace.Views
                 }
             }
         }
+
+        private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!e.Handled)
+            {
+                e.Handled = true;
+                var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+                {
+                    RoutedEvent = UIElement.MouseWheelEvent,
+                    Source = sender
+                };
+                
+                // 向上查找 ScrollViewer
+                var obj = sender as DependencyObject;
+                while (obj != null)
+                {
+                    if (obj is ScrollViewer sv)
+                    {
+                        // 找到第一个父级 ScrollViewer (跳过当前的，如果当前的是 ScrollViewer)
+                        if (sv != sender)
+                        {
+                            sv.RaiseEvent(eventArg);
+                            break;
+                        }
+                    }
+                    obj = VisualTreeHelper.GetParent(obj);
+                }
+            }
+        }
     }
 }
