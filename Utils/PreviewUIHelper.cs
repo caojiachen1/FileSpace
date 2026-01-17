@@ -14,12 +14,19 @@ namespace FileSpace.Utils
     {
         public static TextBlock CreateInfoTextBlock(string text)
         {
-            return new TextBlock
+            var textBlock = new TextBlock
             {
                 Text = text,
                 Margin = new Thickness(0, 2, 0, 2),
                 TextWrapping = TextWrapping.Wrap
             };
+
+            if (Application.Current.Resources.Contains("TextFillColorPrimaryBrush"))
+            {
+                textBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
+            }
+
+            return textBlock;
         }
 
         public static Grid CreatePropertyValueRow(string property, string value)
@@ -225,7 +232,7 @@ namespace FileSpace.Utils
                 if (content.IsTruncated)
                 {
                     var infoBlock = CreateInfoTextBlock($"显示了 {content.LinesRead} 行，总文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}");
-                    infoBlock.Foreground = Brushes.Gray;
+                    infoBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
                     panel.Children.Add(infoBlock);
                 }
             }
@@ -258,12 +265,12 @@ namespace FileSpace.Utils
 
             var sizeBlock = CreateInfoTextBlock($"文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}");
             sizeBlock.HorizontalAlignment = HorizontalAlignment.Center;
-            sizeBlock.Foreground = Brushes.Gray;
+            sizeBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
             warningPanel.Children.Add(sizeBlock);
 
             var instructionBlock = CreateInfoTextBlock("双击文件使用默认程序打开");
             instructionBlock.HorizontalAlignment = HorizontalAlignment.Center;
-            instructionBlock.Foreground = Brushes.LightBlue;
+            instructionBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
             instructionBlock.Margin = new Thickness(0, 10, 0, 0);
             warningPanel.Children.Add(instructionBlock);
 
@@ -425,7 +432,7 @@ namespace FileSpace.Utils
                 if (fileInfo.Length > 10 * 1024 * 1024)
                 {
                     var perfBlock = CreateInfoTextBlock("🔄 大图片已优化显示以提高性能");
-                    perfBlock.Foreground = Brushes.LightBlue;
+                    perfBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
                     perfBlock.FontSize = 11;
                     panel.Children.Add(perfBlock);
                 }
@@ -465,7 +472,7 @@ namespace FileSpace.Utils
                     FontFamily = new FontFamily("Consolas, Monaco, 'Courier New', monospace"),
                     FontSize = 12,
                     Background = new SolidColorBrush(Color.FromRgb(45, 45, 45)),
-                    Foreground = Brushes.White,
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
                     Padding = new Thickness(10),
                     Margin = new Thickness(0, 5, 0, 0)
                 };
@@ -474,7 +481,7 @@ namespace FileSpace.Utils
                 
                 // Add note about HTML content
                 var noteBlock = CreateInfoTextBlock("注意: 显示HTML源代码，双击文件在浏览器中查看效果");
-                noteBlock.Foreground = Brushes.LightBlue;
+                noteBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
                 noteBlock.FontStyle = FontStyles.Italic;
                 panel.Children.Add(noteBlock);
             }

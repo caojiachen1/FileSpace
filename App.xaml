@@ -11,6 +11,11 @@
                 <ui:ControlsDictionary />
             </ResourceDictionary.MergedDictionaries>
             
+            <!-- Global text color overrides -->
+            <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFDEDEDE"/>
+            <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#FFDEDEDE"/>
+            <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="#FFDEDEDE"/>
+            <SolidColorBrush x:Key="TextFillColorDisabledBrush" Color="#80DEDEDE"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
