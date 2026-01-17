@@ -133,6 +133,47 @@ namespace FileSpace.Services
             };
         }
 
+        /// <summary>
+        /// 创建文件名称左侧的小图标或缩略图
+        /// </summary>
+        private static UIElement CreateSmallPreviewIcon(FileItemModel file)
+        {
+            const double size = 24;
+            
+            // 优先获取高质量缩略图（小尺寸）
+            var thumbnail = GenerateHighQualityThumbnail(file.FullPath);
+            if (thumbnail == null && file.Thumbnail != null)
+            {
+                thumbnail = file.Thumbnail as BitmapSource;
+            }
+
+            if (thumbnail != null)
+            {
+                var image = new Image
+                {
+                    Source = thumbnail,
+                    Width = size,
+                    Height = size,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+                
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+                return image;
+            }
+            
+            // 没有则回退到普通图标
+            return new Wpf.Ui.Controls.SymbolIcon 
+            { 
+                Symbol = file.Icon, 
+                FontSize = 20, 
+                Margin = new Thickness(0, 0, 10, 0),
+                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+
         public async Task<object?> GeneratePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             if (file == null) return null;
@@ -196,13 +237,7 @@ namespace FileSpace.Services
 
             // File Name and Icon
             var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            var icon = new Wpf.Ui.Controls.SymbolIcon 
-            { 
-                Symbol = file.Icon, 
-                FontSize = 20, 
-                Margin = new Thickness(0, 0, 10, 0),
-                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
-            };
+            var icon = CreateSmallPreviewIcon(file);
             var nameBlock = new TextBlock
             {
                 Text = file.Name,
@@ -291,13 +326,7 @@ namespace FileSpace.Services
 
             // 2. File Name and Icon
             var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            var icon = new Wpf.Ui.Controls.SymbolIcon 
-            { 
-                Symbol = file.Icon, 
-                FontSize = 20, 
-                Margin = new Thickness(0, 0, 10, 0),
-                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray
-            };
+            var icon = CreateSmallPreviewIcon(file);
             var nameBlock = new TextBlock
             {
                 Text = file.Name,
@@ -452,15 +481,20 @@ namespace FileSpace.Services
             panel.Children.Add(detailsPanel);
 
             // 2. Name
+            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            var icon = CreateSmallPreviewIcon(file);
             var nameBlock = new TextBlock
             {
                 Text = file.Name,
                 FontSize = 18,
                 FontWeight = FontWeights.SemiBold,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Margin = new Thickness(0, 0, 0, 10)
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 250
             };
-            detailsPanel.Children.Add(nameBlock);
+            namePanel.Children.Add(icon);
+            namePanel.Children.Add(nameBlock);
+            detailsPanel.Children.Add(namePanel);
 
             // 3. Detailed Info Header
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
