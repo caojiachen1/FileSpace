@@ -329,10 +329,10 @@ namespace FileSpace.Controls
         public void PageLeft() => SetHorizontalOffset(_offset.X - _viewport.Width);
         public void PageRight() => SetHorizontalOffset(_offset.X + _viewport.Width);
 
-        public void MouseWheelUp() => SetVerticalOffset(_offset.Y - ItemHeight * 3);
-        public void MouseWheelDown() => SetVerticalOffset(_offset.Y + ItemHeight * 3);
-        public void MouseWheelLeft() => SetHorizontalOffset(_offset.X - ItemWidth * 3);
-        public void MouseWheelRight() => SetHorizontalOffset(_offset.X + ItemWidth * 3);
+        public void MouseWheelUp() => SetVerticalOffset(_offset.Y - ItemHeight);
+        public void MouseWheelDown() => SetVerticalOffset(_offset.Y + ItemHeight);
+        public void MouseWheelLeft() => SetHorizontalOffset(_offset.X - ItemWidth);
+        public void MouseWheelRight() => SetHorizontalOffset(_offset.X + ItemWidth);
 
         public void SetHorizontalOffset(double offset)
         {
