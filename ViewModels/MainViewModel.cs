@@ -1086,43 +1086,51 @@ namespace FileSpace.ViewModels
             {
                 "Name" => SortAscending
                     ? (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
+                        return dirCompare != 0 ? dirCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
                     : (a, b) => {
                         int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : string.Compare(b.Name, a.Name, StringComparison.OrdinalIgnoreCase);
+                        return dirCompare != 0 ? dirCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
                 "Size" => SortAscending
                     ? (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
+                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
                         if (dirCompare != 0) return dirCompare;
                         int sizeCompare = a.Size.CompareTo(b.Size);
-                        return sizeCompare != 0 ? sizeCompare : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+                        return sizeCompare != 0 ? sizeCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
                     : (a, b) => {
                         int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
                         if (dirCompare != 0) return dirCompare;
                         int sizeCompare = b.Size.CompareTo(a.Size);
-                        return sizeCompare != 0 ? sizeCompare : string.Compare(b.Name, a.Name, StringComparison.OrdinalIgnoreCase);
+                        return sizeCompare != 0 ? sizeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
                 "Type" => SortAscending
                     ? (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase);
+                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
+                        if (dirCompare != 0) return dirCompare;
+                        int typeCompare = string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase);
+                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
                     : (a, b) => {
                         int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
+                        if (dirCompare != 0) return dirCompare;
+                        int typeCompare = string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
+                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
                 "Date" => SortAscending
                     ? (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : a.ModifiedDateTime.CompareTo(b.ModifiedDateTime);
+                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
+                        if (dirCompare != 0) return dirCompare;
+                        int dateCompare = a.ModifiedDateTime.CompareTo(b.ModifiedDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
                     : (a, b) => {
                         int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
+                        if (dirCompare != 0) return dirCompare;
+                        int dateCompare = b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
                 _ => (a, b) => 0
             };
@@ -1963,29 +1971,8 @@ namespace FileSpace.ViewModels
             if (Files.Count == 0) return;
 
             var selectedFile = SelectedFile;
-
-            DateTime ParseModified(string s)
-            {
-                if (DateTime.TryParse(s, out var dt)) return dt;
-                return DateTime.MinValue;
-            }
-
-            var sortedFiles = SortMode switch
-            {
-                "Name" => SortAscending 
-                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-                "Size" => SortAscending
-                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Size).ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Size).ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-                "Type" => SortAscending
-                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList()
-                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => f.Type, StringComparer.OrdinalIgnoreCase).ToList(),
-                "Date" => SortAscending
-                    ? Files.OrderBy(f => f.IsDirectory).ThenBy(f => ParseModified(f.ModifiedTime)).ToList()
-                    : Files.OrderBy(f => f.IsDirectory).ThenByDescending(f => ParseModified(f.ModifiedTime)).ToList(),
-                _ => Files.ToList()
-            };
+            var currentFiles = Files.ToList();
+            var sortedFiles = SortListOptimized(currentFiles);
 
             // Only update if the order actually changed
             bool orderChanged = false;

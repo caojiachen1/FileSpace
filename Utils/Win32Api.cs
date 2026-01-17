@@ -87,6 +87,9 @@ namespace FileSpace.Utils
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         public static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
 
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        public static extern int StrCmpLogicalW(string psz1, string psz2);
+
         public static long ToLong(uint high, uint low)
         {
             return ((long)high << 32) | low;
