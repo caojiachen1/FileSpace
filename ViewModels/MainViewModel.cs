@@ -661,6 +661,13 @@ namespace FileSpace.ViewModels
 
         partial void OnCurrentPathChanged(string value)
         {
+            // 加载该文件夹的排序设置
+            var savedSort = _settingsService.GetFolderSortSettings(value);
+            _sortMode = savedSort.SortMode;
+            _sortAscending = savedSort.SortAscending;
+            OnPropertyChanged(nameof(SortMode));
+            OnPropertyChanged(nameof(SortAscending));
+
             LoadFiles();
             UpdateBreadcrumbFolders();
             
@@ -1922,6 +1929,12 @@ namespace FileSpace.ViewModels
                 SortMode = "Name";
                 SortAscending = true;
                 ApplySorting();
+                
+                // 保存该文件夹的排序设置
+                if (!IsThisPCView && !IsLinuxView)
+                {
+                    _settingsService.SaveFolderSortSettings(CurrentPath, SortMode, SortAscending);
+                }
             }
             // TODO: Implement actual view mode changes in UI
             StatusText = $"视图模式已切换到: {mode}";
@@ -1953,6 +1966,12 @@ namespace FileSpace.ViewModels
             }
             
             ApplySorting();
+            
+            // 保存该文件夹的排序设置
+            if (!IsThisPCView && !IsLinuxView)
+            {
+                _settingsService.SaveFolderSortSettings(CurrentPath, SortMode, SortAscending);
+            }
             
             var direction = SortAscending ? "升序" : "降序";
             var modeName = mode switch
