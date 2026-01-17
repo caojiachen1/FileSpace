@@ -258,7 +258,7 @@
                                  SelectTabCommand="{Binding SelectTabCommand}"/>
 
         <!-- Toolbar and Menu Bar -->
-        <Grid Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" Margin="0,0,0,0">
+        <Grid Grid.Row="1" Background="#FF191919" Margin="0,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -459,7 +459,7 @@
             </Border>
             
             <!-- Quick Access Toolbar -->
-            <Border Grid.Row="1" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Row="1" Background="#FF191919" 
                     Margin="0,0,0,0" Height="48" Padding="10,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
@@ -895,7 +895,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left Panel - Quick Access & Directory Tree -->
-            <Border Grid.Column="0" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Column="0" Background="#FF191919" 
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
                     BorderThickness="0,1,0,0" CornerRadius="0"
                     Visibility="{Binding IsLeftPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1128,7 +1128,7 @@
             </GridSplitter>
 
             <!-- Center Panel - File List (Always visible) -->
-            <Border Grid.Column="2" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Column="2" Background="#FF191919" 
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -1834,7 +1834,7 @@
             </GridSplitter>
 
             <!-- Right Panel - File Preview -->
-            <Border Grid.Column="4" Background="{DynamicResource ApplicationBackgroundBrush}" 
+            <Border Grid.Column="4" Background="#FF191919" 
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" 
                     BorderThickness="0,1,0,0" CornerRadius="0"
                     Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1865,7 +1865,7 @@
         </Grid>
 
         <!-- Enhanced Status Bar -->
-        <Border Grid.Row="3" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
+        <Border Grid.Row="3" Background="#FF1C1C1C" 
                 BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" 
                 BorderThickness="0,1,0,0" Height="32">
             <Grid>
