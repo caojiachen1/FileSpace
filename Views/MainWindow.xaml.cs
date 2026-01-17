@@ -536,6 +536,53 @@ namespace FileSpace.Views
             }
         }
 
+        private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // Enter 键确认搜索，焦点跳转到文件列表
+                if (ViewModel.IsFilesView)
+                {
+                    if (ViewModel.IsDetailsView)
+                        FileDataGrid.Focus();
+                    else
+                        FileIconView.Focus();
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                // Escape 键取消搜索，清空内容并返回文件列表
+                ViewModel.SearchText = string.Empty;
+                if (ViewModel.IsFilesView)
+                {
+                    if (ViewModel.IsDetailsView)
+                        FileDataGrid.Focus();
+                    else
+                        FileIconView.Focus();
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void SearchTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // 可以在此处添加搜索栏失去焦点后的逻辑
+        }
+
+        private void RootGrid_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // 点击任何空白区域即让搜索栏和地址栏失去焦点
+            if (SearchTextBox.IsFocused || ViewModel.IsPathEditing)
+            {
+                if (!SearchTextBox.IsMouseOver && !AddressBarTextBox.IsMouseOver)
+                {
+                    // 转场焦点到根容器，触发 LostFocus
+                    (sender as FrameworkElement)?.Focus();
+                }
+            }
+        }
+
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.BackCommand.Execute(null);

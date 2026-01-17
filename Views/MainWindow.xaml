@@ -257,7 +257,7 @@
 
     </ui:FluentWindow.Resources>
     
-    <Grid>
+    <Grid Focusable="True" MouseDown="RootGrid_MouseDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -465,7 +465,10 @@
                     <!-- Search and View Options -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:TextBox x:Name="SearchTextBox" PlaceholderText="搜索..." Width="300" Margin="8,6"
-                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                    KeyDown="SearchTextBox_KeyDown"
+                                    LostFocus="SearchTextBox_LostFocus"
+                                    ClearButtonEnabled="True">
                             <ui:TextBox.Icon>
                                 <ui:SymbolIcon Symbol="Search24"/>
                             </ui:TextBox.Icon>
