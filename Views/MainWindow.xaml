@@ -521,30 +521,45 @@
                             </MenuItem>
                         </Menu>
 
-                        <ui:Button Command="{Binding CopyFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="复制 (Ctrl+C)">
-                            <ui:SymbolIcon Symbol="Copy24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding CopyFilesCommand}" ToolTip="复制 (Ctrl+C)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="Copy24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
 
-                        <ui:Button Command="{Binding CutFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="剪切 (Ctrl+X)">
-                            <ui:SymbolIcon Symbol="Cut24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding CutFilesCommand}" ToolTip="剪切 (Ctrl+X)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="Cut24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                         
-                        <ui:Button Command="{Binding PasteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="粘贴 (Ctrl+V)">
-                            <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding PasteFilesCommand}" ToolTip="粘贴 (Ctrl+V)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
 
-                        <ui:Button Command="{Binding StartRenameCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="重命名 (F2)">
-                            <ui:SymbolIcon Symbol="Rename24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding StartRenameCommand}" ToolTip="重命名 (F2)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="Rename24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                         
-                        <ui:Button Command="{Binding DeleteFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="删除 (Delete)">
-                            <ui:SymbolIcon Symbol="Delete24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding DeleteFilesCommand}" ToolTip="删除 (Delete)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="Delete24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                         
                         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,10,18,10" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                         
@@ -764,70 +779,68 @@
                     <!-- VS Code Style Panel Toggle Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
                         <!-- Left Panel Toggle (Folder Tree) -->
-                        <ui:Button Command="{Binding ToggleLeftPanelCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="5,0"
-                                   ToolTip="切换文件夹树 (Alt+1)"
-                                   Padding="0">
-                            <ui:Button.Content>
-                                <Grid Width="24" Height="20">
-                                    <!-- VS Code style split icon with proper hollow effect -->
-                                    <Rectangle Width="10" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
-                                               RadiusX="1" RadiusY="1">
-                                        <Rectangle.Style>
-                                            <Style TargetType="Rectangle">
-                                                <!-- Default: hollow (panel closed) -->
-                                                <Setter Property="Fill" Value="Transparent"/>
-                                                <Setter Property="Stroke" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                <Setter Property="StrokeThickness" Value="1"/>
-                                                <Style.Triggers>
-                                                    <!-- Filled when panel is open -->
-                                                    <DataTrigger Binding="{Binding IsLeftPanelVisible}" Value="True">
-                                                        <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                                        <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Rectangle.Style>
-                                    </Rectangle>
-                                    <Rectangle Width="12" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
-                                               Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
-                                               StrokeThickness="1" RadiusX="1" RadiusY="1"/>
-                                </Grid>
-                            </ui:Button.Content>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="5,0" Padding="0">
+                            <MenuItem Command="{Binding ToggleLeftPanelCommand}" ToolTip="切换文件夹树 (Alt+1)">
+                                <MenuItem.Header>
+                                    <Grid Width="24" Height="20">
+                                        <!-- VS Code style split icon with proper hollow effect -->
+                                        <Rectangle Width="10" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                                                   RadiusX="1" RadiusY="1">
+                                            <Rectangle.Style>
+                                                <Style TargetType="Rectangle">
+                                                    <!-- Default: hollow (panel closed) -->
+                                                    <Setter Property="Fill" Value="Transparent"/>
+                                                    <Setter Property="Stroke" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Setter Property="StrokeThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <!-- Filled when panel is open -->
+                                                        <DataTrigger Binding="{Binding IsLeftPanelVisible}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                            <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Rectangle.Style>
+                                        </Rectangle>
+                                        <Rectangle Width="12" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                                   Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
+                                                   StrokeThickness="1" RadiusX="1" RadiusY="1"/>
+                                    </Grid>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                         
                         <!-- Right Panel Toggle (Preview) -->
-                        <ui:Button Command="{Binding ToggleRightPanelCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="5,0"
-                                   ToolTip="切换预览面板 (Alt+2)"
-                                   Padding="0">
-                            <ui:Button.Content>
-                                <Grid Width="24" Height="20">
-                                    <!-- VS Code style split icon with proper hollow effect -->
-                                    <Rectangle Width="12" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
-                                               Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
-                                               StrokeThickness="1" RadiusX="1" RadiusY="1"/>
-                                    <Rectangle Width="10" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
-                                               RadiusX="1" RadiusY="1">
-                                        <Rectangle.Style>
-                                            <Style TargetType="Rectangle">
-                                                <!-- Default: hollow (panel closed) -->
-                                                <Setter Property="Fill" Value="Transparent"/>
-                                                <Setter Property="Stroke" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                                <Setter Property="StrokeThickness" Value="1"/>
-                                                <Style.Triggers>
-                                                    <!-- Filled when panel is open -->
-                                                    <DataTrigger Binding="{Binding IsRightPanelVisible}" Value="True">
-                                                        <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                                        <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Rectangle.Style>
-                                    </Rectangle>
-                                </Grid>
-                            </ui:Button.Content>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="5,0" Padding="0">
+                            <MenuItem Command="{Binding ToggleRightPanelCommand}" ToolTip="切换预览面板 (Alt+2)">
+                                <MenuItem.Header>
+                                    <Grid Width="24" Height="20">
+                                        <!-- VS Code style split icon with proper hollow effect -->
+                                        <Rectangle Width="12" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" 
+                                                   Fill="Transparent" Stroke="{DynamicResource TextFillColorSecondaryBrush}" 
+                                                   StrokeThickness="1" RadiusX="1" RadiusY="1"/>
+                                        <Rectangle Width="10" Height="18" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                                   RadiusX="1" RadiusY="1">
+                                            <Rectangle.Style>
+                                                <Style TargetType="Rectangle">
+                                                    <!-- Default: hollow (panel closed) -->
+                                                    <Setter Property="Fill" Value="Transparent"/>
+                                                    <Setter Property="Stroke" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                                    <Setter Property="StrokeThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <!-- Filled when panel is open -->
+                                                        <DataTrigger Binding="{Binding IsRightPanelVisible}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                            <Setter Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Rectangle.Style>
+                                        </Rectangle>
+                                    </Grid>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                     </StackPanel>
                 </Grid>
             </Border>
