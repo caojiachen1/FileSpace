@@ -21,9 +21,6 @@ namespace FileSpace.Models
         [ObservableProperty]
         private bool _isLoaded = false;
 
-        [ObservableProperty]
-        private bool _isSubFolderMenuOpen = false;
-
         public BreadcrumbItem(string name, string path) : this(name, path, SymbolRegular.Folder24)
         {
         }
@@ -33,6 +30,12 @@ namespace FileSpace.Models
             Name = name;
             Path = path;
             Icon = icon;
+            
+            // 为菜单显示提供一个初始占位符，以便菜单能够感知到“有子项”并打开
+            if (name != "正在加载..." && !string.IsNullOrEmpty(path))
+            {
+                SubFolders.Add(new BreadcrumbItem("正在加载...", string.Empty));
+            }
         }
     }
 }

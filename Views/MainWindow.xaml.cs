@@ -12,6 +12,7 @@ using FileSpace.Utils;
 using System.IO;
 using System.Windows.Documents;
 using System.ComponentModel;
+using MenuItem = Wpf.Ui.Controls.MenuItem;
 
 namespace FileSpace.Views
 {
@@ -1201,11 +1202,22 @@ namespace FileSpace.Views
             var obj = e.OriginalSource as DependencyObject;
             while (obj != null && obj != sender)
             {
-                if (obj is System.Windows.Controls.Button || obj is System.Windows.Controls.Primitives.ButtonBase)
+                if (obj is System.Windows.Controls.Button || 
+                    obj is System.Windows.Controls.Primitives.ButtonBase ||
+                    obj is System.Windows.Controls.Menu ||
+                    obj is System.Windows.Controls.MenuItem)
                 {
                     return; // 点击的是面包屑按钮或下拉箭头，不进入编辑模式
                 }
-                obj = VisualTreeHelper.GetParent(obj);
+
+                if (obj is Visual || obj is System.Windows.Media.Media3D.Visual3D)
+                {
+                    obj = VisualTreeHelper.GetParent(obj);
+                }
+                else
+                {
+                    obj = LogicalTreeHelper.GetParent(obj);
+                }
             }
 
             // 点击的是空白区域，进入编辑模式
@@ -1596,58 +1608,13 @@ namespace FileSpace.Views
             return null;
         }
 
-        private void BreadcrumbArrow_Click(object sender, RoutedEventArgs e)
+        private void BreadcrumbMenuItem_SubmenuOpened(object sender, RoutedEventArgs e)
         {
-            if (sender is Wpf.Ui.Controls.Button button && button.Tag is BreadcrumbItem item)
+            if (sender is System.Windows.Controls.MenuItem menuItem && menuItem.DataContext is BreadcrumbItem item)
             {
-                // 如果菜单当前是打开的，并且用户点击了按钮，
-                // ContextMenu 会因为焦点丢失而关闭。
-                // 我们通过检查按钮是否刚刚因为菜单关闭而被标记为“非打开”来防止再次打开。
-                if (button.ContextMenu != null && button.ContextMenu.IsOpen)
-                {
-                    button.ContextMenu.IsOpen = false;
-                    return;
-                }
-
-                // 检查是否在极短时间内刚刚关闭过（防止点击按钮关闭菜单后立即又触发 Click 打开）
-                if (item.IsSubFolderMenuOpen)
-                {
-                    return;
-                }
-
-                if (ViewModel.LoadSubFoldersCommand.CanExecute(item))
+                if (!item.IsLoaded && ViewModel.LoadSubFoldersCommand.CanExecute(item))
                 {
                     ViewModel.LoadSubFoldersCommand.Execute(item);
-                }
-
-                if (button.ContextMenu != null)
-                {
-                    button.ContextMenu.PlacementTarget = button;
-                    button.ContextMenu.Placement = PlacementMode.Bottom;
-                    
-                    // 同步状态：打开时设为 true
-                    item.IsSubFolderMenuOpen = true;
-                    
-                    // 订阅关闭事件
-                    RoutedEventHandler? closedHandler = null;
-                    closedHandler = (s, ev) =>
-                    {
-                        button.ContextMenu.Closed -= closedHandler;
-                        // 稍微延迟重置状态，以避开按钮的 Click 事件周期
-                        System.Windows.Threading.DispatcherTimer timer = new()
-                        {
-                            Interval = TimeSpan.FromMilliseconds(100)
-                        };
-                        timer.Tick += (st, se) =>
-                        {
-                            item.IsSubFolderMenuOpen = false;
-                            timer.Stop();
-                        };
-                        timer.Start();
-                    };
-                    button.ContextMenu.Closed += closedHandler;
-                    
-                    button.ContextMenu.IsOpen = true;
                 }
             }
         }

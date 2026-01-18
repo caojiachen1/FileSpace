@@ -339,110 +339,87 @@
                                                            Background="Transparent" BorderThickness="0"
                                                            Padding="8,4" FontSize="13"
                                                            ToolTip="{Binding Path}"/>
-                                                <ui:Button Background="Transparent" BorderThickness="0" Padding="4" VerticalAlignment="Center"
-                                                           Click="BreadcrumbArrow_Click"
-                                                           Tag="{Binding}">
-                                                    <ui:Button.Content>
-                                                        <ui:SymbolIcon Symbol="ChevronRight24" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" RenderTransformOrigin="0.5,0.5">
-                                                            <ui:SymbolIcon.RenderTransform>
-                                                                <RotateTransform Angle="0"/>
-                                                            </ui:SymbolIcon.RenderTransform>
-                                                            <ui:SymbolIcon.Style>
-                                                                <Style TargetType="ui:SymbolIcon">
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsSubFolderMenuOpen}" Value="True">
-                                                                            <DataTrigger.EnterActions>
-                                                                                <BeginStoryboard>
-                                                                                    <Storyboard>
-                                                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                                         To="90" Duration="0:0:0.2">
-                                                                                            <DoubleAnimation.EasingFunction>
-                                                                                                <QuadraticEase EasingMode="EaseInOut"/>
-                                                                                            </DoubleAnimation.EasingFunction>
-                                                                                        </DoubleAnimation>
-                                                                                    </Storyboard>
-                                                                                </BeginStoryboard>
-                                                                            </DataTrigger.EnterActions>
-                                                                            <DataTrigger.ExitActions>
-                                                                                <BeginStoryboard>
-                                                                                    <Storyboard>
-                                                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                                         To="0" Duration="0:0:0.2">
-                                                                                            <DoubleAnimation.EasingFunction>
-                                                                                                <QuadraticEase EasingMode="EaseInOut"/>
-                                                                                            </DoubleAnimation.EasingFunction>
-                                                                                        </DoubleAnimation>
-                                                                                    </Storyboard>
-                                                                                </BeginStoryboard>
-                                                                            </DataTrigger.ExitActions>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </ui:SymbolIcon.Style>
-                                                        </ui:SymbolIcon>
-                                                    </ui:Button.Content>
-                                                    <ui:Button.ContextMenu>
-                                                        <ContextMenu ItemsSource="{Binding SubFolders}" MaxHeight="400"
-                                                                     MinWidth="120"
-                                                                     VirtualizingPanel.IsVirtualizing="False"
-                                                                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                                                     ScrollViewer.CanContentScroll="True">
-                                                            <ContextMenu.Template>
-                                                                <ControlTemplate TargetType="{x:Type ContextMenu}">
-                                                                    <Border Background="{DynamicResource ContextMenuBackground}"
-                                                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                                                            BorderThickness="1" CornerRadius="8"
-                                                                            SnapsToDevicePixels="True">
-                                                                        <Border.Effect>
-                                                                            <DropShadowEffect BlurRadius="15" Direction="270" Opacity="0.2" ShadowDepth="2"/>
-                                                                        </Border.Effect>
-                                                                        <ScrollViewer Margin="0,4" CanContentScroll="True" VerticalScrollBarVisibility="Auto">
-                                                                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                                                                        </ScrollViewer>
+                                                <Menu Background="Transparent" VerticalAlignment="Center" Margin="0" Padding="0">
+                                                    <MenuItem ItemsSource="{Binding SubFolders}"
+                                                              SubmenuOpened="BreadcrumbMenuItem_SubmenuOpened">
+                                                        <MenuItem.Header>
+                                                            <ui:SymbolIcon FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                                <ui:SymbolIcon.Style>
+                                                                    <Style TargetType="ui:SymbolIcon">
+                                                                        <Setter Property="Symbol" Value="ChevronRight24"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsSubmenuOpen, RelativeSource={RelativeSource AncestorType=MenuItem}}" Value="True">
+                                                                                <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </ui:SymbolIcon.Style>
+                                                            </ui:SymbolIcon>
+                                                        </MenuItem.Header>
+                                                        <MenuItem.Template>
+                                                            <ControlTemplate TargetType="{x:Type MenuItem}">
+                                                                <Grid SnapsToDevicePixels="True">
+                                                                    <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="4">
+                                                                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                                                                     </Border>
-                                                                </ControlTemplate>
-                                                            </ContextMenu.Template>
-                                                            <ContextMenu.ItemsPanel>
-                                                                <ItemsPanelTemplate>
-                                                                    <VirtualizingStackPanel IsItemsHost="True"/>
-                                                                </ItemsPanelTemplate>
-                                                            </ContextMenu.ItemsPanel>
-                                                            <ContextMenu.ItemContainerStyle>
-                                                                <Style TargetType="MenuItem">
-                                                                    <Setter Property="Header" Value="{Binding Name}"/>
-                                                                    <Setter Property="Command" Value="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                                                    <Setter Property="CommandParameter" Value="{Binding Path}"/>
-                                                                    <Setter Property="Padding" Value="12,6"/>
-                                                                    <Setter Property="Template">
-                                                                        <Setter.Value>
-                                                                            <ControlTemplate TargetType="{x:Type MenuItem}">
-                                                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" 
-                                                                                        BorderBrush="{TemplateBinding BorderBrush}" 
-                                                                                        BorderThickness="{TemplateBinding BorderThickness}" 
-                                                                                        CornerRadius="4" SnapsToDevicePixels="True">
-                                                                                    <ContentPresenter x:Name="ContentPresenter" 
-                                                                                                      ContentSource="Header" 
-                                                                                                      Margin="{TemplateBinding Padding}" 
-                                                                                                      RecognizesAccessKey="True" 
-                                                                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
-                                                                                                      VerticalAlignment="Center"/>
-                                                                                </Border>
-                                                                                <ControlTemplate.Triggers>
-                                                                                    <Trigger Property="IsHighlighted" Value="True">
-                                                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
-                                                                                    </Trigger>
-                                                                                    <Trigger Property="IsEnabled" Value="False">
-                                                                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
-                                                                                    </Trigger>
-                                                                                </ControlTemplate.Triggers>
-                                                                            </ControlTemplate>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Style>
-                                                            </ContextMenu.ItemContainerStyle>
-                                                        </ContextMenu>
-                                                    </ui:Button.ContextMenu>
-                                                </ui:Button>
+                                                                    <Popup x:Name="PART_Popup" AllowsTransparency="True" Focusable="False" 
+                                                                           IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" 
+                                                                           Placement="Bottom" PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}">
+                                                                        <Border Background="{DynamicResource ContextMenuBackground}"
+                                                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                                                BorderThickness="1" CornerRadius="8" SnapsToDevicePixels="True"
+                                                                                Margin="0,4,0,0">
+                                                                            <Border.Effect>
+                                                                                <DropShadowEffect BlurRadius="15" Direction="270" Opacity="0.2" ShadowDepth="2"/>
+                                                                            </Border.Effect>
+                                                                            <ScrollViewer Margin="0,4" MaxHeight="400" MinWidth="120" VerticalScrollBarVisibility="Auto">
+                                                                                <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                                                            </ScrollViewer>
+                                                                        </Border>
+                                                                    </Popup>
+                                                                </Grid>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </MenuItem.Template>
+                                                        <MenuItem.ItemContainerStyle>
+                                                            <Style TargetType="MenuItem">
+                                                                <Setter Property="Header" Value="{Binding Name}"/>
+                                                                <Setter Property="Command" Value="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                                                <Setter Property="CommandParameter" Value="{Binding Path}"/>
+                                                                <Setter Property="Padding" Value="12,6"/>
+                                                                <Setter Property="Template">
+                                                                    <Setter.Value>
+                                                                        <ControlTemplate TargetType="{x:Type MenuItem}">
+                                                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                                                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                                                                    BorderThickness="{TemplateBinding BorderThickness}" 
+                                                                                    CornerRadius="4" SnapsToDevicePixels="True">
+                                                                                <ContentPresenter x:Name="ContentPresenter" 
+                                                                                                  ContentSource="Header" 
+                                                                                                  Margin="{TemplateBinding Padding}" 
+                                                                                                  RecognizesAccessKey="True" 
+                                                                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
+                                                                                                  VerticalAlignment="Center"/>
+                                                                            </Border>
+                                                                            <ControlTemplate.Triggers>
+                                                                                <Trigger Property="IsHighlighted" Value="True">
+                                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                                </Trigger>
+                                                                                <Trigger Property="IsEnabled" Value="False">
+                                                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}"/>
+                                                                                </Trigger>
+                                                                            </ControlTemplate.Triggers>
+                                                                        </ControlTemplate>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Style>
+                                                        </MenuItem.ItemContainerStyle>
+                                                    </MenuItem>
+                                                </Menu>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
