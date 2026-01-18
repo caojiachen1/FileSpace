@@ -1150,6 +1150,7 @@
                     <!-- Drives List View -->
                     <ListView Grid.Row="1" x:Name="DrivesView" 
                               ItemsSource="{Binding Drives}"
+                              SelectedItem="{Binding SelectedDrive}"
                               Background="Transparent" BorderThickness="0"
                               Margin="10,0,10,10"
                               SelectionMode="Single"
@@ -1222,6 +1223,7 @@
                     <!-- Linux List View -->
                     <ListView Grid.Row="1" x:Name="LinuxView" 
                               ItemsSource="{Binding LinuxDistros}"
+                              SelectedItem="{Binding SelectedDrive}"
                               Background="Transparent" BorderThickness="0"
                               Margin="10,0,10,10"
                               SelectionMode="Single"

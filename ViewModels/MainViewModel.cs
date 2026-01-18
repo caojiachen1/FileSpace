@@ -95,6 +95,9 @@ namespace FileSpace.ViewModels
         private FileItemModel? _selectedFile;
 
         [ObservableProperty]
+        private DriveItemModel? _selectedDrive;
+
+        [ObservableProperty]
         private string _statusText = "就绪";
 
         [ObservableProperty]
@@ -712,6 +715,11 @@ namespace FileSpace.ViewModels
 
         partial void OnSelectedFileChanged(FileItemModel? value)
         {
+            if (value != null)
+            {
+                SelectedDrive = null;
+            }
+
             // Clear progress when switching files
             if (value?.IsDirectory != true || value.FullPath != _currentPreviewFolderPath)
             {
@@ -982,6 +990,11 @@ namespace FileSpace.ViewModels
                 _loadFilesCancellationTokenSource?.Cancel();
                 _loadFilesCancellationTokenSource = new CancellationTokenSource();
                 var token = _loadFilesCancellationTokenSource.Token;
+
+                // Clear selection when changing directory
+                SelectedFile = null;
+                SelectedDrive = null;
+                SelectedFiles.Clear();
 
                 if (CurrentPath == ThisPCPath)
                 {
@@ -1309,6 +1322,15 @@ namespace FileSpace.ViewModels
             }
         }
 
+        partial void OnSelectedDriveChanged(DriveItemModel? value)
+        {
+            if (value != null)
+            {
+                SelectedFile = null;
+            }
+            _ = ShowPreviewAsync();
+        }
+
         private async Task ShowPreviewAsync()
         {
             // Check if auto preview is enabled
@@ -1332,8 +1354,9 @@ namespace FileSpace.ViewModels
             try
             {
                 FileItemModel? itemToPreview = SelectedFile;
+                DriveItemModel? driveToPreview = SelectedDrive;
 
-                if (itemToPreview == null)
+                if (itemToPreview == null && driveToPreview == null)
                 {
                     if (string.IsNullOrEmpty(CurrentPath) || !Directory.Exists(CurrentPath) || CurrentPath == ThisPCPath || CurrentPath == LinuxPath)
                     {
@@ -1367,14 +1390,22 @@ namespace FileSpace.ViewModels
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
                 // Generate preview using the service
-                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(itemToPreview, combinedCts.Token);
+                object? previewContent = null;
+                if (itemToPreview != null)
+                {
+                    previewContent = await PreviewService.Instance.GeneratePreviewAsync(itemToPreview, combinedCts.Token);
+                }
+                else if (driveToPreview != null)
+                {
+                    previewContent = await PreviewService.Instance.GeneratePreviewAsync(driveToPreview, combinedCts.Token);
+                }
                 
                 PreviewContent = previewContent;
-                PreviewStatus = GetPreviewStatusForFile(itemToPreview);
+                PreviewStatus = itemToPreview != null ? GetPreviewStatusForFile(itemToPreview) : $"磁盘: {driveToPreview?.Name}";
                 IsPreviewLoading = false;
 
                 // Update tracking for current preview folder
-                if (itemToPreview.IsDirectory)
+                if (itemToPreview != null && itemToPreview.IsDirectory)
                 {
                     _currentPreviewFolderPath = itemToPreview.FullPath;
                     IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.IsCalculationActive(itemToPreview.FullPath);

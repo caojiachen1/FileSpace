@@ -92,8 +92,8 @@ namespace FileSpace.Services
                     Stretch = Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
-                    MaxWidth = PREVIEW_CONTAINER_HEIGHT * 0.95,
-                    MaxHeight = PREVIEW_CONTAINER_HEIGHT * 0.95
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT
                 };
                 
                 // 设置高质量渲染选项
@@ -112,8 +112,8 @@ namespace FileSpace.Services
                     Stretch = Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
-                    MaxWidth = PREVIEW_CONTAINER_HEIGHT * 0.95,
-                    MaxHeight = PREVIEW_CONTAINER_HEIGHT * 0.95
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT
                 };
                 
                 RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Fant);
@@ -191,6 +191,159 @@ namespace FileSpace.Services
             }
 
             return await GenerateFilePreviewAsync(file, cancellationToken);
+        }
+
+        public async Task<object?> GeneratePreviewAsync(DriveItemModel drive, CancellationToken cancellationToken)
+        {
+            if (drive == null) return null;
+
+            // Check if preview is enabled
+            var settings = SettingsService.Instance.Settings.PreviewSettings;
+            if (!settings.EnablePreview)
+            {
+                return PreviewUIHelper.CreateInfoPanel("预览已禁用", "在设置中启用预览功能以查看磁盘信息");
+            }
+
+            return await GenerateDrivePreviewAsync(drive, cancellationToken);
+        }
+
+        private async Task<StackPanel> GenerateDrivePreviewAsync(DriveItemModel drive, CancellationToken cancellationToken)
+        {
+            var panel = new StackPanel { Margin = new Thickness(0) };
+
+            // 1. Visual Icon
+            var previewContainer = new Border
+            {
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH,
+                Margin = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                Child = CreateDrivePreviewVisual(drive)
+            };
+            panel.Children.Add(previewContainer);
+
+            // Container for details
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
+
+            // 2. Name
+            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            
+            UIElement icon;
+            if (drive.Thumbnail != null)
+            {
+                var image = new Image
+                {
+                    Source = drive.Thumbnail,
+                    Width = 20,
+                    Height = 20,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+                icon = image;
+            }
+            else
+            {
+                icon = new Wpf.Ui.Controls.SymbolIcon 
+                { 
+                    Symbol = drive.Icon, 
+                    FontSize = 20, 
+                    Margin = new Thickness(0, 0, 10, 0), 
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                    VerticalAlignment = VerticalAlignment.Center 
+                };
+            }
+            
+            var nameBlock = new TextBlock
+            {
+                Text = drive.Name,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 250
+            };
+            namePanel.Children.Add(icon);
+            namePanel.Children.Add(nameBlock);
+            detailsPanel.Children.Add(namePanel);
+
+            // 3. Details
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("磁盘信息"));
+            
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("盘符", drive.DriveLetter));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("文件系统", drive.DriveFormat));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", GetDriveTypeString(drive.DriveType)));
+            
+            detailsPanel.Children.Add(new Separator { Margin = new Thickness(0, 10, 0, 10), Background = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"] });
+            
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("可用空间", FileUtils.FormatFileSize(drive.AvailableFreeSpace)));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总大小", FileUtils.FormatFileSize(drive.TotalSize)));
+            
+            // Add a progress bar for usage
+            var usagePanel = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
+            usagePanel.Children.Add(new TextBlock 
+            { 
+                Text = $"使用率: {drive.PercentUsed:F1}%", 
+                Margin = new Thickness(0, 0, 0, 5), 
+                FontSize = 12, 
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] 
+            });
+            var pb = new ProgressBar 
+            { 
+                Value = drive.PercentUsed, 
+                Maximum = 100, 
+                Height = 6, 
+                Background = (Brush)Application.Current.Resources["ControlStrokeColorSecondaryBrush"],
+                Foreground = drive.PercentUsed > 90 ? Brushes.Red : (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+            };
+            usagePanel.Children.Add(pb);
+            detailsPanel.Children.Add(usagePanel);
+
+            return panel;
+        }
+
+        private UIElement CreateDrivePreviewVisual(DriveItemModel drive)
+        {
+            var highQualityThumbnail = GenerateHighQualityThumbnail(drive.DriveLetter);
+            if (highQualityThumbnail != null)
+            {
+                var image = new Image
+                {
+                    Source = highQualityThumbnail,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT
+                };
+                
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Fant);
+                return image;
+            }
+
+            return new Wpf.Ui.Controls.SymbolIcon
+            {
+                Symbol = drive.Icon,
+                FontSize = 120,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+
+        private string GetDriveTypeString(DriveType type)
+        {
+            return type switch
+            {
+                DriveType.Fixed => "本地磁盘",
+                DriveType.Removable => "可移动磁盘",
+                DriveType.Network => "网络驱动器",
+                DriveType.CDRom => "光驱",
+                DriveType.Ram => "内存盘",
+                _ => "未知驱动器"
+            };
         }
 
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
