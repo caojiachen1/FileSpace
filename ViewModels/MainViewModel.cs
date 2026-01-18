@@ -1009,6 +1009,7 @@ namespace FileSpace.ViewModels
                     }
                     Files.Clear();
                     StatusText = $"共 {drives.Count} 个设备";
+                    _ = ShowPreviewAsync();
                     return; 
                 }
 
@@ -1358,7 +1359,22 @@ namespace FileSpace.ViewModels
 
                 if (itemToPreview == null && driveToPreview == null)
                 {
-                    if (string.IsNullOrEmpty(CurrentPath) || !Directory.Exists(CurrentPath) || CurrentPath == ThisPCPath || CurrentPath == LinuxPath)
+                    if (CurrentPath == ThisPCPath)
+                    {
+                        IsPreviewLoading = true;
+                        PreviewStatus = "正在加载系统信息...";
+                        PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
+                        
+                        using var tCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                        using var combinedTCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, tCts.Token);
+                        
+                        PreviewContent = await PreviewService.Instance.GenerateThisPCPreviewAsync(Drives, combinedTCts.Token);
+                        PreviewStatus = "此电脑";
+                        IsPreviewLoading = false;
+                        return;
+                    }
+
+                    if (string.IsNullOrEmpty(CurrentPath) || !Directory.Exists(CurrentPath) || CurrentPath == LinuxPath)
                     {
                         PreviewContent = null;
                         PreviewStatus = "";

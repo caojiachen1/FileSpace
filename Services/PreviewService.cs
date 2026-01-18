@@ -167,7 +167,7 @@ namespace FileSpace.Services
             return new Wpf.Ui.Controls.SymbolIcon 
             { 
                 Symbol = file.Icon, 
-                FontSize = 20, 
+                FontSize = 24, 
                 Margin = new Thickness(0, 0, 10, 0),
                 Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray,
                 VerticalAlignment = VerticalAlignment.Center
@@ -207,6 +207,139 @@ namespace FileSpace.Services
             return await GenerateDrivePreviewAsync(drive, cancellationToken);
         }
 
+        public async Task<object?> GenerateThisPCPreviewAsync(System.Collections.Generic.IEnumerable<DriveItemModel> drives, CancellationToken cancellationToken)
+        {
+            // Check if preview is enabled
+            var settings = SettingsService.Instance.Settings.PreviewSettings;
+            if (!settings.EnablePreview)
+            {
+                return PreviewUIHelper.CreateInfoPanel("预览已禁用", "在设置中启用预览功能以查看系统信息");
+            }
+
+            var panel = new StackPanel { Margin = new Thickness(0) };
+
+            // 1. Visual Icon (This PC shell icon)
+            var previewContainer = new Border
+            {
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH,
+                Margin = new Thickness(0),
+                CornerRadius = new CornerRadius(0),
+                Child = new Wpf.Ui.Controls.SymbolIcon
+                {
+                    Symbol = Wpf.Ui.Controls.SymbolRegular.Laptop24,
+                    FontSize = 100,
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+
+            // Try to get high quality shell icon for This PC
+            var thisPCIcon = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 256, 256);
+            if (thisPCIcon != null)
+            {
+                var image = new Image
+                {
+                    Source = thisPCIcon,
+                    Stretch = Stretch.Uniform,
+                    MaxWidth = PREVIEW_CONTAINER_HEIGHT * 0.8,
+                    MaxHeight = PREVIEW_CONTAINER_HEIGHT * 0.8
+                };
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.Fant);
+                previewContainer.Child = image;
+            }
+
+            panel.Children.Add(previewContainer);
+
+            // Container for details
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
+
+            // 2. Name
+            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            
+            UIElement nameIcon;
+            if (thisPCIcon != null)
+            {
+                var image = new Image
+                {
+                    Source = thisPCIcon,
+                    Width = 24,
+                    Height = 24,
+                    Stretch = Stretch.Uniform,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
+                };
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+                nameIcon = image;
+            }
+            else
+            {
+                nameIcon = new Wpf.Ui.Controls.SymbolIcon 
+                { 
+                    Symbol = Wpf.Ui.Controls.SymbolRegular.Laptop24, 
+                    FontSize = 24, 
+                    Margin = new Thickness(0, 0, 10, 0), 
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                    VerticalAlignment = VerticalAlignment.Center 
+                };
+            }
+            
+            var nameBlock = new TextBlock
+            {
+                Text = "此电脑",
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            namePanel.Children.Add(nameIcon);
+            namePanel.Children.Add(nameBlock);
+            detailsPanel.Children.Add(namePanel);
+
+            // 3. Stats
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("系统摘要"));
+
+            long totalSize = 0;
+            long totalFree = 0;
+            int count = 0;
+            foreach (var drive in drives)
+            {
+                totalSize += drive.TotalSize;
+                totalFree += drive.AvailableFreeSpace;
+                count++;
+            }
+
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("驱动器", $"{count} 个驱动器"));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总容量", FileUtils.FormatFileSize(totalSize)));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("可用空间", FileUtils.FormatFileSize(totalFree)));
+
+            if (totalSize > 0)
+            {
+                double percentUsed = (1.0 - (double)totalFree / totalSize) * 100;
+                var usagePanel = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
+                usagePanel.Children.Add(new TextBlock 
+                { 
+                    Text = $"存储空间使用情况 ({percentUsed:F1}%)", 
+                    Margin = new Thickness(0, 0, 0, 5), 
+                    FontSize = 12, 
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] 
+                });
+                var pb = new ProgressBar 
+                { 
+                    Value = percentUsed, 
+                    Maximum = 100, 
+                    Height = 6, 
+                    Background = (Brush)Application.Current.Resources["ControlStrokeColorSecondaryBrush"],
+                    Foreground = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"]
+                };
+                usagePanel.Children.Add(pb);
+                detailsPanel.Children.Add(usagePanel);
+            }
+
+            return panel;
+        }
+
         private async Task<StackPanel> GenerateDrivePreviewAsync(DriveItemModel drive, CancellationToken cancellationToken)
         {
             var panel = new StackPanel { Margin = new Thickness(0) };
@@ -235,8 +368,8 @@ namespace FileSpace.Services
                 var image = new Image
                 {
                     Source = drive.Thumbnail,
-                    Width = 20,
-                    Height = 20,
+                    Width = 24,
+                    Height = 24,
                     Stretch = Stretch.Uniform,
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(0, 0, 10, 0)
@@ -249,7 +382,7 @@ namespace FileSpace.Services
                 icon = new Wpf.Ui.Controls.SymbolIcon 
                 { 
                     Symbol = drive.Icon, 
-                    FontSize = 20, 
+                    FontSize = 24, 
                     Margin = new Thickness(0, 0, 10, 0), 
                     Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
                     VerticalAlignment = VerticalAlignment.Center 
