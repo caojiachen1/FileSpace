@@ -1316,6 +1316,7 @@
                                  CanUserResizeColumns="True"
                                  CanUserResizeRows="False"
                                  CanUserSortColumns="True"
+                                 Sorting="FileDataGrid_Sorting"
                                  IsReadOnly="True"
                                  AllowDrop="True"
                                  PreviewMouseLeftButtonDown="FileDataGrid_PreviewMouseLeftButtonDown"

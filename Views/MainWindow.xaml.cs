@@ -11,6 +11,7 @@ using FileSpace.Services;
 using FileSpace.Utils;
 using System.IO;
 using System.Windows.Documents;
+using System.ComponentModel;
 
 namespace FileSpace.Views
 {
@@ -142,6 +143,9 @@ namespace FileSpace.Views
                 rightColumn.Width = new GridLength(_rightPanelWidth);
             }
 
+            // 初始化排序箭头
+            UpdateDataGridSortArrows();
+
             // 预热下拉菜单以消除第一次打开时的卡顿
             Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -189,6 +193,37 @@ namespace FileSpace.Views
             else if (e.PropertyName == nameof(MainViewModel.IsRightPanelVisible))
             {
                 UpdateRightPanelVisibility();
+            }
+            else if (e.PropertyName == nameof(MainViewModel.SortMode) || e.PropertyName == nameof(MainViewModel.SortAscending))
+            {
+                UpdateDataGridSortArrows();
+            }
+        }
+
+        private void UpdateDataGridSortArrows()
+        {
+            if (FileDataGrid == null) return;
+
+            foreach (var column in FileDataGrid.Columns)
+            {
+                string mode = column.SortMemberPath switch
+                {
+                    "Name" => "Name",
+                    "Size" => "Size",
+                    "Type" => "Type",
+                    "ModifiedTime" => "Date",
+                    "ModifiedDateTime" => "Date",
+                    _ => column.SortMemberPath
+                };
+
+                if (ViewModel.SortMode == mode)
+                {
+                    column.SortDirection = ViewModel.SortAscending ? ListSortDirection.Ascending : ListSortDirection.Descending;
+                }
+                else
+                {
+                    column.SortDirection = null;
+                }
             }
         }
 
@@ -418,6 +453,35 @@ namespace FileSpace.Views
                     fileDataGrid.Focus();
                 }
             }
+        }
+
+        private void FileDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+        {
+            e.Handled = true; // 阻止物理排序，使用 ViewModel 逻辑
+
+            var column = e.Column;
+            var sortMemberPath = column.SortMemberPath;
+
+            // 映射 DataGrid 列到 ViewModel 的排序模式
+            string mode = sortMemberPath switch
+            {
+                "Name" => "Name",
+                "Size" => "Size",
+                "Type" => "Type",
+                "ModifiedTime" => "Date",
+                "ModifiedDateTime" => "Date",
+                _ => sortMemberPath
+            };
+
+            // 执行 ViewModel 的排序逻辑，会自动处理文件夹置顶和升降序切换
+            ViewModel.SetSortModeCommand.Execute(mode);
+
+            // 更新列头箭头的显示
+            foreach (var col in FileDataGrid.Columns)
+            {
+                col.SortDirection = null;
+            }
+            column.SortDirection = ViewModel.SortAscending ? ListSortDirection.Ascending : ListSortDirection.Descending;
         }
 
         private void DrivesView_MouseDown(object sender, MouseButtonEventArgs e)
