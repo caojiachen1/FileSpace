@@ -6,10 +6,10 @@ namespace FileSpace.Utils
     public static class FileUtils
     {
         // Performance thresholds for different file types
-        public const long MAX_TEXT_PREVIEW_SIZE = 1024 * 1024; // 1MB for full text preview
-        public const long MAX_TEXT_QUICK_PREVIEW_SIZE = 10 * 1024 * 1024; // 10MB for chunked preview
-        public const long MAX_IMAGE_PREVIEW_SIZE = 50 * 1024 * 1024; // 50MB for images
-        public const long MAX_CSV_PREVIEW_SIZE = 5 * 1024 * 1024; // 5MB for CSV
+        public const long MAX_TEXT_PREVIEW_SIZE = 5 * 1024 * 1024; // Increased to 5MB for full text preview
+        public const long MAX_TEXT_QUICK_PREVIEW_SIZE = 100 * 1024 * 1024; // Increased to 100MB for chunked preview
+        public const long MAX_IMAGE_PREVIEW_SIZE = 200 * 1024 * 1024; // Increased to 200MB for images
+        public const long MAX_CSV_PREVIEW_SIZE = 20 * 1024 * 1024; // Increased to 20MB for CSV
         
         // Chunk sizes for streaming
         public const int TEXT_PREVIEW_CHUNK_SIZE = 100 * 1024; // 100KB chunks
@@ -83,20 +83,17 @@ namespace FileSpace.Utils
         public static PreviewSizeCategory GetPreviewSizeCategory(FileInfo fileInfo, FilePreviewType fileType)
         {
             var size = fileInfo.Length;
-            var settings = Services.SettingsService.Instance.Settings.PreviewSettings;
-            var maxSizeBytes = settings.MaxPreviewFileSize * 1024 * 1024; // Convert MB to bytes
             
             return fileType switch
             {
                 FilePreviewType.Text => size switch
                 {
                     <= MAX_TEXT_PREVIEW_SIZE => PreviewSizeCategory.Small,
-                    <= MAX_TEXT_QUICK_PREVIEW_SIZE when size <= maxSizeBytes => PreviewSizeCategory.Medium,
-                    _ => size <= maxSizeBytes ? PreviewSizeCategory.Medium : PreviewSizeCategory.Large
+                    _ => PreviewSizeCategory.Medium
                 },
-                FilePreviewType.Image => size <= Math.Min(MAX_IMAGE_PREVIEW_SIZE, maxSizeBytes) ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
-                FilePreviewType.Csv => size <= Math.Min(MAX_CSV_PREVIEW_SIZE, maxSizeBytes) ? PreviewSizeCategory.Small : PreviewSizeCategory.Large,
-                _ => size <= maxSizeBytes ? PreviewSizeCategory.Small : PreviewSizeCategory.Large
+                FilePreviewType.Image => PreviewSizeCategory.Small,
+                FilePreviewType.Csv => size <= MAX_CSV_PREVIEW_SIZE ? PreviewSizeCategory.Small : PreviewSizeCategory.Medium,
+                _ => PreviewSizeCategory.Small
             };
         }
 

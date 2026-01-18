@@ -111,19 +111,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="80"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="最大预览文件:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider x:Name="MaxPreviewSizeSlider" Grid.Column="1" Minimum="10" Maximum="500" 
-                                    Value="100" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,0,10,0"/>
-                            <TextBlock Grid.Column="2" Text="{Binding Value, ElementName=MaxPreviewSizeSlider, StringFormat={}{0:F0}MB}" 
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                        
-                        <Grid Margin="0,5">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="图片预览质量:" VerticalAlignment="Center" Margin="0,0,10,0"/>
                             <ComboBox x:Name="ImageQualityComboBox" Grid.Column="1">

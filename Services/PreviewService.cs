@@ -196,14 +196,7 @@ namespace FileSpace.Services
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             string extension = Path.GetExtension(file.FullPath).ToLower();
-            var fileInfo = new FileInfo(file.FullPath);
             var fileType = FilePreviewUtils.DetermineFileType(extension);
-
-            // Early performance check
-            if (FileUtils.ShouldSkipPreview(fileInfo, fileType))
-            {
-                return await GenerateFileInfoOnlyAsync(file, fileType, "文件过大，仅显示文件信息", cancellationToken);
-            }
 
             return await GenerateFileInfoAndPreviewAsync(file, fileType, cancellationToken);
         }

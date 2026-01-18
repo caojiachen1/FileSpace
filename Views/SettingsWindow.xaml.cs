@@ -54,7 +54,6 @@ namespace FileSpace.Views
             // Preview Settings
             EnablePreviewCheckBox.IsChecked = settings.PreviewSettings.EnablePreview;
             AutoPreviewCheckBox.IsChecked = settings.PreviewSettings.AutoPreview;
-            MaxPreviewSizeSlider.Value = settings.PreviewSettings.MaxPreviewFileSize;
             
             // Image quality settings
             foreach (ComboBoxItem item in ImageQualityComboBox.Items)
@@ -81,7 +80,6 @@ namespace FileSpace.Views
             // Enable/disable preview-related controls based on preview checkbox
             var previewEnabled = EnablePreviewCheckBox.IsChecked == true;
             AutoPreviewCheckBox.IsEnabled = previewEnabled;
-            MaxPreviewSizeSlider.IsEnabled = previewEnabled;
             ImageQualityComboBox.IsEnabled = previewEnabled;
         }
 
@@ -117,7 +115,6 @@ namespace FileSpace.Views
             // Preview Settings
             settings.PreviewSettings.EnablePreview = EnablePreviewCheckBox.IsChecked ?? true;
             settings.PreviewSettings.AutoPreview = AutoPreviewCheckBox.IsChecked ?? true;
-            settings.PreviewSettings.MaxPreviewFileSize = (int)MaxPreviewSizeSlider.Value;
             
             if (ImageQualityComboBox.SelectedItem is ComboBoxItem qualityItem)
             {
@@ -306,10 +303,6 @@ namespace FileSpace.Views
             if (AutoPreviewCheckBox != null)
             {
                 AutoPreviewCheckBox.IsEnabled = EnablePreviewCheckBox.IsChecked == true;
-            }
-            if (MaxPreviewSizeSlider != null)
-            {
-                MaxPreviewSizeSlider.IsEnabled = EnablePreviewCheckBox.IsChecked == true;
             }
             if (ImageQualityComboBox != null)
             {

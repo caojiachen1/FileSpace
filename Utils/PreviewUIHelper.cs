@@ -204,11 +204,6 @@ namespace FileSpace.Utils
 
         private static async Task AddChunkedTextPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
-            // Add warning about large file
-            var warningBlock = CreateInfoTextBlock($"⚠️ 大文件预览 ({FileUtils.FormatFileSize(fileInfo.Length)}) - 仅显示前部分内容");
-            warningBlock.Foreground = Brushes.Orange;
-            panel.Children.Add(warningBlock);
-
             try
             {
                 var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
@@ -318,12 +313,6 @@ namespace FileSpace.Utils
         {
             var sizeCategory = FileUtils.GetPreviewSizeCategory(fileInfo, FilePreviewType.Csv);
             
-            if (sizeCategory == PreviewSizeCategory.Large)
-            {
-                AddLargeFileWarning(panel, fileInfo);
-                return;
-            }
-
             try
             {
                 // For medium/large CSV files, read line by line to avoid loading entire file
@@ -384,12 +373,6 @@ namespace FileSpace.Utils
 
         public static async Task AddImagePreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
-            if (FileUtils.ShouldSkipPreview(fileInfo, FilePreviewType.Image))
-            {
-                AddLargeFileWarning(panel, fileInfo);
-                return;
-            }
-
             try
             {
                 var image = await Task.Run(() =>

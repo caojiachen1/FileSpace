@@ -1875,7 +1875,6 @@
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <ui:ProgressRing IsIndeterminate="True" Width="40" Height="40" Margin="0,0,0,10"/>
                                     <TextBlock Text="正在加载预览..." Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Center" FontSize="14"/>
-                                    <TextBlock Text="大文件可能需要较长时间..." Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" FontSize="11" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Border>
                         </Grid>

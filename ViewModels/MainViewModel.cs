@@ -1331,19 +1331,9 @@ namespace FileSpace.ViewModels
                 PreviewStatus = "正在加载预览...";
                 PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
 
-                // Add timeout for large files
+                // Add timeout for previews
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-                // Check file size and show early warning for large files
-                if (!SelectedFile.IsDirectory)
-                {
-                    var fileInfo = new FileInfo(SelectedFile.FullPath);
-                    if (fileInfo.Length > 100 * 1024 * 1024) // 100MB
-                    {
-                        PreviewStatus = "大文件加载中，请稍候...";
-                    }
-                }
 
                 // Generate preview using the service
                 var previewContent = await PreviewService.Instance.GeneratePreviewAsync(SelectedFile, combinedCts.Token);

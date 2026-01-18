@@ -262,12 +262,6 @@ namespace FileSpace.Services
                     settings.PerformanceSettings.MaxConcurrentThreads = Environment.ProcessorCount;
                 }
                 
-                // 验证预览文件大小
-                if (settings.PreviewSettings.MaxPreviewFileSize < 1 || settings.PreviewSettings.MaxPreviewFileSize > 1000)
-                {
-                    settings.PreviewSettings.MaxPreviewFileSize = 100;
-                }
-                
                 return true;
             }
             catch (Exception ex)
@@ -487,11 +481,6 @@ namespace FileSpace.Services
         /// 自动预览选中文件
         /// </summary>
         public bool AutoPreview { get; set; } = true;
-
-        /// <summary>
-        /// 最大预览文件大小 (MB)
-        /// </summary>
-        public int MaxPreviewFileSize { get; set; } = 100;
 
         /// <summary>
         /// 图片预览质量
