@@ -343,13 +343,38 @@
                                                     <MenuItem ItemsSource="{Binding SubFolders}"
                                                               SubmenuOpened="BreadcrumbMenuItem_SubmenuOpened">
                                                         <MenuItem.Header>
-                                                            <ui:SymbolIcon FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                                            <ui:SymbolIcon Symbol="ChevronRight24" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" RenderTransformOrigin="0.5,0.5">
+                                                                <ui:SymbolIcon.RenderTransform>
+                                                                    <RotateTransform Angle="0"/>
+                                                                </ui:SymbolIcon.RenderTransform>
                                                                 <ui:SymbolIcon.Style>
                                                                     <Style TargetType="ui:SymbolIcon">
-                                                                        <Setter Property="Symbol" Value="ChevronRight24"/>
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding IsSubmenuOpen, RelativeSource={RelativeSource AncestorType=MenuItem}}" Value="True">
-                                                                                <Setter Property="Symbol" Value="ChevronDown24"/>
+                                                                                <DataTrigger.EnterActions>
+                                                                                    <BeginStoryboard>
+                                                                                        <Storyboard>
+                                                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                                             To="90" Duration="0:0:0.2">
+                                                                                                <DoubleAnimation.EasingFunction>
+                                                                                                    <QuadraticEase EasingMode="EaseInOut"/>
+                                                                                                </DoubleAnimation.EasingFunction>
+                                                                                            </DoubleAnimation>
+                                                                                        </Storyboard>
+                                                                                    </BeginStoryboard>
+                                                                                </DataTrigger.EnterActions>
+                                                                                <DataTrigger.ExitActions>
+                                                                                    <BeginStoryboard>
+                                                                                        <Storyboard>
+                                                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                                             To="0" Duration="0:0:0.2">
+                                                                                                <DoubleAnimation.EasingFunction>
+                                                                                                    <QuadraticEase EasingMode="EaseInOut"/>
+                                                                                                </DoubleAnimation.EasingFunction>
+                                                                                            </DoubleAnimation>
+                                                                                        </Storyboard>
+                                                                                    </BeginStoryboard>
+                                                                                </DataTrigger.ExitActions>
                                                                             </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
