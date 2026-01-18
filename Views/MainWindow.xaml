@@ -1402,7 +1402,7 @@
                             </ContextMenu>
                         </ui:DataGrid.ContextMenu>
                         <ui:DataGrid.Columns>
-                            <DataGridTemplateColumn Header="名称" Width="200" SortMemberPath="Name">
+                            <DataGridTemplateColumn Header="名称" Width="500" SortMemberPath="Name">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Grid>
