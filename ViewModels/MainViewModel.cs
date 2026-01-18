@@ -702,6 +702,12 @@ namespace FileSpace.ViewModels
                 
                 UpdateBreadcrumbs(value);
             }
+
+            // Update preview if nothing is selected
+            if (SelectedFile == null)
+            {
+                _ = ShowPreviewAsync();
+            }
         }
 
         partial void OnSelectedFileChanged(FileItemModel? value)
@@ -1319,12 +1325,31 @@ namespace FileSpace.ViewModels
 
             try
             {
-                if (SelectedFile == null)
+                FileItemModel? itemToPreview = SelectedFile;
+
+                if (itemToPreview == null)
                 {
-                    PreviewContent = null;
-                    PreviewStatus = "";
-                    IsPreviewLoading = false;
-                    return;
+                    if (string.IsNullOrEmpty(CurrentPath) || !Directory.Exists(CurrentPath) || CurrentPath == ThisPCPath || CurrentPath == LinuxPath)
+                    {
+                        PreviewContent = null;
+                        PreviewStatus = "";
+                        IsPreviewLoading = false;
+                        return;
+                    }
+
+                    // Create a temporary FileItemModel for the current directory
+                    var dirInfo = new DirectoryInfo(CurrentPath);
+                    itemToPreview = new FileItemModel
+                    {
+                        Name = dirInfo.Name,
+                        FullPath = dirInfo.FullName,
+                        IsDirectory = true,
+                        Icon = SymbolRegular.Folder24,
+                        IconColor = "#FFE6A23C",
+                        Type = "文件夹",
+                        ModifiedDateTime = dirInfo.LastWriteTime,
+                        ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                    };
                 }
 
                 IsPreviewLoading = true;
@@ -1336,17 +1361,17 @@ namespace FileSpace.ViewModels
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
                 // Generate preview using the service
-                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(SelectedFile, combinedCts.Token);
+                var previewContent = await PreviewService.Instance.GeneratePreviewAsync(itemToPreview, combinedCts.Token);
                 
                 PreviewContent = previewContent;
-                PreviewStatus = GetPreviewStatusForFile(SelectedFile);
+                PreviewStatus = GetPreviewStatusForFile(itemToPreview);
                 IsPreviewLoading = false;
 
                 // Update tracking for current preview folder
-                if (SelectedFile.IsDirectory)
+                if (itemToPreview.IsDirectory)
                 {
-                    _currentPreviewFolderPath = SelectedFile.FullPath;
-                    IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.IsCalculationActive(SelectedFile.FullPath);
+                    _currentPreviewFolderPath = itemToPreview.FullPath;
+                    IsSizeCalculating = BackgroundFolderSizeCalculator.Instance.IsCalculationActive(itemToPreview.FullPath);
                     if (IsSizeCalculating)
                     {
                         SizeCalculationProgress = "正在计算中...";
@@ -1406,10 +1431,8 @@ namespace FileSpace.ViewModels
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Only show progress for the currently selected folder
-                if (SelectedFile?.IsDirectory == true &&
-                    SelectedFile.FullPath == e.FolderPath &&
-                    _currentPreviewFolderPath == e.FolderPath)
+                // Only show progress for the currently previewed folder (selected or current path)
+                if (_currentPreviewFolderPath == e.FolderPath)
                 {
                     SizeCalculationProgress = _folderPreviewUpdateService.FormatSizeCalculationProgress(
                         e.Progress.CurrentPath, 
@@ -1425,7 +1448,7 @@ namespace FileSpace.ViewModels
             Application.Current.Dispatcher.Invoke(() =>
             {
                 // Update any active directory preview if it matches
-                if (SelectedFile?.IsDirectory == true && SelectedFile.FullPath == e.FolderPath)
+                if (_currentPreviewFolderPath == e.FolderPath)
                 {
                     _folderPreviewUpdateService.UpdateDirectoryPreviewWithSize(PreviewContent, e.SizeInfo);
                     // Clear calculation state for the current preview folder
@@ -1898,11 +1921,27 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
-        private void ShowProperties()
+        private void ShowProperties(string? path = null)
         {
-            if (SelectedFile != null)
+            string? targetPath = path;
+
+            if (string.IsNullOrEmpty(targetPath))
             {
-                var viewModel = new PropertiesViewModel(SelectedFile.FullPath);
+                targetPath = SelectedFile?.FullPath;
+            }
+
+            if (string.IsNullOrEmpty(targetPath))
+            {
+                if (!string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath) && 
+                    CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                {
+                    targetPath = CurrentPath;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(targetPath))
+            {
+                var viewModel = new PropertiesViewModel(targetPath);
                 var propertiesWindow = new PropertiesWindow(viewModel);
                 propertiesWindow.ShowDialog();
             }

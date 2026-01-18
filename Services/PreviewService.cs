@@ -258,7 +258,7 @@ namespace FileSpace.Services
                 var mainWindow = Application.Current.MainWindow;
                 var viewModel = mainWindow.DataContext;
                 var propertiesCommand = viewModel?.GetType().GetProperty("ShowPropertiesCommand")?.GetValue(viewModel) as System.Windows.Input.ICommand;
-                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand));
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand, file.FullPath));
             }
             catch { }
 
@@ -358,13 +358,13 @@ namespace FileSpace.Services
                 var viewModel = mainWindow.DataContext;
                 var propertiesCommand = viewModel?.GetType().GetProperty("ShowPropertiesCommand")?.GetValue(viewModel) as System.Windows.Input.ICommand;
                 
-                var propBtn = PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand);
+                var propBtn = PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand, fileInfo.FullName);
                 propBtn.Margin = new Thickness(0, 20, 0, 0);
                 detailsPanel.Children.Add(propBtn);
             }
             catch
             {
-                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24));
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, null, fileInfo.FullName));
             }
 
             // Start AI detection asynchronously
@@ -517,7 +517,7 @@ namespace FileSpace.Services
                 var mainWindow = Application.Current.MainWindow;
                 var viewModel = mainWindow.DataContext;
                 var propertiesCommand = viewModel?.GetType().GetProperty("ShowPropertiesCommand")?.GetValue(viewModel) as System.Windows.Input.ICommand;
-                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand));
+                detailsPanel.Children.Add(PreviewUIHelper.CreateActionButton("属性", Wpf.Ui.Controls.SymbolRegular.Settings24, propertiesCommand, file.FullPath));
             }
             catch { }
 
