@@ -924,7 +924,13 @@ namespace FileSpace.ViewModels
                         }
                     }
                     
-                    BreadcrumbItems.Add(new BreadcrumbItem(name, part));
+                    var item = new BreadcrumbItem(name, part);
+                    item.HasSubFolders = FileSystemService.Instance.HasSubDirectories(part);
+                    if (!item.HasSubFolders)
+                    {
+                        item.SubFolders.Clear();
+                    }
+                    BreadcrumbItems.Add(item);
                 }
             }
             catch (Exception ex)
@@ -1550,6 +1556,12 @@ namespace FileSpace.ViewModels
                 item.SubFolders.Add(dir);
             }
             item.IsLoaded = true;
+
+            // If no subfolders were found, hide the arrow
+            if (item.SubFolders.Count == 0)
+            {
+                item.HasSubFolders = false;
+            }
         }
 
         // 标签页管理命令

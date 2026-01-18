@@ -339,7 +339,8 @@
                                                            Background="Transparent" BorderThickness="0"
                                                            Padding="8,4" FontSize="13"
                                                            ToolTip="{Binding Path}"/>
-                                                <Menu Background="Transparent" VerticalAlignment="Center" Margin="0" Padding="0">
+                                                <Menu Background="Transparent" VerticalAlignment="Center" Margin="0" Padding="0"
+                                                      Visibility="{Binding HasSubFolders, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <MenuItem ItemsSource="{Binding SubFolders}"
                                                               SubmenuOpened="BreadcrumbMenuItem_SubmenuOpened">
                                                         <MenuItem.Header>

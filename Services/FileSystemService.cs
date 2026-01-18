@@ -274,6 +274,51 @@ namespace FileSpace.Services
 
         public static string GetFileIconColorPublic(string extension) => GetFileIconColor(extension);
 
+        public bool HasSubDirectories(string path)
+        {
+            try
+            {
+                if (path == "此电脑") return true; 
+                if (path == "Linux") return true;
+
+                if (!Directory.Exists(path)) return false;
+
+                string searchPath = Path.Combine(path, "*");
+                var handle = Win32Api.FindFirstFileExW(
+                    searchPath,
+                    Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                    out var findData,
+                    Win32Api.FINDEX_SEARCH_OPS.FindExSearchLimitToDirectories,
+                    IntPtr.Zero,
+                    Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                if (!handle.IsInvalid)
+                {
+                    try
+                    {
+                        do
+                        {
+                            string fileName = findData.cFileName;
+                            if (fileName == "." || fileName == "..") continue;
+
+                            var attributes = (FileAttributes)findData.dwFileAttributes;
+                            if (attributes.HasFlag(FileAttributes.Directory))
+                            {
+                                if (ShouldShowItem(attributes))
+                                    return true;
+                            }
+                        } while (Win32Api.FindNextFileW(handle, out findData));
+                    }
+                    finally
+                    {
+                        handle.Close();
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         private static string GetFileType(string extension)
         {
             return extension.ToLower() switch

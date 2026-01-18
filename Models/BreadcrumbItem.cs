@@ -21,6 +21,9 @@ namespace FileSpace.Models
         [ObservableProperty]
         private bool _isLoaded = false;
 
+        [ObservableProperty]
+        private bool _hasSubFolders = true;
+
         public BreadcrumbItem(string name, string path) : this(name, path, SymbolRegular.Folder24)
         {
         }
