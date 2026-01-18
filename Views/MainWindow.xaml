@@ -482,66 +482,44 @@
                     Margin="0,0,0,0" Height="48" Padding="10,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal">
-                        <ui:Button x:Name="NewItemButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="新建" Click="NewItemButton_Click">
-                            <ui:Button.Content>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>
-                                    <TextBlock Text="新建" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
-                                        <ui:SymbolIcon.RenderTransform>
-                                            <RotateTransform Angle="0"/>
-                                        </ui:SymbolIcon.RenderTransform>
-                                        <ui:SymbolIcon.Style>
-                                            <Style TargetType="ui:SymbolIcon">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsNewItemMenuOpen}" Value="True">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="180" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
-                                                        <DataTrigger.ExitActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="0" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.ExitActions>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ui:SymbolIcon.Style>
-                                    </ui:SymbolIcon>
-                                </StackPanel>
-                            </ui:Button.Content>
-                            <ui:Button.ContextMenu>
-                                <ContextMenu x:Name="NewItemContextMenu">
-                                    <MenuItem Header="文件夹" Command="{Binding CreateNewFolderCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="FolderAdd24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="文本文档" Command="{Binding CreateNewTextFileCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DocumentAdd24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ui:Button.ContextMenu>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,6,0" Padding="0">
+                            <MenuItem x:Name="NewItemMenu" ToolTip="新建" IsSubmenuOpen="{Binding IsNewItemMenuOpen, Mode=TwoWay}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>
+                                        <TextBlock Text="新建" FontSize="13" VerticalAlignment="Center"/>
+                                        <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                            <ui:SymbolIcon.RenderTransform>
+                                                <RotateTransform Angle="0"/>
+                                            </ui:SymbolIcon.RenderTransform>
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSubmenuOpen, RelativeSource={RelativeSource AncestorType=MenuItem}}" Value="True">
+                                                            <Setter Property="RenderTransform">
+                                                                <Setter.Value>
+                                                                    <RotateTransform Angle="180"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                                <MenuItem Header="文件夹" Command="{Binding CreateNewFolderCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="FolderAdd24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="文本文档" Command="{Binding CreateNewTextFileCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="DocumentAdd24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
 
                         <ui:Button Command="{Binding CopyFilesCommand}" Style="{StaticResource ToolbarButtonStyle}"
                                    Width="40" Height="32" Margin="0,0,10,0" ToolTip="复制 (Ctrl+C)">
@@ -570,260 +548,217 @@
                         
                         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,10,18,10" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
                         
-                        <ui:Button x:Name="SortModeButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="排序" Click="ViewModeButton_Click">
-                            <ui:Button.Content>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon Symbol="ArrowSort24" FontSize="16" Margin="0,0,4,0"/>
-                                    <TextBlock Text="排序" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
-                                        <ui:SymbolIcon.RenderTransform>
-                                            <RotateTransform Angle="0"/>
-                                        </ui:SymbolIcon.RenderTransform>
-                                        <ui:SymbolIcon.Style>
-                                            <Style TargetType="ui:SymbolIcon">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsSortModeMenuOpen}" Value="True">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="180" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
-                                                        <DataTrigger.ExitActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="0" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.ExitActions>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ui:SymbolIcon.Style>
-                                    </ui:SymbolIcon>
-                                </StackPanel>
-                            </ui:Button.Content>
-                            <ui:Button.ContextMenu>
-                                <ContextMenu x:Name="SortModeContextMenu">
-                                    <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortMode}" Value="Name">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="TextSortAscending24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortMode}" Value="Size">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DataUsage24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortMode}" Value="Type">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="DocumentBulletList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortMode}" Value="Date">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Timer24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator/>
-                                    <MenuItem Header="升序" Command="{Binding SetSortModeCommand}" CommandParameter="Ascending">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortAscending}" Value="True">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="ArrowSortUp24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="降序" Command="{Binding SetSortModeCommand}" CommandParameter="Descending">
-                                        <MenuItem.Style>
-                                            <Style TargetType="MenuItem">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SortAscending}" Value="False">
-                                                        <Setter Property="IsChecked" Value="True"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </MenuItem.Style>
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="ArrowSortDown24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ui:Button.ContextMenu>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,4,0" Padding="0">
+                            <MenuItem x:Name="SortModeMenu" ToolTip="排序" IsSubmenuOpen="{Binding IsSortModeMenuOpen, Mode=TwoWay}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="ArrowSort24" FontSize="16" Margin="0,0,4,0"/>
+                                        <TextBlock Text="排序" FontSize="13" VerticalAlignment="Center"/>
+                                        <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                            <ui:SymbolIcon.RenderTransform>
+                                                <RotateTransform Angle="0"/>
+                                            </ui:SymbolIcon.RenderTransform>
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSubmenuOpen, RelativeSource={RelativeSource AncestorType=MenuItem}}" Value="True">
+                                                            <Setter Property="RenderTransform">
+                                                                <Setter.Value>
+                                                                    <RotateTransform Angle="180"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                                <MenuItem Header="按名称排序" Command="{Binding SetSortModeCommand}" CommandParameter="Name">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortMode}" Value="Name">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="TextSortAscending24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按大小排序" Command="{Binding SetSortModeCommand}" CommandParameter="Size">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortMode}" Value="Size">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="DataUsage24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按类型排序" Command="{Binding SetSortModeCommand}" CommandParameter="Type">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortMode}" Value="Type">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="DocumentBulletList24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="按修改日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="Date">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortMode}" Value="Date">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Timer24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="升序" Command="{Binding SetSortModeCommand}" CommandParameter="Ascending">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortAscending}" Value="True">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ArrowSortUp24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="降序" Command="{Binding SetSortModeCommand}" CommandParameter="Descending">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortAscending}" Value="False">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ArrowSortDown24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
 
-                        <ui:Button x:Name="ViewModeButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   Height="32" Margin="0,0,10,0" Padding="8,4" ToolTip="查看选项" Click="ViewModeButton_Click">
-                            <ui:Button.Content>
-                                <StackPanel Orientation="Horizontal">
-                                    <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="16" Margin="0,0,4,0"/>
-                                    <TextBlock Text="视图" FontSize="13" VerticalAlignment="Center"/>
-                                    <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
-                                        <ui:SymbolIcon.RenderTransform>
-                                            <RotateTransform Angle="0"/>
-                                        </ui:SymbolIcon.RenderTransform>
-                                        <ui:SymbolIcon.Style>
-                                            <Style TargetType="ui:SymbolIcon">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsViewModeMenuOpen}" Value="True">
-                                                        <DataTrigger.EnterActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="180" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.EnterActions>
-                                                        <DataTrigger.ExitActions>
-                                                            <BeginStoryboard>
-                                                                <Storyboard>
-                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                                     To="0" Duration="0:0:0.2">
-                                                                        <DoubleAnimation.EasingFunction>
-                                                                            <QuadraticEase EasingMode="EaseInOut"/>
-                                                                        </DoubleAnimation.EasingFunction>
-                                                                    </DoubleAnimation>
-                                                                </Storyboard>
-                                                            </BeginStoryboard>
-                                                        </DataTrigger.ExitActions>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ui:SymbolIcon.Style>
-                                    </ui:SymbolIcon>
-                                </StackPanel>
-                            </ui:Button.Content>
-                            <ui:Button.ContextMenu>
-                                <ContextMenu x:Name="ViewModeContextMenu">
-                                    <MenuItem Header="详细信息" Click="ViewModeMenuItem_Click" Tag="详细信息">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="TextBulletListSquare24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="超大图标" Click="ViewModeMenuItem_Click" Tag="超大图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Grid28"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="大图标" Click="ViewModeMenuItem_Click" Tag="大图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Grid24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="中等图标" Click="ViewModeMenuItem_Click" Tag="中等图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Apps24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="AppsList24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ui:Button.ContextMenu>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem x:Name="ViewModeMenu" ToolTip="查看选项" IsSubmenuOpen="{Binding IsViewModeMenuOpen, Mode=TwoWay}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon x:Name="ViewModeIcon" Symbol="TextBulletListSquare24" FontSize="16" Margin="0,0,4,0"/>
+                                        <TextBlock Text="视图" FontSize="13" VerticalAlignment="Center"/>
+                                        <ui:SymbolIcon Symbol="ChevronDown24" FontSize="12" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                            <ui:SymbolIcon.RenderTransform>
+                                                <RotateTransform Angle="0"/>
+                                            </ui:SymbolIcon.RenderTransform>
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSubmenuOpen, RelativeSource={RelativeSource AncestorType=MenuItem}}" Value="True">
+                                                            <Setter Property="RenderTransform">
+                                                                <Setter.Value>
+                                                                    <RotateTransform Angle="180"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                                <MenuItem Header="详细信息" Click="ViewModeMenuItem_Click" Tag="详细信息">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="TextBulletListSquare24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="超大图标" Click="ViewModeMenuItem_Click" Tag="超大图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Grid28"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="大图标" Click="ViewModeMenuItem_Click" Tag="大图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Grid24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="中等图标" Click="ViewModeMenuItem_Click" Tag="中等图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Apps24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="小图标" Click="ViewModeMenuItem_Click" Tag="小图标">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="AppsList24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
 
-                        <ui:Button x:Name="MoreToolsButton" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0" ToolTip="更多" Click="ViewModeButton_Click">
-                            <ui:Button.Content>
-                                <ui:SymbolIcon Symbol="MoreHorizontal24" FontSize="16"/>
-                            </ui:Button.Content>
-                            <ui:Button.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="全部选择" Command="{Binding SelectAllCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Apps24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="全部取消" Command="{Binding ClearSelectionCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Dismiss24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="反向选择" Command="{Binding InvertSelectionCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="ArrowSwap24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator/>
-                                    <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Folder24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <MenuItem Header="高级搜索..." Command="{Binding ShowSearchWindowCommand}">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Search24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                    <Separator/>
-                                    <MenuItem Header="选项" Click="Settings_Click">
-                                        <MenuItem.Icon>
-                                            <ui:SymbolIcon Symbol="Settings24"/>
-                                        </MenuItem.Icon>
-                                    </MenuItem>
-                                </ContextMenu>
-                            </ui:Button.ContextMenu>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem x:Name="MoreToolsMenu" ToolTip="更多" IsSubmenuOpen="{Binding IsMoreToolsMenuOpen, Mode=TwoWay}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
+                                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,2,0"/>
+                                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,2,0"/>
+                                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                                <MenuItem Header="全部选择" Command="{Binding SelectAllCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Apps24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="全部取消" Command="{Binding ClearSelectionCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Dismiss24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="反向选择" Command="{Binding InvertSelectionCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="ArrowSwap24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="文件夹分析..." Command="{Binding AnalyzeFolderCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Folder24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="高级搜索..." Command="{Binding ShowSearchWindowCommand}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Search24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="选项" Click="Settings_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+                        </Menu>
                     </StackPanel>
 
                     <!-- VS Code Style Panel Toggle Buttons -->

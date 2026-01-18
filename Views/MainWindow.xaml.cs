@@ -145,14 +145,28 @@ namespace FileSpace.Views
             // 预热下拉菜单以消除第一次打开时的卡顿
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                // 预热工具栏菜单
-                var buttons = new[] { NewItemButton, SortModeButton, ViewModeButton, MoreToolsButton };
-                foreach (var btn in buttons)
+                // 预热工具栏菜单（兼容 Button+ContextMenu 与 Menu/MenuItem）
+                var names = new[] { "NewItemMenu", "SortModeMenu", "ViewModeMenu", "MoreToolsMenu" };
+                foreach (var name in names)
                 {
-                    if (btn?.ContextMenu != null)
+                    var obj = FindName(name);
+                    if (obj is System.Windows.Controls.Button btn && btn.ContextMenu != null)
                     {
                         btn.ContextMenu.ApplyTemplate();
                         var count = btn.ContextMenu.Items.Count;
+                    }
+                    else if (obj is System.Windows.Controls.Menu menu)
+                    {
+                        foreach (var mi in menu.Items.OfType<System.Windows.Controls.MenuItem>())
+                        {
+                            mi.ApplyTemplate();
+                            foreach (var sub in mi.Items.OfType<System.Windows.Controls.MenuItem>()) sub.ApplyTemplate();
+                        }
+                    }
+                    else if (obj is System.Windows.Controls.MenuItem topMi)
+                    {
+                        topMi.ApplyTemplate();
+                        foreach (var sub in topMi.Items.OfType<System.Windows.Controls.MenuItem>()) sub.ApplyTemplate();
                     }
                 }
 
