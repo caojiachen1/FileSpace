@@ -32,6 +32,7 @@ namespace FileSpace.Views
         
         // 拖拽指示器
         private InsertionIndicatorAdorner? _insertionAdorner;
+        private DragTooltipAdorner? _dragTooltipAdorner;
         private int _lastAdornerIndex = -1;
         private UIElement? _lastAdornerContainer;
         
@@ -1433,42 +1434,29 @@ namespace FileSpace.Views
         {
             if (e.Data.GetDataPresent("FileItemModel"))
             {
-                e.Effects = DragDropEffects.Move;
-                var dataGrid = (System.Windows.Controls.DataGrid)sender;
                 var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
 
-                int insertionIndex = -1;
                 if (targetRow != null)
                 {
-                    insertionIndex = dataGrid.ItemContainerGenerator.IndexFromContainer(targetRow);
-                    Point mousePos = e.GetPosition(targetRow);
-                    if (mousePos.Y > targetRow.ActualHeight / 2)
+                    FileItemModel? targetItem = targetRow.Item as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
                     {
-                        insertionIndex++;
-                    }
-                }
-                else if (dataGrid.Items.Count > 0)
-                {
-                    var lastRow = dataGrid.ItemContainerGenerator.ContainerFromIndex(dataGrid.Items.Count - 1) as FrameworkElement;
-                    if (lastRow != null)
-                    {
-                        Point posInDataGrid = e.GetPosition(dataGrid);
-                        Point lastRowPos = lastRow.TranslatePoint(new Point(0, 0), dataGrid);
-                        if (posInDataGrid.Y >= lastRowPos.Y + lastRow.ActualHeight / 2)
-                        {
-                            insertionIndex = dataGrid.Items.Count;
-                        }
+                        e.Effects = DragDropEffects.Move;
+                        RemoveInsertionAdorner();
+                        
+                        // 显示移动提示
+                        var dataGrid = (System.Windows.Controls.DataGrid)sender;
+                        UpdateDragTooltip(dataGrid, targetItem.Name, e.GetPosition(dataGrid));
+                        
+                        e.Handled = true;
+                        return;
                     }
                 }
 
-                if (insertionIndex != -1)
-                {
-                    UpdateInsertionAdorner(dataGrid, insertionIndex);
-                }
-                else
-                {
-                    RemoveInsertionAdorner();
-                }
+                // 禁用排序功能，只允许移动到文件夹
+                e.Effects = DragDropEffects.None;
+                RemoveInsertionAdorner();
+                RemoveDragTooltip();
                 e.Handled = true;
             }
         }
@@ -1481,49 +1469,23 @@ namespace FileSpace.Views
             if (pos.X < 0 || pos.Y < 0 || pos.X > dataGrid.ActualWidth || pos.Y > dataGrid.ActualHeight)
             {
                 RemoveInsertionAdorner();
+                RemoveDragTooltip();
             }
         }
 
         private void FileDataGrid_Drop(object sender, DragEventArgs e)
         {
             RemoveInsertionAdorner();
+            RemoveDragTooltip();
             if (e.Data.GetDataPresent("FileItemModel"))
             {
-                FileItemModel? droppedItem = e.Data.GetData("FileItemModel") as FileItemModel;
-                System.Windows.Controls.DataGrid dataGrid = (System.Windows.Controls.DataGrid)sender;
-
-                if (droppedItem != null)
+                var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                if (targetRow != null)
                 {
-                    int oldIndex = ViewModel.Files.IndexOf(droppedItem);
-                    int newIndex = -1;
-
-                    var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
-                    if (targetRow != null)
+                    FileItemModel? targetItem = targetRow.Item as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
                     {
-                        newIndex = dataGrid.ItemContainerGenerator.IndexFromContainer(targetRow);
-                        Point mousePos = e.GetPosition(targetRow);
-                        if (mousePos.Y > targetRow.ActualHeight / 2)
-                        {
-                            newIndex++;
-                        }
-                    }
-                    else if (dataGrid.Items.Count > 0)
-                    {
-                        var lastRow = dataGrid.ItemContainerGenerator.ContainerFromIndex(dataGrid.Items.Count - 1) as FrameworkElement;
-                        if (lastRow != null)
-                        {
-                            Point posInDataGrid = e.GetPosition(dataGrid);
-                            Point lastRowPos = lastRow.TranslatePoint(new Point(0, 0), dataGrid);
-                            if (posInDataGrid.Y >= lastRowPos.Y + lastRow.ActualHeight / 2)
-                            {
-                                newIndex = ViewModel.Files.Count;
-                            }
-                        }
-                    }
-
-                    if (oldIndex != -1 && newIndex != -1 && oldIndex != newIndex)
-                    {
-                        ViewModel.ReorderFileItemsCommand.Execute(new Tuple<int, int>(oldIndex, newIndex));
+                        ViewModel.MoveSelectedFilesToFolderCommand.Execute(targetItem);
                     }
                 }
             }
@@ -1580,6 +1542,31 @@ namespace FileSpace.Views
                 _insertionAdorner = null;
                 _lastAdornerIndex = -1;
                 _lastAdornerContainer = null;
+            }
+        }
+
+        private void UpdateDragTooltip(UIElement container, string folderName, Point position)
+        {
+            var layer = AdornerLayer.GetAdornerLayer(container);
+            if (layer == null) return;
+
+            if (_dragTooltipAdorner == null || _dragTooltipAdorner.AdornedElement != container)
+            {
+                RemoveDragTooltip();
+                _dragTooltipAdorner = new DragTooltipAdorner(container);
+                layer.Add(_dragTooltipAdorner);
+            }
+
+            _dragTooltipAdorner.Update(folderName, position);
+        }
+
+        private void RemoveDragTooltip()
+        {
+            if (_dragTooltipAdorner != null)
+            {
+                var layer = AdornerLayer.GetAdornerLayer(_dragTooltipAdorner.AdornedElement);
+                layer?.Remove(_dragTooltipAdorner);
+                _dragTooltipAdorner = null;
             }
         }
 

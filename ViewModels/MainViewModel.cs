@@ -385,32 +385,6 @@ namespace FileSpace.ViewModels
             SaveQuickAccessOrder();
         }
 
-        [RelayCommand]
-        private void ReorderFileItems(Tuple<int, int> range)
-        {
-            int oldIndex = range.Item1;
-            int newIndex = range.Item2;
-            
-            if (oldIndex < 0 || oldIndex >= Files.Count ||
-                newIndex < 0 || newIndex > Files.Count ||
-                oldIndex == newIndex)
-                return;
-            
-            var item = Files[oldIndex];
-            Files.RemoveAt(oldIndex);
-
-            // If we are moving forward, the index decreased by 1 after removal
-            if (oldIndex < newIndex && newIndex <= Files.Count + 1)
-            {
-                newIndex--;
-            }
-
-            if (newIndex >= 0 && newIndex <= Files.Count)
-            {
-                Files.Insert(newIndex, item);
-            }
-        }
-
         private void SaveQuickAccessOrder()
         {
             _settingsService.Settings.QuickAccessPaths = QuickAccessItems.Select(i => i.Path).ToList();
@@ -1911,6 +1885,48 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 StatusText = $"粘贴失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task MoveSelectedFilesToFolderAsync(FileItemModel? targetFolder)
+        {
+            if (targetFolder == null || !targetFolder.IsDirectory)
+                return;
+
+            if (SelectedFiles.Count == 0)
+                return;
+
+            try
+            {
+                var sourceFiles = SelectedFiles.Select(f => f.FullPath).ToList();
+                var destinationFolder = targetFolder.FullPath;
+
+                // 检查是否在移动到自身
+                if (sourceFiles.Any(f => f == destinationFolder))
+                {
+                    StatusText = "无法将文件夹移动到自身";
+                    return;
+                }
+
+                IsFileOperationInProgress = true;
+                FileOperationStatus = "正在移动文件...";
+                FileOperationProgress = 0;
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                await FileOperationsService.Instance.MoveFilesAsync(sourceFiles, destinationFolder, _fileOperationCancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "移动操作已取消";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"移动失败: {ex.Message}";
+            }
+            finally
+            {
                 IsFileOperationInProgress = false;
             }
         }
