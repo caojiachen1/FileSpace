@@ -144,6 +144,50 @@ namespace FileSpace.Services
             });
         }
 
+        public DriveItemModel? GetDriveItemByPath(string path)
+        {
+            try
+            {
+                var root = Path.GetPathRoot(path);
+                if (string.IsNullOrEmpty(root)) return null;
+
+                var drive = new DriveInfo(root);
+                if (!drive.IsReady) return null;
+
+                var totalSize = drive.TotalSize;
+                var freeSpace = drive.AvailableFreeSpace;
+                var percentUsed = totalSize > 0 ? (1.0 - ((double)freeSpace / totalSize)) * 100 : 0;
+
+                // Determines icon
+                var icon = SymbolRegular.HardDrive20; 
+                if (drive.DriveType == DriveType.Removable)
+                   icon = SymbolRegular.UsbStick24; 
+                else if (drive.DriveType == DriveType.CDRom)
+                    icon = SymbolRegular.Record24;
+
+                var isSystem = drive.Name.StartsWith("C", StringComparison.OrdinalIgnoreCase);
+                string label = string.IsNullOrEmpty(drive.VolumeLabel) ? "本地磁盘" : drive.VolumeLabel;
+                if (isSystem && string.IsNullOrEmpty(drive.VolumeLabel)) label = "系统";
+
+                return new DriveItemModel
+                {
+                    Name = $"{label} ({drive.Name.TrimEnd('\\')})",
+                    DriveLetter = drive.Name,
+                    DriveType = drive.DriveType,
+                    DriveFormat = drive.DriveFormat,
+                    TotalSize = totalSize,
+                    AvailableFreeSpace = freeSpace,
+                    PercentUsed = percentUsed,
+                    Icon = icon,
+                    Thumbnail = ThumbnailUtils.GetThumbnail(drive.Name, 64, 64)
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public async Task<string> RefreshDirectoryTreeAsync(ObservableCollection<DirectoryItemModel> directoryTree)
         {
             try

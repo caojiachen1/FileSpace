@@ -812,6 +812,36 @@ namespace FileSpace.Services
 
         private void AddSizeCalculationSection(StackPanel panel, string folderPath, Grid sizeRow, Grid fileCountRow, Grid dirCountRow)
         {
+            // Check if it's a drive root - do not do recursive scan for entire drives
+            var driveRoot = Path.GetPathRoot(folderPath);
+            if (!string.IsNullOrEmpty(folderPath) && 
+                (folderPath.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) || 
+                 folderPath.Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
+            {
+                try
+                {
+                    var drive = new DriveInfo(driveRoot);
+                    if (drive.IsReady)
+                    {
+                        ((Grid)sizeRow)?.Children[1]?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
+                        
+                        // Re-purpose rows for drive information
+                        var fileCountLabel = ((Grid)fileCountRow)?.Children[0] as TextBlock;
+                        var fileCountValue = ((Grid)fileCountRow)?.Children[1] as TextBlock;
+                        if (fileCountLabel != null) fileCountLabel.Text = "可用空间";
+                        if (fileCountValue != null) fileCountValue.Text = FileUtils.FormatFileSize(drive.AvailableFreeSpace);
+
+                        var dirCountLabel = ((Grid)dirCountRow)?.Children[0] as TextBlock;
+                        var dirCountValue = ((Grid)dirCountRow)?.Children[1] as TextBlock;
+                        if (dirCountLabel != null) dirCountLabel.Text = "已用空间";
+                        if (dirCountValue != null) dirCountValue.Text = FileUtils.FormatFileSize(drive.TotalSize - drive.AvailableFreeSpace);
+                        
+                        return;
+                    }
+                }
+                catch { }
+            }
+
             var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
             var cachedSize = backgroundCalculator.GetCachedSize(folderPath);
             var isActiveCalculation = backgroundCalculator.IsCalculationActive(folderPath);

@@ -1380,19 +1380,38 @@ namespace FileSpace.ViewModels
                         return;
                     }
 
-                    // Create a temporary FileItemModel for the current directory
-                    var dirInfo = new DirectoryInfo(CurrentPath);
-                    itemToPreview = new FileItemModel
+                    // Check if current path is a drive root
+                    var driveRoot = Path.GetPathRoot(CurrentPath);
+                    if (!string.IsNullOrEmpty(CurrentPath) && 
+                        (CurrentPath.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) || 
+                         CurrentPath.Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
                     {
-                        Name = dirInfo.Name,
-                        FullPath = dirInfo.FullName,
-                        IsDirectory = true,
-                        Icon = SymbolRegular.Folder24,
-                        IconColor = "#FFE6A23C",
-                        Type = "文件夹",
-                        ModifiedDateTime = dirInfo.LastWriteTime,
-                        ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-                    };
+                        driveToPreview = Drives.FirstOrDefault(d => 
+                            d.DriveLetter.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) ||
+                            d.DriveLetter.TrimEnd('\\').Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase));
+                            
+                        if (driveToPreview == null)
+                        {
+                            driveToPreview = DriveService.Instance.GetDriveItemByPath(CurrentPath);
+                        }
+                    }
+
+                    if (driveToPreview == null)
+                    {
+                        // Create a temporary FileItemModel for the current directory
+                        var dirInfo = new DirectoryInfo(CurrentPath);
+                        itemToPreview = new FileItemModel
+                        {
+                            Name = dirInfo.Name,
+                            FullPath = dirInfo.FullName,
+                            IsDirectory = true,
+                            Icon = SymbolRegular.Folder24,
+                            IconColor = "#FFE6A23C",
+                            Type = "文件夹",
+                            ModifiedDateTime = dirInfo.LastWriteTime,
+                            ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+                        };
+                    }
                 }
 
                 IsPreviewLoading = true;
