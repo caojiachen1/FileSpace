@@ -1139,32 +1139,26 @@ namespace FileSpace.ViewModels
                         int sizeCompare = b.Size.CompareTo(a.Size);
                         return sizeCompare != 0 ? sizeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
-                "Type" => SortAscending
-                    ? (a, b) => {
-                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
-                        int typeCompare = string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase);
-                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
-                    }
-                    : (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
-                        int typeCompare = string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
-                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
-                    },
-                "Date" => SortAscending
-                    ? (a, b) => {
-                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
-                        int dateCompare = a.ModifiedDateTime.CompareTo(b.ModifiedDateTime);
-                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
-                    }
-                    : (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
-                        int dateCompare = b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
-                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
-                    },
+                "Type" => (a, b) => {
+                    // 对于类型排序，文件夹始终置顶
+                    int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
+                    if (dirCompare != 0) return dirCompare;
+                    
+                    int typeCompare = SortAscending
+                        ? string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase)
+                        : string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
+                    return typeCompare != 0 ? typeCompare : (SortAscending ? Win32Api.StrCmpLogicalW(a.Name, b.Name) : Win32Api.StrCmpLogicalW(b.Name, a.Name));
+                },
+                "Date" => (a, b) => {
+                    // 对于日期排序，文件夹始终置顶
+                    int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
+                    if (dirCompare != 0) return dirCompare;
+
+                    int dateCompare = SortAscending
+                        ? a.ModifiedDateTime.CompareTo(b.ModifiedDateTime)
+                        : b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
+                    return dateCompare != 0 ? dateCompare : (SortAscending ? Win32Api.StrCmpLogicalW(a.Name, b.Name) : Win32Api.StrCmpLogicalW(b.Name, a.Name));
+                },
                 _ => (a, b) => 0
             };
 
