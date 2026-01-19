@@ -211,6 +211,15 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <!-- Style for menu items with only icons -->
+        <Style x:Key="IconMenuItemStyle" TargetType="MenuItem">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
     </ui:FluentWindow.Resources>
     
     <Grid Focusable="True" MouseDown="RootGrid_MouseDown">
@@ -250,28 +259,28 @@
                     <!-- Navigation Buttons -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding GoBackCommand}" ToolTip="后退 (Alt+Left)">
+                            <MenuItem Command="{Binding GoBackCommand}" ToolTip="后退 (Alt+Left)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="16"/>
                                 </MenuItem.Header>
                             </MenuItem>
                         </Menu>
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding GoForwardCommand}" ToolTip="前进 (Alt+Right)">
+                            <MenuItem Command="{Binding GoForwardCommand}" ToolTip="前进 (Alt+Right)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="ArrowRight24" FontSize="16"/>
                                 </MenuItem.Header>
                             </MenuItem>
                         </Menu>
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding GoUpCommand}" ToolTip="向上 (Alt+Up)">
+                            <MenuItem Command="{Binding GoUpCommand}" ToolTip="向上 (Alt+Up)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
                                 </MenuItem.Header>
                             </MenuItem>
                         </Menu>
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding RefreshCommand}" ToolTip="刷新 (F5)">
+                            <MenuItem Command="{Binding RefreshCommand}" ToolTip="刷新 (F5)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16"/>
                                 </MenuItem.Header>
@@ -489,7 +498,7 @@
                         </Menu>
 
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding CopyFilesCommand}" ToolTip="复制 (Ctrl+C)">
+                            <MenuItem Command="{Binding CopyFilesCommand}" ToolTip="复制 (Ctrl+C)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="Copy24" FontSize="16"/>
                                 </MenuItem.Header>
@@ -497,7 +506,7 @@
                         </Menu>
 
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding CutFilesCommand}" ToolTip="剪切 (Ctrl+X)">
+                            <MenuItem Command="{Binding CutFilesCommand}" ToolTip="剪切 (Ctrl+X)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="Cut24" FontSize="16"/>
                                 </MenuItem.Header>
@@ -505,7 +514,7 @@
                         </Menu>
                         
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding PasteFilesCommand}" ToolTip="粘贴 (Ctrl+V)">
+                            <MenuItem Command="{Binding PasteFilesCommand}" ToolTip="粘贴 (Ctrl+V)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16"/>
                                 </MenuItem.Header>
@@ -513,7 +522,7 @@
                         </Menu>
 
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding StartRenameCommand}" ToolTip="重命名 (F2)">
+                            <MenuItem Command="{Binding StartRenameCommand}" ToolTip="重命名 (F2)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="Rename24" FontSize="16"/>
                                 </MenuItem.Header>
@@ -521,7 +530,7 @@
                         </Menu>
                         
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
-                            <MenuItem Command="{Binding DeleteFilesCommand}" ToolTip="删除 (Delete)">
+                            <MenuItem Command="{Binding DeleteFilesCommand}" ToolTip="删除 (Delete)" Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <ui:SymbolIcon Symbol="Delete24" FontSize="16"/>
                                 </MenuItem.Header>

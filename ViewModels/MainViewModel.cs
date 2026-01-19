@@ -258,9 +258,13 @@ namespace FileSpace.ViewModels
         }
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(GoBackCommand))]
+        [NotifyCanExecuteChangedFor(nameof(GoForwardCommand))]
         private ObservableCollection<string> _navigationHistory = new();
 
         [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(GoBackCommand))]
+        [NotifyCanExecuteChangedFor(nameof(GoForwardCommand))]
         private int _currentNavigationIndex = -1;
 
         // Status bar properties for Windows Explorer-like experience
@@ -1550,7 +1554,7 @@ namespace FileSpace.ViewModels
         private bool CanGoUp() => NavigationUtils.CanGoUp(CurrentPath);
 
         // New navigation commands for Windows Explorer-like functionality
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanGoBack))]
         private void GoBack()
         {
             if (CanGoBack())
@@ -1560,7 +1564,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanGoForward))]
         private void GoForward()
         {
             if (CanGoForward())
