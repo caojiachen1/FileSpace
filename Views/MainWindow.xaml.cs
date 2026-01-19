@@ -1231,6 +1231,11 @@ namespace FileSpace.Views
             {
                 // Clear TreeView selection when a Quick Access item is selected
                 ClearTreeViewSelection();
+
+                if (e.AddedItems[0] is QuickAccessItem item)
+                {
+                    ViewModel.NavigateToPathCommand.Execute(item.Path);
+                }
             }
         }
 
@@ -1241,13 +1246,20 @@ namespace FileSpace.Views
         {
             if (sender is Grid grid)
             {
+                string? targetPath = null;
                 if (grid.Tag is string path)
                 {
-                    ViewModel.NavigateToPathCommand.Execute(path);
+                    targetPath = path;
                 }
-                else if (grid.Tag is QuickAccessItem item)
+                else if (grid.Tag is QuickAccessItem qaItem)
                 {
-                    ViewModel.NavigateToPathCommand.Execute(item.Path);
+                    targetPath = qaItem.Path;
+                }
+
+                if (!string.IsNullOrEmpty(targetPath) && 
+                    !string.Equals(ViewModel.CurrentPath, targetPath, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    ViewModel.NavigateToPathCommand.Execute(targetPath);
                 }
             }
         }
