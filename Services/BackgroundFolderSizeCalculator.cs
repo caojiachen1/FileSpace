@@ -231,17 +231,15 @@ namespace FileSpace.Services
 
                         if (attributes.HasFlag(FileAttributes.Directory))
                         {
-                            if (currentPath == path) // Direct subdirectories of the root folder
-                            {
-                                result.DirectoryCount++;
-                            }
-                            
+                            result.DirectoryCount++;
                             progress.ProcessedDirectories++;
                             stack.Push(fullPath);
                         }
                         else
                         {
-                            result.TotalSize += Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                            long logicalSize = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                            result.TotalSize += logicalSize;
+                            result.TotalSizeOnDisk += FileUtils.GetSizeOnDisk(fullPath);
                             result.FileCount++;
                             progress.ProcessedFiles++;
 

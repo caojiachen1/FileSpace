@@ -32,6 +32,36 @@ namespace FileSpace.Utils
             return counter == 0 ? $"{number:F0} {suffixes[counter]}" : $"{number:F1} {suffixes[counter]}";
         }
 
+        public static string FormatFileSizeWithBytes(long bytes)
+        {
+            return $"{FormatFileSize(bytes)} ({bytes:N0} 字节)";
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern uint GetCompressedFileSize(string lpFileName, out uint lpFileSizeHigh);
+
+        public static long GetSizeOnDisk(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    uint high;
+                    uint low = GetCompressedFileSize(path, out high);
+                    return ((long)high << 32) | low;
+                }
+                // For directories, we'd need to sum up files. 
+                // But for now, let's just return length if calculation is complex.
+                // Simple approximation for a file:
+                var fileInfo = new FileInfo(path);
+                return fileInfo.Length;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         public static bool IsTextFile(string extension)
         {
             return extension.ToLower() switch

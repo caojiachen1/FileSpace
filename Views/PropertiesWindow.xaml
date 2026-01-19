@@ -14,17 +14,21 @@
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style x:Key="PropertyLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,8,0,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Width" Value="80"/>
+            <Setter Property="Margin" Value="0,8,12,8"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
         </Style>
         <Style x:Key="PropertyValueStyle" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Left"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </Style>
+        <Style x:Key="PropertyValueTextBoxStyle" TargetType="ui:TextBox">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,8,0,8"/>
         </Style>
     </ui:FluentWindow.Resources>
     
@@ -39,120 +43,102 @@
         <ui:TitleBar Grid.Row="0" Title="{Binding WindowTitle}"/>
 
         <!-- Main Content -->
-        <ScrollViewer Grid.Row="1" Margin="20" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" Margin="20,10" VerticalScrollBarVisibility="Auto">
             <StackPanel>
                 <!-- Header with Icon and Name -->
-                <Border Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" 
-                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" 
-                        CornerRadius="8" 
-                        Padding="16" 
-                        Margin="0,0,0,16">
-                    <StackPanel Orientation="Horizontal">
-                        <ui:SymbolIcon Symbol="{Binding Icon}" 
-                                       Foreground="{Binding IconColor}"
-                                       FontSize="32" 
-                                       Margin="0,0,12,0"/>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Name}" 
-                                       FontSize="18" 
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
-                            <TextBlock Text="{Binding TypeDescription}" 
-                                       FontSize="12"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <ui:SymbolIcon Symbol="{Binding Icon}" 
+                                   Foreground="{Binding IconColor}"
+                                   FontSize="48" 
+                                   Margin="0,0,16,0"
+                                   VerticalAlignment="Center"/>
+                    
+                    <ui:TextBox Grid.Column="1" 
+                                Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" 
+                                FontSize="14" 
+                                VerticalAlignment="Center"
+                                PlaceholderText="名称"/>
+                </Grid>
 
-                <!-- General Information -->
-                <ui:CardExpander Header="常规" IsExpanded="True" Margin="0,0,0,8">
-                    <StackPanel Margin="16">
-                        <TextBlock Text="名称:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <TextBlock Text="{Binding Name}" Style="{StaticResource PropertyValueStyle}"/>
-                        
-                        <TextBlock Text="完整路径:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <StackPanel>
-                            <TextBlock Text="{Binding FullPath}" 
-                                       Style="{StaticResource PropertyValueStyle}"
-                                       ToolTip="{Binding FullPath}"/>
-                            <ui:Button Content="复制路径" 
-                                       Icon="Copy24"
-                                       Click="CopyPathButton_Click"
-                                       Appearance="Secondary"
-                                       Margin="0,5,0,0"
-                                       Padding="12,4"
-                                       HorizontalAlignment="Left"
-                                       ToolTip="复制文件路径到剪贴板"/>
-                        </StackPanel>
-                        
-                        <TextBlock Text="类型:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <TextBlock Text="{Binding TypeDescription}" Style="{StaticResource PropertyValueStyle}"/>
-                    </StackPanel>
-                </ui:CardExpander>
+                <Separator Margin="0,8"/>
 
-                <!-- Size Information -->
-                <ui:CardExpander Header="大小" IsExpanded="True" Margin="0,0,0,8">
-                    <StackPanel Margin="16">
-                        <!-- File Size -->
-                        <StackPanel Visibility="{Binding IsFile, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="文件大小:" Style="{StaticResource PropertyLabelStyle}"/>
-                            <TextBlock Text="{Binding SizeFormatted}" Style="{StaticResource PropertyValueStyle}"/>
-                            
-                            <TextBlock Text="字节数:" Style="{StaticResource PropertyLabelStyle}"/>
-                            <TextBlock Text="{Binding SizeInBytes}" Style="{StaticResource PropertyValueStyle}"/>
-                        </StackPanel>
-                        
-                        <!-- Directory Size -->
-                        <StackPanel Visibility="{Binding IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="文件夹大小:" Style="{StaticResource PropertyLabelStyle}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding DirectorySizeText}" Style="{StaticResource PropertyValueStyle}"/>
-                                <ui:ProgressRing Width="16" Height="16" 
-                                                 IsIndeterminate="True" 
-                                                 Margin="8,0,0,0"
-                                                 Visibility="{Binding IsSizeCalculating, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                            </StackPanel>
-                            
-                            <TextBlock Text="包含内容:" Style="{StaticResource PropertyLabelStyle}"/>
-                            <TextBlock Text="{Binding DirectoryContentsText}" Style="{StaticResource PropertyValueStyle}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ui:CardExpander>
+                <!-- Details Section -->
+                <Grid Margin="0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <!-- Date Information -->
-                <ui:CardExpander Header="日期" IsExpanded="True" Margin="0,0,0,8">
-                    <StackPanel Margin="16">
-                        <TextBlock Text="创建时间:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <TextBlock Text="{Binding CreationTime}" Style="{StaticResource PropertyValueStyle}"/>
-                        
-                        <TextBlock Text="修改时间:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <TextBlock Text="{Binding LastWriteTime}" Style="{StaticResource PropertyValueStyle}"/>
-                        
-                        <TextBlock Text="访问时间:" Style="{StaticResource PropertyLabelStyle}"/>
-                        <TextBlock Text="{Binding LastAccessTime}" Style="{StaticResource PropertyValueStyle}"/>
-                    </StackPanel>
-                </ui:CardExpander>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="类型:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TypeDescription}" Style="{StaticResource PropertyValueStyle}"/>
 
-                <!-- Attributes -->
-                <ui:CardExpander Header="属性" IsExpanded="False" Margin="0,0,0,8">
-                    <StackPanel Margin="16">
-                        <CheckBox Content="只读" IsChecked="{Binding IsReadOnly}" IsEnabled="False" Margin="0,4"/>
-                        <CheckBox Content="隐藏" IsChecked="{Binding IsHidden}" IsEnabled="False" Margin="0,4"/>
-                        <CheckBox Content="系统" IsChecked="{Binding IsSystem}" IsEnabled="False" Margin="0,4"/>
-                        <CheckBox Content="存档" IsChecked="{Binding IsArchive}" IsEnabled="False" Margin="0,4"/>
-                    </StackPanel>
-                </ui:CardExpander>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="位置:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding FullPath}" Style="{StaticResource PropertyValueStyle}" ToolTip="{Binding FullPath}"/>
 
-                <!-- Additional Information (for specific file types) -->
-                <ui:CardExpander Header="详细信息" 
-                                 IsExpanded="True" 
-                                 Margin="0,0,0,8"
-                                 Visibility="{Binding HasAdditionalInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel Margin="16">
-                        <ContentPresenter Content="{Binding AdditionalInfo}"/>
+                    <!-- Size (Generic) -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="大小:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DisplaySize}" 
+                                   Style="{StaticResource PropertyValueStyle}"/>
+                        <ui:ProgressRing Width="14" Height="14" 
+                                         IsIndeterminate="True" 
+                                         Margin="8,0,0,0"
+                                         Visibility="{Binding IsSizeCalculating, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </StackPanel>
-                </ui:CardExpander>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="占用空间:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SizeOnDiskFormatted}" Style="{StaticResource PropertyValueStyle}"/>
+
+                    <!-- Contains (Folders only) -->
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="包含:" 
+                               Style="{StaticResource PropertyLabelStyle}"
+                               Visibility="{Binding IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding DirectoryContentsText}" 
+                               Style="{StaticResource PropertyValueStyle}"
+                               Visibility="{Binding IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </Grid>
+
+                <Separator Margin="0,8"/>
+
+                <!-- Dates Section -->
+                <Grid Margin="0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="创建时间:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CreationTime}" Style="{StaticResource PropertyValueStyle}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="修改时间:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastWriteTime}" Style="{StaticResource PropertyValueStyle}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="访问时间:" Style="{StaticResource PropertyLabelStyle}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastAccessTime}" Style="{StaticResource PropertyValueStyle}"/>
+                </Grid>
+                
+                <!-- Additional Info Section (conditional) -->
+                <StackPanel Visibility="{Binding HasAdditionalInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Separator Margin="0,8"/>
+                    <ContentPresenter Content="{Binding AdditionalInfo}" Margin="0,8"/>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

@@ -9,7 +9,9 @@ namespace FileSpace.Models
         public string FolderPath { get; set; } = string.Empty;
         public string FolderName => Path.GetFileName(FolderPath.TrimEnd(Path.DirectorySeparatorChar)) ?? FolderPath;
         public long TotalSize { get; set; }
+        public long TotalSizeOnDisk { get; set; }
         public string FormattedSize => FileUtils.FormatFileSize(TotalSize);
+        public string FormattedSizeOnDisk => FileUtils.FormatFileSize(TotalSizeOnDisk);
         public int FileCount { get; set; }
         public int DirectoryCount { get; set; }
         public int InaccessibleItems { get; set; }

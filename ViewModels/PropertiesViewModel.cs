@@ -5,6 +5,7 @@ using Wpf.Ui.Controls;
 using FileSpace.Services;
 using FileSpace.Models;
 using FileSpace.Utils;
+using MessageBox = System.Windows.MessageBox;
 
 namespace FileSpace.ViewModels
 {
@@ -35,12 +36,19 @@ namespace FileSpace.ViewModels
         private bool _isDirectory;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DisplaySize))]
         private string _sizeFormatted = string.Empty;
 
         [ObservableProperty]
         private string _sizeInBytes = string.Empty;
 
         [ObservableProperty]
+        private string _sizeOnDiskFormatted = string.Empty;
+
+        public string DisplaySize => IsFile ? SizeFormatted : DirectorySizeText;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DisplaySize))]
         private string _directorySizeText = "计算中...";
 
         [ObservableProperty]
@@ -77,11 +85,37 @@ namespace FileSpace.ViewModels
         private object? _additionalInfo;
 
         private readonly string _itemPath;
+        private string _originalName = string.Empty;
 
         public PropertiesViewModel(string itemPath)
         {
             _itemPath = itemPath;
             LoadProperties();
+        }
+
+        public void SaveChanges()
+        {
+            if (Name != _originalName && !string.IsNullOrEmpty(Name))
+            {
+                try
+                {
+                    string directory = Path.GetDirectoryName(_itemPath)!;
+                    string newPath = Path.Combine(directory, Name);
+                    
+                    if (IsFile)
+                    {
+                        File.Move(_itemPath, newPath);
+                    }
+                    else
+                    {
+                        Directory.Move(_itemPath, newPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"重命名失败: {ex.Message}", "错误", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         private async void LoadProperties()
@@ -114,18 +148,23 @@ namespace FileSpace.ViewModels
             var fileInfo = new FileInfo(_itemPath);
             
             Name = fileInfo.Name;
+            _originalName = Name;
             FullPath = fileInfo.FullName;
             IsFile = true;
             IsDirectory = false;
             
             // File size
-            SizeFormatted = FileUtils.FormatFileSize(fileInfo.Length);
+            SizeFormatted = FileUtils.FormatFileSizeWithBytes(fileInfo.Length);
             SizeInBytes = $"{fileInfo.Length:N0} 字节";
             
+            // Size on disk
+            long sizeOnDisk = FileUtils.GetSizeOnDisk(_itemPath);
+            SizeOnDiskFormatted = FileUtils.FormatFileSizeWithBytes(sizeOnDisk);
+
             // Dates
-            CreationTime = fileInfo.CreationTime.ToString("yyyy年MM月dd日 HH:mm:ss");
-            LastWriteTime = fileInfo.LastWriteTime.ToString("yyyy年MM月dd日 HH:mm:ss");
-            LastAccessTime = fileInfo.LastAccessTime.ToString("yyyy年MM月dd日 HH:mm:ss");
+            CreationTime = fileInfo.CreationTime.ToString("yyyy年MM月dd日, HH:mm:ss");
+            LastWriteTime = fileInfo.LastWriteTime.ToString("yyyy年MM月dd日, HH:mm:ss");
+            LastAccessTime = fileInfo.LastAccessTime.ToString("yyyy年MM月dd日, HH:mm:ss");
             
             // Attributes
             var attributes = fileInfo.Attributes;
@@ -149,14 +188,15 @@ namespace FileSpace.ViewModels
             var dirInfo = new DirectoryInfo(_itemPath);
             
             Name = dirInfo.Name;
+            _originalName = Name;
             FullPath = dirInfo.FullName;
             IsFile = false;
             IsDirectory = true;
             
             // Dates
-            CreationTime = dirInfo.CreationTime.ToString("yyyy年MM月dd日 HH:mm:ss");
-            LastWriteTime = dirInfo.LastWriteTime.ToString("yyyy年MM月dd日 HH:mm:ss");
-            LastAccessTime = dirInfo.LastAccessTime.ToString("yyyy年MM月dd日 HH:mm:ss");
+            CreationTime = dirInfo.CreationTime.ToString("yyyy年MM月dd日, HH:mm:ss");
+            LastWriteTime = dirInfo.LastWriteTime.ToString("yyyy年MM月dd日, HH:mm:ss");
+            LastAccessTime = dirInfo.LastAccessTime.ToString("yyyy年MM月dd日, HH:mm:ss");
             
             // Attributes
             var attributes = dirInfo.Attributes;
@@ -206,7 +246,7 @@ namespace FileSpace.ViewModels
                 });
                 
                 // Set initial content info that will be updated in place
-                DirectoryContentsText = $"包含 {quickCount.FileCount}{(quickCount.FileCount >= 1000 ? "+" : "")} 个文件，{quickCount.DirCount}{(quickCount.DirCount >= 1000 ? "+" : "")} 个文件夹";
+                DirectoryContentsText = $"{quickCount.FileCount:N0}{(quickCount.FileCount >= 1000 ? "+" : "")} 个文件, {quickCount.DirCount:N0}{(quickCount.DirCount >= 1000 ? "+" : "")} 个文件夹";
                 
                 // Check for cached size or start calculation
                 var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;
@@ -221,9 +261,10 @@ namespace FileSpace.ViewModels
                     }
                     else
                     {
-                        DirectorySizeText = cachedSize.FormattedSize;
+                        DirectorySizeText = FileUtils.FormatFileSizeWithBytes(cachedSize.TotalSize);
+                        SizeOnDiskFormatted = FileUtils.FormatFileSizeWithBytes(cachedSize.TotalSizeOnDisk);
                         // Update in the same position with accurate count
-                        DirectoryContentsText = $"总共包含 {cachedSize.FileCount:N0} 个文件，直接包含 {cachedSize.DirectoryCount:N0} 个文件夹";
+                        DirectoryContentsText = $"{cachedSize.FileCount:N0} 个文件, {cachedSize.DirectoryCount:N0} 个文件夹";
                     }
                     IsSizeCalculating = false;
                 }
@@ -262,9 +303,10 @@ namespace FileSpace.ViewModels
                     }
                     else
                     {
-                        DirectorySizeText = e.SizeInfo.FormattedSize;
+                        DirectorySizeText = FileUtils.FormatFileSizeWithBytes(e.SizeInfo.TotalSize);
+                        SizeOnDiskFormatted = FileUtils.FormatFileSizeWithBytes(e.SizeInfo.TotalSizeOnDisk);
                         // Update in the same position with accurate count
-                        DirectoryContentsText = $"总共包含 {e.SizeInfo.FileCount:N0} 个文件，直接包含 {e.SizeInfo.DirectoryCount:N0} 个文件夹";
+                        DirectoryContentsText = $"{e.SizeInfo.FileCount:N0} 个文件, {e.SizeInfo.DirectoryCount:N0} 个文件夹";
                         if (e.SizeInfo.InaccessibleItems > 0)
                         {
                             DirectoryContentsText += $"（{e.SizeInfo.InaccessibleItems} 个项目无法访问）";

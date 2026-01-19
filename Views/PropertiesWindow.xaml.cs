@@ -31,6 +31,10 @@ namespace FileSpace.Views
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
+            if (DataContext is PropertiesViewModel viewModel)
+            {
+                viewModel.SaveChanges();
+            }
             Close();
         }
 
