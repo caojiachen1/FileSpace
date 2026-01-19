@@ -211,50 +211,6 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <!-- Style for toolbar buttons to keep background transparent when disabled -->
-        <Style x:Key="ToolbarButtonStyle" TargetType="ui:Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ui:Button">
-                        <Border x:Name="RootBorder" 
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="0"
-                                SnapsToDevicePixels="True">
-                            <ContentPresenter x:Name="ContentPresenter"
-                                              Margin="{TemplateBinding Padding}"
-                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              Focusable="False"
-                                              RecognizesAccessKey="True"
-                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="RootBorder" Property="Background" Value="#33FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="RootBorder" Property="Background" Value="#44FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.4"/>
-                                <Setter TargetName="RootBorder" Property="Background" Value="Transparent"/>
-                                <Setter TargetName="RootBorder" Property="BorderBrush" Value="Transparent"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
     </ui:FluentWindow.Resources>
     
     <Grid Focusable="True" MouseDown="RootGrid_MouseDown">
@@ -293,26 +249,34 @@
                     
                     <!-- Navigation Buttons -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ui:Button Command="{Binding GoBackCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="后退 (Alt+Left)">
-                            <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="16"/>
-                        </ui:Button>
-                        <ui:Button Command="{Binding GoForwardCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="前进 (Alt+Right)">
-                            <ui:SymbolIcon Symbol="ArrowRight24" FontSize="16"/>
-                        </ui:Button>
-                        <ui:Button Command="{Binding GoUpCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="向上 (Alt+Up)">
-                            <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
-                        </ui:Button>
-                        <ui:Button Command="{Binding RefreshCommand}" Style="{StaticResource ToolbarButtonStyle}"
-                                   Width="40" Height="32" Margin="0,0,10,0"
-                                   ToolTip="刷新 (F5)">
-                            <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16"/>
-                        </ui:Button>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding GoBackCommand}" ToolTip="后退 (Alt+Left)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="ArrowLeft24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding GoForwardCommand}" ToolTip="前进 (Alt+Right)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="ArrowRight24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding GoUpCommand}" ToolTip="向上 (Alt+Up)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="ArrowUp24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0">
+                            <MenuItem Command="{Binding RefreshCommand}" ToolTip="刷新 (F5)">
+                                <MenuItem.Header>
+                                    <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16"/>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
                     </StackPanel>
                     
                     <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}" 
