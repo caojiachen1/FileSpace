@@ -35,10 +35,9 @@ namespace FileSpace.Views
         private DragTooltipAdorner? _dragTooltipAdorner;
         private int _lastAdornerIndex = -1;
         private UIElement? _lastAdornerContainer;
-        
-        // 单击重命名计时器
-        private System.Windows.Threading.DispatcherTimer _renameTimer;
-        private object? _potentialRenameItem;
+        private FileItemModel? _lastDragOverFileItem;
+        private DirectoryItemModel? _lastDragOverDirectoryItem;
+        private QuickAccessItem? _lastDragOverQuickAccessItem;
 
         public MainWindow() : this(null) { }
 
@@ -47,12 +46,6 @@ namespace FileSpace.Views
             InitializeComponent();
             ViewModel = new MainViewModel(initialTab);
             DataContext = ViewModel;
-            
-            // 初始化重命名计时器
-            _renameTimer = new System.Windows.Threading.DispatcherTimer();
-            // 使用标准双击时间 500ms + 200ms 缓冲
-            _renameTimer.Interval = TimeSpan.FromMilliseconds(700); 
-            _renameTimer.Tick += RenameTimer_Tick;
 
             // 订阅全选事件
             ViewModel.SelectAllRequested += OnSelectAllRequested;
@@ -345,78 +338,6 @@ namespace FileSpace.Views
                 }
                 ViewModel.DirectorySelectedCommand.Execute(dirItem);
             }
-        }
-
-        private void RenameTimer_Tick(object? sender, EventArgs e)
-        {
-            _renameTimer.Stop();
-            if (ViewModel.IsRenaming) return;
-
-            if (_potentialRenameItem is FileItemModel file && ViewModel.SelectedFile == file)
-            {
-                ViewModel.StartInPlaceRename(file);
-            }
-            _potentialRenameItem = null;
-        }
-
-        private void OnItemPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            // 如果是双击，停止计时器
-            if (e.ClickCount > 1)
-            {
-                _renameTimer.Stop();
-                _potentialRenameItem = null;
-                return;
-            }
-
-            if (sender is FrameworkElement element && element.DataContext is FileItemModel file)
-            {
-                if (ViewModel.SelectedFile == file && !ViewModel.IsRenaming)
-                {
-                    // 检查是否点击在文本名称上
-                    if (IsClickOnName(element, e.GetPosition(element)))
-                    {
-                        _potentialRenameItem = file;
-                        _renameTimer.Stop();
-                        _renameTimer.Start();
-                    }
-                }
-                else
-                {
-                    _renameTimer.Stop();
-                    _potentialRenameItem = null;
-                }
-            }
-        }
-
-        private bool IsClickOnName(FrameworkElement itemContainer, Point position)
-        {
-            var result = VisualTreeHelper.HitTest(itemContainer, position);
-            if (result == null) return false;
-
-            // 第一遍：检查是否在 DataGridCell 中
-            var current = result.VisualHit;
-            while (current != null && current != itemContainer)
-            {
-                if (current is DataGridCell cell)
-                {
-                    // 如果在 DataGridCell 中，必须是 Name 列
-                    return cell.Column.SortMemberPath == "Name";
-                }
-                current = VisualTreeHelper.GetParent(current);
-            }
-
-            // 第二遍：如果在 DataGridCell 之外（如 ListView 图标模式），只要点击 TextBlock 就认为是名称
-            current = result.VisualHit;
-            while (current != null && current != itemContainer)
-            {
-                if (current is Wpf.Ui.Controls.TextBlock)
-                {
-                    return true;
-                }
-                current = VisualTreeHelper.GetParent(current);
-            }
-            return false;
         }
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -1300,8 +1221,118 @@ namespace FileSpace.Views
 
         private void QuickAccessListView_DragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent("QuickAccessItem"))
+            if (e.Data.GetDataPresent("FileItemModel"))
             {
+                var listView = (System.Windows.Controls.ListView)sender;
+                var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                
+                string tooltipText = "固定到快速访问";
+                bool isFullText = true;
+                bool isMove = false;
+                int insertionIndex = -1;
+
+                if (targetItemContainer != null)
+                {
+                    QuickAccessItem? targetItem = targetItemContainer.Content as QuickAccessItem;
+                    Point posInItem = e.GetPosition(targetItemContainer);
+                    double height = targetItemContainer.ActualHeight;
+                    
+                    // 中间区域触发移动，边缘区域触发固定
+                    if (posInItem.Y > height * 0.25 && posInItem.Y < height * 0.75)
+                    {
+                        isMove = true;
+                        isFullText = false;
+                        if (targetItem != null)
+                        {
+                            // 忽略拖拽回自身
+                            if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.Path, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                e.Effects = DragDropEffects.None;
+                                RemoveDragTooltip();
+                                if (_lastDragOverQuickAccessItem != null) _lastDragOverQuickAccessItem.IsDragOver = false;
+                                _lastDragOverQuickAccessItem = null;
+                                e.Handled = true;
+                                return;
+                            }
+
+                            if (_lastDragOverQuickAccessItem != targetItem)
+                            {
+                                if (_lastDragOverQuickAccessItem != null) _lastDragOverQuickAccessItem.IsDragOver = false;
+                                targetItem.IsDragOver = true;
+                                _lastDragOverQuickAccessItem = targetItem;
+                            }
+                            tooltipText = targetItem.Name;
+                        }
+                        RemoveInsertionAdorner();
+                    }
+                    else
+                    {
+                        if (_lastDragOverQuickAccessItem != null)
+                        {
+                            _lastDragOverQuickAccessItem.IsDragOver = false;
+                            _lastDragOverQuickAccessItem = null;
+                        }
+                        insertionIndex = listView.ItemContainerGenerator.IndexFromContainer(targetItemContainer);
+                        if (posInItem.Y >= height * 0.75) insertionIndex++;
+                        UpdateInsertionAdorner(listView, insertionIndex);
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverQuickAccessItem != null)
+                    {
+                        _lastDragOverQuickAccessItem.IsDragOver = false;
+                        _lastDragOverQuickAccessItem = null;
+                    }
+                    
+                    if (listView.Items.Count > 0)
+                    {
+                        var firstItem = listView.ItemContainerGenerator.ContainerFromIndex(0) as FrameworkElement;
+                        var lastItem = listView.ItemContainerGenerator.ContainerFromIndex(listView.Items.Count - 1) as FrameworkElement;
+                        Point posInListView = e.GetPosition(listView);
+
+                        if (firstItem != null && posInListView.Y < firstItem.TranslatePoint(new Point(0, 0), listView).Y)
+                        {
+                            insertionIndex = 0;
+                        }
+                        else if (lastItem != null && posInListView.Y > lastItem.TranslatePoint(new Point(0, 0), listView).Y + lastItem.ActualHeight)
+                        {
+                            insertionIndex = listView.Items.Count;
+                        }
+                    }
+                    else
+                    {
+                        insertionIndex = 0;
+                    }
+
+                    if (insertionIndex != -1)
+                    {
+                        UpdateInsertionAdorner(listView, insertionIndex);
+                    }
+                    else
+                    {
+                        RemoveInsertionAdorner();
+                    }
+                }
+
+                // 如果不是移动，且选中的项中没有文件夹，则不允许固定
+                if (!isMove && !ViewModel.SelectedFiles.Any(f => f.IsDirectory))
+                {
+                    e.Effects = DragDropEffects.None;
+                    RemoveDragTooltip();
+                    RemoveInsertionAdorner();
+                    e.Handled = true;
+                    return;
+                }
+
+                e.Effects = DragDropEffects.Move;
+                UpdateDragTooltip(listView, tooltipText, e.GetPosition(listView), isFullText);
+                e.Handled = true;
+                return;
+            }
+            else if (e.Data.GetDataPresent("QuickAccessItem"))
+            {
+                RemoveDragTooltip();
                 e.Effects = DragDropEffects.Move;
                 var listView = (System.Windows.Controls.ListView)sender;
                 var targetItem = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
@@ -1318,16 +1349,22 @@ namespace FileSpace.Views
                 }
                 else if (listView.Items.Count > 0)
                 {
+                    var firstItem = listView.ItemContainerGenerator.ContainerFromIndex(0) as FrameworkElement;
                     var lastItem = listView.ItemContainerGenerator.ContainerFromIndex(listView.Items.Count - 1) as FrameworkElement;
-                    if (lastItem != null)
+                    Point posInListView = e.GetPosition(listView);
+
+                    if (firstItem != null && posInListView.Y < firstItem.TranslatePoint(new Point(0, 0), listView).Y + firstItem.ActualHeight / 2)
                     {
-                        Point posInListView = e.GetPosition(listView);
-                        Point lastItemPos = lastItem.TranslatePoint(new Point(0, 0), listView);
-                        if (posInListView.Y >= lastItemPos.Y + lastItem.ActualHeight / 2)
-                        {
-                            insertionIndex = listView.Items.Count;
-                        }
+                        insertionIndex = 0;
                     }
+                    else if (lastItem != null && posInListView.Y >= lastItem.TranslatePoint(new Point(0, 0), listView).Y + lastItem.ActualHeight / 2)
+                    {
+                        insertionIndex = listView.Items.Count;
+                    }
+                }
+                else
+                {
+                    insertionIndex = 0;
                 }
 
                 if (insertionIndex != -1)
@@ -1350,12 +1387,27 @@ namespace FileSpace.Views
             if (pos.X < 0 || pos.Y < 0 || pos.X > listView.ActualWidth || pos.Y > listView.ActualHeight)
             {
                 RemoveInsertionAdorner();
+                RemoveDragTooltip();
+
+                if (_lastDragOverQuickAccessItem != null)
+                {
+                    _lastDragOverQuickAccessItem.IsDragOver = false;
+                    _lastDragOverQuickAccessItem = null;
+                }
             }
         }
 
         private void QuickAccessListView_Drop(object sender, DragEventArgs e)
         {
             RemoveInsertionAdorner();
+            RemoveDragTooltip();
+
+            if (_lastDragOverQuickAccessItem != null)
+            {
+                _lastDragOverQuickAccessItem.IsDragOver = false;
+                _lastDragOverQuickAccessItem = null;
+            }
+
             if (e.Data.GetDataPresent("QuickAccessItem"))
             {
                 QuickAccessItem? droppedItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
@@ -1397,6 +1449,47 @@ namespace FileSpace.Views
                     }
                 }
             }
+            else if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var listView = (System.Windows.Controls.ListView)sender;
+                var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                
+                if (targetItemContainer != null)
+                {
+                    Point posInItem = e.GetPosition(targetItemContainer);
+                    double height = targetItemContainer.ActualHeight;
+                    
+                    if (posInItem.Y > height * 0.25 && posInItem.Y < height * 0.75)
+                    {
+                        // 移动到项所在的目录
+                        QuickAccessItem? targetItem = targetItemContainer.Content as QuickAccessItem;
+                        if (targetItem != null)
+                        {
+                            ViewModel.MoveSelectedFilesToPathCommand.Execute(targetItem.Path);
+                        }
+                        return;
+                    }
+                }
+                
+                // 固定到快速访问（如果不是移动）
+                int insertionIndex = listView.Items.Count;
+                if (targetItemContainer != null)
+                {
+                    insertionIndex = listView.ItemContainerGenerator.IndexFromContainer(targetItemContainer);
+                    Point posInItem = e.GetPosition(targetItemContainer);
+                    if (posInItem.Y >= targetItemContainer.ActualHeight * 0.75) insertionIndex++;
+                }
+                
+                // 将选中的文件夹固定到快速访问
+                foreach (var file in ViewModel.SelectedFiles)
+                {
+                    if (file.IsDirectory)
+                    {
+                        ViewModel.AddPathToQuickAccessCommand.Execute(new Tuple<string, int>(file.FullPath, insertionIndex));
+                        insertionIndex++;
+                    }
+                }
+            }
         }
 
         private void FileDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1435,28 +1528,58 @@ namespace FileSpace.Views
             if (e.Data.GetDataPresent("FileItemModel"))
             {
                 var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                var dataGrid = (System.Windows.Controls.DataGrid)sender;
+                string targetName = GetDragTargetName();
 
                 if (targetRow != null)
                 {
                     FileItemModel? targetItem = targetRow.Item as FileItemModel;
                     if (targetItem != null && targetItem.IsDirectory)
                     {
+                        // 忽略拖拽回自身
+                        if (ViewModel.SelectedFiles.Contains(targetItem))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverFileItem != targetItem)
+                        {
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverFileItem = targetItem;
+                        }
+                        
                         e.Effects = DragDropEffects.Move;
-                        RemoveInsertionAdorner();
-                        
-                        // 显示移动提示
-                        var dataGrid = (System.Windows.Controls.DataGrid)sender;
-                        UpdateDragTooltip(dataGrid, targetItem.Name, e.GetPosition(dataGrid));
-                        
-                        e.Handled = true;
-                        return;
+                        targetName = targetItem.Name;
+                    }
+                    else
+                    {
+                        if (_lastDragOverFileItem != null)
+                        {
+                            _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                        }
+                        // 拖拽到文件上时不改变效应，但显示当前目录提示
+                        e.Effects = DragDropEffects.None;
                     }
                 }
+                else
+                {
+                    if (_lastDragOverFileItem != null)
+                    {
+                        _lastDragOverFileItem.IsDragOver = false;
+                        _lastDragOverFileItem = null;
+                    }
+                    e.Effects = DragDropEffects.Move;
+                }
 
-                // 禁用排序功能，只允许移动到文件夹
-                e.Effects = DragDropEffects.None;
+                UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
                 RemoveInsertionAdorner();
-                RemoveDragTooltip();
                 e.Handled = true;
             }
         }
@@ -1470,6 +1593,12 @@ namespace FileSpace.Views
             {
                 RemoveInsertionAdorner();
                 RemoveDragTooltip();
+
+                if (_lastDragOverFileItem != null)
+                {
+                    _lastDragOverFileItem.IsDragOver = false;
+                    _lastDragOverFileItem = null;
+                }
             }
         }
 
@@ -1477,6 +1606,13 @@ namespace FileSpace.Views
         {
             RemoveInsertionAdorner();
             RemoveDragTooltip();
+
+            if (_lastDragOverFileItem != null)
+            {
+                _lastDragOverFileItem.IsDragOver = false;
+                _lastDragOverFileItem = null;
+            }
+
             if (e.Data.GetDataPresent("FileItemModel"))
             {
                 var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
@@ -1486,6 +1622,237 @@ namespace FileSpace.Views
                     if (targetItem != null && targetItem.IsDirectory)
                     {
                         ViewModel.MoveSelectedFilesToFolderCommand.Execute(targetItem);
+                    }
+                }
+            }
+        }
+
+        private void FileIconView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+        }
+
+        private void FileIconView_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                Point mousePos = e.GetPosition(null);
+                Vector diff = _dragStartPoint - mousePos;
+
+                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
+                    System.Windows.Controls.ListView listView = (System.Windows.Controls.ListView)sender;
+                    var item = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+
+                    if (item != null)
+                    {
+                        FileItemModel? fileItem = item.Content as FileItemModel;
+                        if (fileItem != null)
+                        {
+                            DataObject dragData = new DataObject("FileItemModel", fileItem);
+                            DragDrop.DoDragDrop(item, dragData, DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void FileIconView_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                var listView = (System.Windows.Controls.ListView)sender;
+                string targetName = GetDragTargetName();
+
+                if (targetItemContainer != null)
+                {
+                    FileItemModel? targetItem = targetItemContainer.Content as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
+                    {
+                        // 忽略拖拽回自身
+                        if (ViewModel.SelectedFiles.Contains(targetItem))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverFileItem != targetItem)
+                        {
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverFileItem = targetItem;
+                        }
+
+                        e.Effects = DragDropEffects.Move;
+                        targetName = targetItem.Name;
+                    }
+                    else
+                    {
+                        if (_lastDragOverFileItem != null)
+                        {
+                            _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                        }
+                        e.Effects = DragDropEffects.None;
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverFileItem != null)
+                    {
+                        _lastDragOverFileItem.IsDragOver = false;
+                        _lastDragOverFileItem = null;
+                    }
+                    e.Effects = DragDropEffects.Move;
+                }
+
+                UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                RemoveInsertionAdorner();
+                e.Handled = true;
+            }
+        }
+
+        private void FileIconView_DragLeave(object sender, DragEventArgs e)
+        {
+            var listView = (System.Windows.Controls.ListView)sender;
+            Point pos = e.GetPosition(listView);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > listView.ActualWidth || pos.Y > listView.ActualHeight)
+            {
+                RemoveInsertionAdorner();
+                RemoveDragTooltip();
+
+                if (_lastDragOverFileItem != null)
+                {
+                    _lastDragOverFileItem.IsDragOver = false;
+                    _lastDragOverFileItem = null;
+                }
+            }
+        }
+
+        private void FileIconView_Drop(object sender, DragEventArgs e)
+        {
+            RemoveInsertionAdorner();
+            RemoveDragTooltip();
+
+            if (_lastDragOverFileItem != null)
+            {
+                _lastDragOverFileItem.IsDragOver = false;
+                _lastDragOverFileItem = null;
+            }
+
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                if (targetItemContainer != null)
+                {
+                    FileItemModel? targetItem = targetItemContainer.Content as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
+                    {
+                        ViewModel.MoveSelectedFilesToFolderCommand.Execute(targetItem);
+                    }
+                }
+            }
+        }
+
+        private void DirectoryTreeView_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+                var treeView = (System.Windows.Controls.TreeView)sender;
+                string targetName = "目录树";
+
+                if (targetItemContainer != null)
+                {
+                    DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
+                    if (targetItem != null)
+                    {
+                        // 忽略拖拽回自身
+                        if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
+                            _lastDragOverDirectoryItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverDirectoryItem != targetItem)
+                        {
+                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverDirectoryItem = targetItem;
+                        }
+
+                        e.Effects = DragDropEffects.Move;
+                        targetName = targetItem.Name;
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverDirectoryItem != null)
+                    {
+                        _lastDragOverDirectoryItem.IsDragOver = false;
+                        _lastDragOverDirectoryItem = null;
+                    }
+                    e.Effects = DragDropEffects.None;
+                }
+
+                UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                e.Handled = true;
+            }
+        }
+
+        private void DirectoryTreeView_DragLeave(object sender, DragEventArgs e)
+        {
+            var treeView = (System.Windows.Controls.TreeView)sender;
+            Point pos = e.GetPosition(treeView);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > treeView.ActualWidth || pos.Y > treeView.ActualHeight)
+            {
+                RemoveDragTooltip();
+
+                if (_lastDragOverDirectoryItem != null)
+                {
+                    _lastDragOverDirectoryItem.IsDragOver = false;
+                    _lastDragOverDirectoryItem = null;
+                }
+            }
+        }
+
+        private void DirectoryTreeView_Drop(object sender, DragEventArgs e)
+        {
+            RemoveDragTooltip();
+
+            if (_lastDragOverDirectoryItem != null)
+            {
+                _lastDragOverDirectoryItem.IsDragOver = false;
+                _lastDragOverDirectoryItem = null;
+            }
+
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+                if (targetItemContainer != null)
+                {
+                    DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
+                    if (targetItem != null)
+                    {
+                        // Use the path from DirectoryItemModel
+                        var path = targetItem.FullPath;
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            // We need a FileItemModel to use MoveSelectedFilesToFolderCommand
+                            // or create a new command that takes a path
+                            // For now, let's see if we can use an alternative or just navigate
+                            ViewModel.MoveSelectedFilesToPathCommand.Execute(path);
+                        }
                     }
                 }
             }
@@ -1545,19 +1912,30 @@ namespace FileSpace.Views
             }
         }
 
-        private void UpdateDragTooltip(UIElement container, string folderName, Point position)
+        private void UpdateDragTooltip(UIElement container, string folderName, Point position, bool isFullText = false)
         {
-            var layer = AdornerLayer.GetAdornerLayer(container);
+            var layer = AdornerLayer.GetAdornerLayer(RootGrid);
             if (layer == null) return;
 
-            if (_dragTooltipAdorner == null || _dragTooltipAdorner.AdornedElement != container)
+            // 将坐标转换为相对于 RootGrid 的坐标，以确保提示层在最上层且位置正确
+            Point rootPosition = container.TranslatePoint(position, RootGrid);
+
+            if (_dragTooltipAdorner == null || _dragTooltipAdorner.AdornedElement != RootGrid)
             {
                 RemoveDragTooltip();
-                _dragTooltipAdorner = new DragTooltipAdorner(container);
+                _dragTooltipAdorner = new DragTooltipAdorner(RootGrid);
                 layer.Add(_dragTooltipAdorner);
             }
 
-            _dragTooltipAdorner.Update(folderName, position);
+            _dragTooltipAdorner.Update(folderName, rootPosition, isFullText);
+        }
+
+        private string GetDragTargetName()
+        {
+            string? targetName = Path.GetFileName(ViewModel.CurrentPath?.TrimEnd('\\'));
+            if (string.IsNullOrEmpty(targetName)) targetName = ViewModel.CurrentPath;
+            if (string.IsNullOrEmpty(targetName)) targetName = "当前文件夹";
+            return targetName;
         }
 
         private void RemoveDragTooltip()

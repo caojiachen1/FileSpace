@@ -150,6 +150,9 @@
                                 <Setter TargetName="ContentBorder" Property="Background" Value="#FF606060"/>
                                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </Trigger>
+                            <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                <Setter TargetName="ContentBorder" Property="Background" Value="#FF606060"/>
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding HasSubDirectories}" Value="False">
                                 <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
                             </DataTrigger>
@@ -160,7 +163,6 @@
         </Style>
         
         <Style x:Key="FileDataGridRowStyle" TargetType="DataGridRow">
-            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemPreviewMouseLeftButtonDown"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
             <Setter Property="Height" Value="32"/>
@@ -177,6 +179,9 @@
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="#FF606060"/>
                 </Trigger>
+                <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                    <Setter Property="Background" Value="#FF606060"/>
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         
@@ -222,7 +227,7 @@
 
     </ui:FluentWindow.Resources>
     
-    <Grid Focusable="True" MouseDown="RootGrid_MouseDown">
+    <Grid x:Name="RootGrid" Focusable="True" MouseDown="RootGrid_MouseDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -994,6 +999,9 @@
                                             <Setter Property="Background" Value="#FF606060"/>
                                             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                                         </Trigger>
+                                        <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                            <Setter Property="Background" Value="#FF606060"/>
+                                        </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </ListView.ItemContainerStyle>
@@ -1011,7 +1019,11 @@
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               PreviewMouseWheel="OnPreviewMouseWheel"
                               SelectedItemChanged="DirectoryTreeView_SelectedItemChanged"
-                              ItemContainerStyle="{StaticResource DirectoryTreeViewItemStyle}">
+                              ItemContainerStyle="{StaticResource DirectoryTreeViewItemStyle}"
+                              AllowDrop="True"
+                              DragOver="DirectoryTreeView_DragOver"
+                              DragLeave="DirectoryTreeView_DragLeave"
+                              Drop="DirectoryTreeView_Drop">
                         <TreeView.Resources>
                             <!-- Add BooleanToVisibilityConverter -->
                             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -1502,6 +1514,12 @@
                               SelectionChanged="FileListView_SelectionChanged"
                               KeyDown="FileListView_KeyDown"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              AllowDrop="True"
+                              PreviewMouseLeftButtonDown="FileIconView_PreviewMouseLeftButtonDown"
+                              PreviewMouseMove="FileIconView_PreviewMouseMove"
+                              DragOver="FileIconView_DragOver"
+                              DragLeave="FileIconView_DragLeave"
+                              Drop="FileIconView_Drop"
                               Visibility="{Binding IsIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1512,7 +1530,6 @@
                         </ListView.ItemsPanel>
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
-                                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnItemPreviewMouseLeftButtonDown"/>
                                 <Setter Property="Width" Value="{Binding DataContext.IconItemWidth, ElementName=FileIconView}"/>
                                 <Setter Property="Height" Value="{Binding DataContext.IconItemHeight, ElementName=FileIconView}"/>
                                 <Setter Property="Padding" Value="4"/>
@@ -1541,6 +1558,9 @@
                                                     <Setter TargetName="ItemBorder" Property="Background" Value="#FF606060"/>
                                                     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                                                 </Trigger>
+                                                <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#FF606060"/>
+                                                </DataTrigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Setter.Value>

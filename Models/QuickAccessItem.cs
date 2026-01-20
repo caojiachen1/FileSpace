@@ -24,6 +24,9 @@ namespace FileSpace.Models
         [ObservableProperty]
         private bool _isPinned;
 
+        [ObservableProperty]
+        private bool _isDragOver;
+
         public QuickAccessItem(string name, string path, SymbolRegular icon, string iconColor, bool isPinned = false)
         {
             Name = name;

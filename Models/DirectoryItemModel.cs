@@ -48,6 +48,9 @@ namespace FileSpace.Models
         private FolderSizeInfo? _sizeInfo;
 
         [ObservableProperty]
+        private bool _isDragOver;
+
+        [ObservableProperty]
         private bool _hasSubDirectories;
 
         [ObservableProperty]

@@ -23,9 +23,9 @@ namespace FileSpace.Utils
             _typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
         }
 
-        public void Update(string folderName, Point cursorLocation)
+        public void Update(string text, Point cursorLocation, bool isFullText = false)
         {
-            _text = $"移动到 {folderName}";
+            _text = isFullText ? text : $"移动到 {text}";
             _cursorLocation = cursorLocation;
             InvalidateVisual();
         }

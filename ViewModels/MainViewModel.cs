@@ -385,6 +385,44 @@ namespace FileSpace.ViewModels
             SaveQuickAccessOrder();
         }
 
+        [RelayCommand]
+        private void AddPathToQuickAccess(Tuple<string, int> param)
+        {
+            string path = param.Item1;
+            int index = param.Item2;
+
+            if (string.IsNullOrEmpty(path)) return;
+            
+            // Check if already exists
+            var existing = QuickAccessItems.FirstOrDefault(i => i.Path == path);
+            if (existing != null)
+            {
+                int oldIndex = QuickAccessItems.IndexOf(existing);
+                ReorderQuickAccessItems(new Tuple<int, int>(oldIndex, index));
+                return;
+            }
+
+            bool isDir = Directory.Exists(path);
+            if (!isDir && !File.Exists(path)) return;
+
+            var name = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(name)) name = path;
+
+            var icon = isDir ? SymbolRegular.FolderOpen24 : SymbolRegular.Document24;
+            var color = isDir ? "#FFE6A23C" : "#FF607D8B";
+
+            var newItem = new QuickAccessItem(name, path, icon, color, false);
+            newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+
+            if (index >= 0 && index <= QuickAccessItems.Count)
+                QuickAccessItems.Insert(index, newItem);
+            else
+                QuickAccessItems.Add(newItem);
+
+            SaveQuickAccessOrder();
+            StatusText = $"已固定到快速访问: {name}";
+        }
+
         private void SaveQuickAccessOrder()
         {
             _settingsService.Settings.QuickAccessPaths = QuickAccessItems.Select(i => i.Path).ToList();
@@ -1895,13 +1933,22 @@ namespace FileSpace.ViewModels
             if (targetFolder == null || !targetFolder.IsDirectory)
                 return;
 
+            await MoveSelectedFilesToPathAsync(targetFolder.FullPath);
+        }
+
+        [RelayCommand]
+        private async Task MoveSelectedFilesToPathAsync(string? targetPath)
+        {
+            if (string.IsNullOrEmpty(targetPath))
+                return;
+
             if (SelectedFiles.Count == 0)
                 return;
 
             try
             {
                 var sourceFiles = SelectedFiles.Select(f => f.FullPath).ToList();
-                var destinationFolder = targetFolder.FullPath;
+                var destinationFolder = targetPath;
 
                 // 检查是否在移动到自身
                 if (sourceFiles.Any(f => f == destinationFolder))
