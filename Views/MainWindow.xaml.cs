@@ -1565,7 +1565,6 @@ namespace FileSpace.Views
                             _lastDragOverFileItem.IsDragOver = false;
                             _lastDragOverFileItem = null;
                         }
-                        // 拖拽到文件上时不改变效应，但显示当前目录提示
                         e.Effects = DragDropEffects.None;
                     }
                 }
@@ -1576,10 +1575,26 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
+                    // 拖拽到空白区域（当前目录），同盘移动是无效的
                     e.Effects = DragDropEffects.Move;
+                    if (ViewModel.SelectedFiles.Count > 0)
+                    {
+                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                    }
                 }
 
-                UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
                 RemoveInsertionAdorner();
                 e.Handled = true;
             }
@@ -1710,10 +1725,26 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
+                    // 拖拽到空白区域（当前目录），同盘移动是无效的
                     e.Effects = DragDropEffects.Move;
+                    if (ViewModel.SelectedFiles.Count > 0)
+                    {
+                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                    }
                 }
 
-                UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
                 RemoveInsertionAdorner();
                 e.Handled = true;
             }
@@ -1806,7 +1837,14 @@ namespace FileSpace.Views
                     e.Effects = DragDropEffects.None;
                 }
 
-                UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
                 e.Handled = true;
             }
         }
@@ -1996,8 +2034,30 @@ namespace FileSpace.Views
                 var item = button.DataContext as BreadcrumbItem;
                 if (item == null || string.IsNullOrEmpty(item.Path)) return;
 
-                // 检查是否拖拽到自身或其子目录
+                bool isInvalid = false;
+                // 1. 检查是否拖拽到选中的文件夹自身或其子目录
                 if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, item.Path, StringComparison.OrdinalIgnoreCase)))
+                {
+                    isInvalid = true;
+                }
+                
+                // 2. 检查是否拖拽到源文件的父目录（同盘移动无效）
+                if (!isInvalid && ViewModel.SelectedFiles.Count > 0)
+                {
+                    var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                    var sourceParent = Path.GetDirectoryName(firstFile);
+                    var sourceDrive = string.IsNullOrEmpty(firstFile) ? "" : Path.GetPathRoot(firstFile);
+                    var targetDrive = Path.GetPathRoot(item.Path);
+                    bool isSameDrive = !string.IsNullOrEmpty(sourceDrive) && !string.IsNullOrEmpty(targetDrive) &&
+                                       string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                    
+                    if (isSameDrive && string.Equals(sourceParent, item.Path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isInvalid = true;
+                    }
+                }
+
+                if (isInvalid)
                 {
                     e.Effects = DragDropEffects.None;
                     RemoveDragTooltip();
