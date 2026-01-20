@@ -1942,16 +1942,58 @@ namespace FileSpace.ViewModels
             if (string.IsNullOrEmpty(targetPath)) return;
             if (SelectedFiles.Count == 0) return;
 
-            var sourceDrive = Path.GetPathRoot(SelectedFiles[0].FullPath);
+            await ProcessPathsDropToPathAsync(new Tuple<IEnumerable<string>, string>(
+                SelectedFiles.Select(f => f.FullPath).ToList(), 
+                targetPath));
+        }
+
+        [RelayCommand]
+        private async Task ProcessPathsDropToPathAsync(Tuple<IEnumerable<string>, string> parameter)
+        {
+            var sourcePaths = parameter.Item1.ToList();
+            var targetPath = parameter.Item2;
+
+            if (sourcePaths.Count == 0 || string.IsNullOrEmpty(targetPath)) return;
+
+            var sourceDrive = Path.GetPathRoot(sourcePaths[0]);
             var targetDrive = Path.GetPathRoot(targetPath);
 
-            if (string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase))
+            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+
+            try
             {
-                await MoveSelectedFilesToPathAsync(targetPath);
+                IsFileOperationInProgress = true;
+                FileOperationStatus = isSameDrive ? "正在移动文件..." : "正在复制文件...";
+                FileOperationProgress = 0;
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                if (isSameDrive)
+                {
+                    // 检查是否在移动到自身或父目录
+                    if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
+                        sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        StatusText = "目标位置无效";
+                        return;
+                    }
+                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                }
+                else
+                {
+                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                }
             }
-            else
+            catch (OperationCanceledException)
             {
-                await CopySelectedFilesToPathAsync(targetPath);
+                StatusText = isSameDrive ? "移动操作已取消" : "复制操作已取消";
+            }
+            catch (Exception ex)
+            {
+                StatusText = (isSameDrive ? "移动失败: " : "复制失败: ") + ex.Message;
+            }
+            finally
+            {
+                IsFileOperationInProgress = false;
             }
         }
 

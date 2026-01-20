@@ -2026,7 +2026,21 @@ namespace FileSpace.Views
 
         private void Breadcrumb_DragOver(object sender, DragEventArgs e)
         {
+            string[]? sourcePaths = null;
             if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                sourcePaths = ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray();
+            }
+            else if (e.Data.GetDataPresent("QuickAccessItem"))
+            {
+                var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
+                if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                {
+                    sourcePaths = new[] { qaItem.Path };
+                }
+            }
+
+            if (sourcePaths != null && sourcePaths.Length > 0)
             {
                 var button = sender as FrameworkElement;
                 if (button == null) return;
@@ -2036,15 +2050,15 @@ namespace FileSpace.Views
 
                 bool isInvalid = false;
                 // 1. 检查是否拖拽到选中的文件夹自身或其子目录
-                if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, item.Path, StringComparison.OrdinalIgnoreCase)))
+                if (sourcePaths.Any(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase)))
                 {
                     isInvalid = true;
                 }
                 
                 // 2. 检查是否拖拽到源文件的父目录（同盘移动无效）
-                if (!isInvalid && ViewModel.SelectedFiles.Count > 0)
+                if (!isInvalid)
                 {
-                    var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                    var firstFile = sourcePaths[0];
                     var sourceParent = Path.GetDirectoryName(firstFile);
                     var sourceDrive = string.IsNullOrEmpty(firstFile) ? "" : Path.GetPathRoot(firstFile);
                     var targetDrive = Path.GetPathRoot(item.Path);
@@ -2075,19 +2089,16 @@ namespace FileSpace.Views
                 }
 
                 // 判定是移动还是复制：同盘移动，异盘复制
-                if (ViewModel.SelectedFiles.Count > 0)
-                {
-                    var firstFile = ViewModel.SelectedFiles[0].FullPath;
-                    var sourceDrive = string.IsNullOrEmpty(firstFile) ? "" : Path.GetPathRoot(firstFile);
-                    var targetDrive = Path.GetPathRoot(item.Path);
+                var firstSourcePath = sourcePaths[0];
+                var sDrive = string.IsNullOrEmpty(firstSourcePath) ? "" : Path.GetPathRoot(firstSourcePath);
+                var tDrive = Path.GetPathRoot(item.Path);
 
-                    bool isSameDrive = !string.IsNullOrEmpty(sourceDrive) && !string.IsNullOrEmpty(targetDrive) &&
-                                       string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                    e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                bool sameDrive = !string.IsNullOrEmpty(sDrive) && !string.IsNullOrEmpty(tDrive) &&
+                                   string.Equals(sDrive, tDrive, StringComparison.OrdinalIgnoreCase);
+                e.Effects = sameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
 
-                    string action = isSameDrive ? "移动到" : "复制到";
-                    UpdateDragTooltip(button, $"{action} {item.Name}", e.GetPosition(button), true);
-                }
+                string action = sameDrive ? "移动到" : "复制到";
+                UpdateDragTooltip(button, $"{action} {item.Name}", e.GetPosition(button), true);
 
                 e.Handled = true;
             }
@@ -2116,13 +2127,27 @@ namespace FileSpace.Views
             }
             RemoveDragTooltip();
 
+            string[]? sourcePaths = null;
             if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                sourcePaths = ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray();
+            }
+            else if (e.Data.GetDataPresent("QuickAccessItem"))
+            {
+                var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
+                if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                {
+                    sourcePaths = new[] { qaItem.Path };
+                }
+            }
+
+            if (sourcePaths != null && sourcePaths.Length > 0)
             {
                 var button = sender as FrameworkElement;
                 var item = button?.DataContext as BreadcrumbItem;
                 if (item != null && !string.IsNullOrEmpty(item.Path))
                 {
-                    ViewModel.ProcessDropToPathCommand.Execute(item.Path);
+                    ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(sourcePaths, item.Path));
                 }
             }
         }
