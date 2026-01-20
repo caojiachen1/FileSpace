@@ -314,13 +314,44 @@
                                                 <ui:Button Content="{Binding Name}" 
                                                            Command="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                            CommandParameter="{Binding Path}"
-                                                           Background="Transparent" BorderThickness="0"
+                                                           BorderThickness="0"
                                                            Padding="8,4" FontSize="13"
-                                                           ToolTip="{Binding Path}"/>
+                                                           ToolTip="{Binding Path}"
+                                                           AllowDrop="True"
+                                                           DragOver="Breadcrumb_DragOver"
+                                                           DragLeave="Breadcrumb_DragLeave"
+                                                           Drop="Breadcrumb_Drop">
+                                                    <ui:Button.Style>
+                                                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                                            <Setter Property="Background" Value="Transparent"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ui:Button.Style>
+                                                </ui:Button>
                                                 <Menu Background="Transparent" VerticalAlignment="Center" Margin="0" Padding="0"
                                                       Visibility="{Binding HasSubFolders, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                     <MenuItem ItemsSource="{Binding SubFolders}"
-                                                              SubmenuOpened="BreadcrumbMenuItem_SubmenuOpened">
+                                                              SubmenuOpened="BreadcrumbMenuItem_SubmenuOpened"
+                                                              AllowDrop="True"
+                                                              DragOver="Breadcrumb_DragOver"
+                                                              DragLeave="Breadcrumb_DragLeave"
+                                                              Drop="Breadcrumb_Drop">
+                                                        <MenuItem.Style>
+                                                            <Style TargetType="MenuItem">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </MenuItem.Style>
                                                         <MenuItem.Header>
                                                             <ui:SymbolIcon Symbol="ChevronRight24" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" RenderTransformOrigin="0.5,0.5">
                                                                 <ui:SymbolIcon.RenderTransform>
@@ -394,6 +425,10 @@
                                                                 <Setter Property="Header" Value="{Binding Name}"/>
                                                                 <Setter Property="Command" Value="{Binding DataContext.NavigateToBreadcrumbCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                                                 <Setter Property="CommandParameter" Value="{Binding Path}"/>
+                                                                <Setter Property="AllowDrop" Value="True"/>
+                                                                <EventSetter Event="DragOver" Handler="Breadcrumb_DragOver"/>
+                                                                <EventSetter Event="DragLeave" Handler="Breadcrumb_DragLeave"/>
+                                                                <EventSetter Event="Drop" Handler="Breadcrumb_Drop"/>
                                                                 <Setter Property="Padding" Value="12,6"/>
                                                                 <Setter Property="Template">
                                                                     <Setter.Value>
@@ -420,6 +455,11 @@
                                                                         </ControlTemplate>
                                                                     </Setter.Value>
                                                                 </Setter>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsDragOver}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
                                                             </Style>
                                                         </MenuItem.ItemContainerStyle>
                                                     </MenuItem>

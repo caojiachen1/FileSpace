@@ -38,6 +38,7 @@ namespace FileSpace.Views
         private FileItemModel? _lastDragOverFileItem;
         private DirectoryItemModel? _lastDragOverDirectoryItem;
         private QuickAccessItem? _lastDragOverQuickAccessItem;
+        private BreadcrumbItem? _lastDragOverBreadcrumbItem;
 
         public MainWindow() : this(null) { }
 
@@ -1983,6 +1984,87 @@ namespace FileSpace.Views
                 }
             }
             return null;
+        }
+
+        private void Breadcrumb_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var button = sender as FrameworkElement;
+                if (button == null) return;
+
+                var item = button.DataContext as BreadcrumbItem;
+                if (item == null || string.IsNullOrEmpty(item.Path)) return;
+
+                // 检查是否拖拽到自身或其子目录
+                if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, item.Path, StringComparison.OrdinalIgnoreCase)))
+                {
+                    e.Effects = DragDropEffects.None;
+                    RemoveDragTooltip();
+                    if (_lastDragOverBreadcrumbItem != null) _lastDragOverBreadcrumbItem.IsDragOver = false;
+                    _lastDragOverBreadcrumbItem = null;
+                    e.Handled = true;
+                    return;
+                }
+
+                if (_lastDragOverBreadcrumbItem != item)
+                {
+                    if (_lastDragOverBreadcrumbItem != null) _lastDragOverBreadcrumbItem.IsDragOver = false;
+                    item.IsDragOver = true;
+                    _lastDragOverBreadcrumbItem = item;
+                }
+
+                // 判定是移动还是复制：同盘移动，异盘复制
+                if (ViewModel.SelectedFiles.Count > 0)
+                {
+                    var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                    var sourceDrive = string.IsNullOrEmpty(firstFile) ? "" : Path.GetPathRoot(firstFile);
+                    var targetDrive = Path.GetPathRoot(item.Path);
+
+                    bool isSameDrive = !string.IsNullOrEmpty(sourceDrive) && !string.IsNullOrEmpty(targetDrive) &&
+                                       string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                    e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+
+                    string action = isSameDrive ? "移动到" : "复制到";
+                    UpdateDragTooltip(button, $"{action} {item.Name}", e.GetPosition(button), true);
+                }
+
+                e.Handled = true;
+            }
+        }
+
+        private void Breadcrumb_DragLeave(object sender, DragEventArgs e)
+        {
+            var item = (sender as FrameworkElement)?.DataContext as BreadcrumbItem;
+            if (item != null)
+            {
+                item.IsDragOver = false;
+                if (_lastDragOverBreadcrumbItem == item)
+                {
+                    _lastDragOverBreadcrumbItem = null;
+                }
+            }
+            RemoveDragTooltip();
+        }
+
+        private void Breadcrumb_Drop(object sender, DragEventArgs e)
+        {
+            if (_lastDragOverBreadcrumbItem != null)
+            {
+                _lastDragOverBreadcrumbItem.IsDragOver = false;
+                _lastDragOverBreadcrumbItem = null;
+            }
+            RemoveDragTooltip();
+
+            if (e.Data.GetDataPresent("FileItemModel"))
+            {
+                var button = sender as FrameworkElement;
+                var item = button?.DataContext as BreadcrumbItem;
+                if (item != null && !string.IsNullOrEmpty(item.Path))
+                {
+                    ViewModel.ProcessDropToPathCommand.Execute(item.Path);
+                }
+            }
         }
 
         private void BreadcrumbMenuItem_SubmenuOpened(object sender, RoutedEventArgs e)

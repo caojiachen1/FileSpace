@@ -1937,6 +1937,60 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand]
+        private async Task ProcessDropToPathAsync(string? targetPath)
+        {
+            if (string.IsNullOrEmpty(targetPath)) return;
+            if (SelectedFiles.Count == 0) return;
+
+            var sourceDrive = Path.GetPathRoot(SelectedFiles[0].FullPath);
+            var targetDrive = Path.GetPathRoot(targetPath);
+
+            if (string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase))
+            {
+                await MoveSelectedFilesToPathAsync(targetPath);
+            }
+            else
+            {
+                await CopySelectedFilesToPathAsync(targetPath);
+            }
+        }
+
+        [RelayCommand]
+        private async Task CopySelectedFilesToPathAsync(string? targetPath)
+        {
+            if (string.IsNullOrEmpty(targetPath))
+                return;
+
+            if (SelectedFiles.Count == 0)
+                return;
+
+            try
+            {
+                var sourceFiles = SelectedFiles.Select(f => f.FullPath).ToList();
+                var destinationFolder = targetPath;
+
+                IsFileOperationInProgress = true;
+                FileOperationStatus = "正在复制文件...";
+                FileOperationProgress = 0;
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+                await FileOperationsService.Instance.CopyFilesAsync(sourceFiles, destinationFolder, _fileOperationCancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = "复制操作已取消";
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"复制失败: {ex.Message}";
+            }
+            finally
+            {
+                IsFileOperationInProgress = false;
+            }
+        }
+
+        [RelayCommand]
         private async Task MoveSelectedFilesToPathAsync(string? targetPath)
         {
             if (string.IsNullOrEmpty(targetPath))
