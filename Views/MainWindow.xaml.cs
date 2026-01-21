@@ -1229,7 +1229,7 @@ namespace FileSpace.Views
                                 }
                             }
 
-                            DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Copy | DragDropEffects.Move);
+                            DragDropEffects result = DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
                         }
                     }
                 }
@@ -1551,7 +1551,7 @@ namespace FileSpace.Views
                                 }
                             }
 
-                            DragDrop.DoDragDrop(row, dragData, DragDropEffects.Copy | DragDropEffects.Move);
+                            DragDropEffects result = DragDrop.DoDragDrop(row, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
                         }
                     }
                 }
@@ -1670,11 +1670,11 @@ namespace FileSpace.Views
                             var targetDrive = Path.GetPathRoot(targetItem.FullPath);
                             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
 
-                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         }
                         else
                         {
-                            e.Effects = DragDropEffects.Move;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
                         }
 
                         targetName = targetItem.Name;
@@ -1823,7 +1823,7 @@ namespace FileSpace.Views
                                 }
                             }
 
-                            DragDrop.DoDragDrop(item, dragData, DragDropEffects.Copy | DragDropEffects.Move);
+                            DragDropEffects result = DragDrop.DoDragDrop(item, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
                         }
                     }
                 }
@@ -1942,11 +1942,11 @@ namespace FileSpace.Views
                             var targetDrive = Path.GetPathRoot(targetItem.FullPath);
                             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
 
-                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         }
                         else
                         {
-                            e.Effects = DragDropEffects.Move;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
                         }
 
                         targetName = targetItem.Name;
@@ -2145,11 +2145,11 @@ namespace FileSpace.Views
                             var targetDrive = Path.GetPathRoot(targetItem.FullPath);
                             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
 
-                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         }
                         else
                         {
-                            e.Effects = DragDropEffects.Move;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
                         }
 
                         targetName = targetItem.Name;

@@ -37,6 +37,21 @@ namespace FileSpace.Services
                     Directory.CreateDirectory(destinationDirectory);
                 }
 
+                // If user wants native progress/dialogs, delegate to shell to get Explorer-native UI
+                try
+                {
+                    var showShellDialog = SettingsService.Instance.Settings.FileOperationSettings.ShowProgressDialog;
+                    if (showShellDialog)
+                    {
+                        var list = sourcePaths.ToList();
+                        return await Task.Run(() => ShellPerformOperation(list, destinationDirectory, operation));
+                    }
+                }
+                catch
+                {
+                    // If settings service unavailable or shell operation fails, fall back to managed implementation
+                }
+
                 var sourceList = sourcePaths.ToList();
                 var totalFiles = await CountFilesAsync(sourceList);
                 var totalBytes = await CalculateTotalSizeAsync(sourceList);
@@ -194,6 +209,49 @@ namespace FileSpace.Services
                 }
                 return count;
             });
+        }
+
+        /// <summary>
+        /// Performs a copy/move using the Shell API (SHFileOperation) so the native Explorer
+        /// progress/conflict UI is shown and conflicts are handled by the shell.
+        /// Returns true on success.
+        /// </summary>
+        private static bool ShellPerformOperation(List<string> sourcePaths, string destinationDirectory, FileOperation operation)
+        {
+            try
+            {
+                // Build double-null-terminated source list
+                var fromBuilder = new System.Text.StringBuilder();
+                foreach (var s in sourcePaths)
+                {
+                    fromBuilder.Append(s);
+                    fromBuilder.Append('\0');
+                }
+                fromBuilder.Append('\0'); // final double-null
+
+                // Destination must be double-null terminated as well
+                var toBuilder = new System.Text.StringBuilder();
+                toBuilder.Append(destinationDirectory);
+                toBuilder.Append('\0');
+                toBuilder.Append('\0');
+
+                var fileOp = new Win32Api.SHFILEOPSTRUCT();
+                fileOp.hwnd = IntPtr.Zero;
+                fileOp.wFunc = operation == FileOperation.Copy ? Win32Api.FO_COPY : Win32Api.FO_MOVE;
+                fileOp.pFrom = fromBuilder.ToString();
+                fileOp.pTo = toBuilder.ToString();
+
+                // Do not set FOF_SILENT or FOF_NOCONFIRMATION so shell shows dialogs and conflict UI.
+                fileOp.fFlags = 0;
+
+                int result = Win32Api.SHFileOperation(ref fileOp);
+                return result == 0 && !fileOp.fAnyOperationsAborted;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Shell file operation failed: {ex.Message}");
+                return false;
+            }
         }
 
         private static async Task<long> CalculateTotalSizeAsync(List<string> paths)
