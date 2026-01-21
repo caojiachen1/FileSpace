@@ -2081,6 +2081,58 @@ namespace FileSpace.ViewModels
             StatusText = "正在取消操作...";
         }
 
+        [RelayCommand]
+        private async Task ProcessExternalDropAsync(Tuple<IEnumerable<string>, string> parameter)
+        {
+            var sourcePaths = parameter.Item1.ToList();
+            var targetPath = parameter.Item2;
+
+            if (sourcePaths.Count == 0 || string.IsNullOrEmpty(targetPath)) return;
+
+            // Determine if this is a copy or move operation based on source location
+            var sourceDrive = Path.GetPathRoot(sourcePaths[0]);
+            var targetDrive = Path.GetPathRoot(targetPath);
+
+            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                IsFileOperationInProgress = true;
+                FileOperationStatus = isSameDrive ? "正在移动文件..." : "正在复制文件...";
+                FileOperationProgress = 0;
+
+                _fileOperationCancellationTokenSource = new CancellationTokenSource();
+
+                if (isSameDrive)
+                {
+                    // Check if we're moving to the same location
+                    if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
+                        sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        StatusText = "目标位置无效";
+                        return;
+                    }
+                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                }
+                else
+                {
+                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                StatusText = isSameDrive ? "移动操作已取消" : "复制操作已取消";
+            }
+            catch (Exception ex)
+            {
+                StatusText = (isSameDrive ? "移动失败: " : "复制失败: ") + ex.Message;
+            }
+            finally
+            {
+                IsFileOperationInProgress = false;
+            }
+        }
+
         [RelayCommand(CanExecute = nameof(CanDeletePermanently))]
         private async Task DeleteFilesPermanently()
         {

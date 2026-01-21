@@ -1213,7 +1213,23 @@ namespace FileSpace.Views
                         if (item != null)
                         {
                             DataObject dragData = new DataObject("QuickAccessItem", item);
-                            DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Move);
+
+                            // Also add shell-compatible file drop data for external applications if the item is a file/folder
+                            if (!string.IsNullOrEmpty(item.Path) && (Directory.Exists(item.Path) || File.Exists(item.Path)))
+                            {
+                                var shellDataObject = ShellDragDropUtils.CreateFileDropDataObject(new[] { item.Path });
+
+                                // Merge the data objects
+                                foreach (var format in shellDataObject.GetFormats())
+                                {
+                                    if (!dragData.GetDataPresent(format))
+                                    {
+                                        dragData.SetData(format, shellDataObject.GetData(format));
+                                    }
+                                }
+                            }
+
+                            DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Copy | DragDropEffects.Move);
                         }
                     }
                 }
@@ -1516,8 +1532,26 @@ namespace FileSpace.Views
                         FileItemModel? item = row.Item as FileItemModel;
                         if (item != null)
                         {
+                            // Create data object for internal drag
                             DataObject dragData = new DataObject("FileItemModel", item);
-                            DragDrop.DoDragDrop(row, dragData, DragDropEffects.Move);
+
+                            // Also add shell-compatible file drop data for external applications
+                            var selectedPaths = ViewModel.SelectedFiles.Count > 0
+                                ? ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray()
+                                : new[] { item.FullPath };
+
+                            var shellDataObject = ShellDragDropUtils.CreateFileDropDataObject(selectedPaths);
+
+                            // Merge the data objects
+                            foreach (var format in shellDataObject.GetFormats())
+                            {
+                                if (!dragData.GetDataPresent(format))
+                                {
+                                    dragData.SetData(format, shellDataObject.GetData(format));
+                                }
+                            }
+
+                            DragDrop.DoDragDrop(row, dragData, DragDropEffects.Copy | DragDropEffects.Move);
                         }
                     }
                 }
@@ -1554,7 +1588,7 @@ namespace FileSpace.Views
                             targetItem.IsDragOver = true;
                             _lastDragOverFileItem = targetItem;
                         }
-                        
+
                         e.Effects = DragDropEffects.Move;
                         targetName = targetItem.Name;
                     }
@@ -1583,6 +1617,93 @@ namespace FileSpace.Views
                         if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
                         {
                             e.Effects = DragDropEffects.None;
+                        }
+                    }
+                }
+
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
+                RemoveInsertionAdorner();
+                e.Handled = true;
+            }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle external file drops
+                var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                var dataGrid = (System.Windows.Controls.DataGrid)sender;
+                string targetName = GetDragTargetName();
+
+                if (targetRow != null)
+                {
+                    FileItemModel? targetItem = targetRow.Item as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
+                    {
+                        // Check if the dropped files include the target directory itself
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverFileItem != targetItem)
+                        {
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverFileItem = targetItem;
+                        }
+
+                        // Determine if this is a copy or move based on source/destination drives
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+
+                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.Move;
+                        }
+
+                        targetName = targetItem.Name;
+                    }
+                    else
+                    {
+                        if (_lastDragOverFileItem != null)
+                        {
+                            _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                        }
+                        e.Effects = DragDropEffects.None;
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverFileItem != null)
+                    {
+                        _lastDragOverFileItem.IsDragOver = false;
+                        _lastDragOverFileItem = null;
+                    }
+                    // External files dragged to empty area (current directory)
+                    e.Effects = DragDropEffects.Copy; // External files are always copied
+                    if (ViewModel.SelectedFiles.Count > 0)
+                    {
+                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            e.Effects = DragDropEffects.Copy; // Still allow copying
                         }
                     }
                 }
@@ -1641,6 +1762,23 @@ namespace FileSpace.Views
                     }
                 }
             }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle drop from external sources (like Windows Explorer)
+                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                if (droppedPaths != null && droppedPaths.Length > 0)
+                {
+                    var targetPath = ViewModel.CurrentPath;
+                    ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                }
+            }
+        }
+
+        private void FileDataGrid_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+            // Provide visual feedback during drag operations
+            e.UseDefaultCursors = true;  // Use default cursors for now to avoid compilation issue
+            e.Handled = true;
         }
 
         private void FileIconView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1666,8 +1804,26 @@ namespace FileSpace.Views
                         FileItemModel? fileItem = item.Content as FileItemModel;
                         if (fileItem != null)
                         {
+                            // Create data object for internal drag
                             DataObject dragData = new DataObject("FileItemModel", fileItem);
-                            DragDrop.DoDragDrop(item, dragData, DragDropEffects.Move);
+
+                            // Also add shell-compatible file drop data for external applications
+                            var selectedPaths = ViewModel.SelectedFiles.Count > 0
+                                ? ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray()
+                                : new[] { fileItem.FullPath };
+
+                            var shellDataObject = ShellDragDropUtils.CreateFileDropDataObject(selectedPaths);
+
+                            // Merge the data objects
+                            foreach (var format in shellDataObject.GetFormats())
+                            {
+                                if (!dragData.GetDataPresent(format))
+                                {
+                                    dragData.SetData(format, shellDataObject.GetData(format));
+                                }
+                            }
+
+                            DragDrop.DoDragDrop(item, dragData, DragDropEffects.Copy | DragDropEffects.Move);
                         }
                     }
                 }
@@ -1748,6 +1904,93 @@ namespace FileSpace.Views
                 RemoveInsertionAdorner();
                 e.Handled = true;
             }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle external file drops
+                var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                var listView = (System.Windows.Controls.ListView)sender;
+                string targetName = GetDragTargetName();
+
+                if (targetItemContainer != null)
+                {
+                    FileItemModel? targetItem = targetItemContainer.Content as FileItemModel;
+                    if (targetItem != null && targetItem.IsDirectory)
+                    {
+                        // Check if the dropped files include the target directory itself
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverFileItem != targetItem)
+                        {
+                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverFileItem = targetItem;
+                        }
+
+                        // Determine if this is a copy or move based on source/destination drives
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+
+                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.Move;
+                        }
+
+                        targetName = targetItem.Name;
+                    }
+                    else
+                    {
+                        if (_lastDragOverFileItem != null)
+                        {
+                            _lastDragOverFileItem.IsDragOver = false;
+                            _lastDragOverFileItem = null;
+                        }
+                        e.Effects = DragDropEffects.None;
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverFileItem != null)
+                    {
+                        _lastDragOverFileItem.IsDragOver = false;
+                        _lastDragOverFileItem = null;
+                    }
+                    // External files dragged to empty area (current directory)
+                    e.Effects = DragDropEffects.Copy; // External files are always copied
+                    if (ViewModel.SelectedFiles.Count > 0)
+                    {
+                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
+                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            e.Effects = DragDropEffects.Copy; // Still allow copying
+                        }
+                    }
+                }
+
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
+                RemoveInsertionAdorner();
+                e.Handled = true;
+            }
         }
 
         private void FileIconView_DragLeave(object sender, DragEventArgs e)
@@ -1790,6 +2033,23 @@ namespace FileSpace.Views
                     }
                 }
             }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle drop from external sources (like Windows Explorer)
+                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                if (droppedPaths != null && droppedPaths.Length > 0)
+                {
+                    var targetPath = ViewModel.CurrentPath;
+                    ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                }
+            }
+        }
+
+        private void FileIconView_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+            // Provide visual feedback during drag operations
+            e.UseDefaultCursors = true;  // Use default cursors for now to avoid compilation issue
+            e.Handled = true;
         }
 
         private void DirectoryTreeView_DragOver(object sender, DragEventArgs e)
@@ -1824,6 +2084,74 @@ namespace FileSpace.Views
                         }
 
                         e.Effects = DragDropEffects.Move;
+                        targetName = targetItem.Name;
+                    }
+                }
+                else
+                {
+                    if (_lastDragOverDirectoryItem != null)
+                    {
+                        _lastDragOverDirectoryItem.IsDragOver = false;
+                        _lastDragOverDirectoryItem = null;
+                    }
+                    e.Effects = DragDropEffects.None;
+                }
+
+                if (e.Effects != DragDropEffects.None)
+                {
+                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                }
+                else
+                {
+                    RemoveDragTooltip();
+                }
+                e.Handled = true;
+            }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle external file drops
+                var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+                var treeView = (System.Windows.Controls.TreeView)sender;
+                string targetName = "目录树";
+
+                if (targetItemContainer != null)
+                {
+                    DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
+                    if (targetItem != null)
+                    {
+                        // Check if the dropped files include the target directory itself
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            e.Effects = DragDropEffects.None;
+                            RemoveDragTooltip();
+                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
+                            _lastDragOverDirectoryItem = null;
+                            e.Handled = true;
+                            return;
+                        }
+
+                        if (_lastDragOverDirectoryItem != targetItem)
+                        {
+                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
+                            targetItem.IsDragOver = true;
+                            _lastDragOverDirectoryItem = targetItem;
+                        }
+
+                        // Determine if this is a copy or move based on source/destination drives
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+
+                            e.Effects = isSameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.Move;
+                        }
+
                         targetName = targetItem.Name;
                     }
                 }
@@ -1891,6 +2219,23 @@ namespace FileSpace.Views
                             // or create a new command that takes a path
                             // For now, let's see if we can use an alternative or just navigate
                             ViewModel.MoveSelectedFilesToPathCommand.Execute(path);
+                        }
+                    }
+                }
+            }
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
+            {
+                // Handle drop from external sources (like Windows Explorer)
+                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                if (droppedPaths != null && droppedPaths.Length > 0)
+                {
+                    var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
+                    if (targetItemContainer != null)
+                    {
+                        DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
+                        if (targetItem != null)
+                        {
+                            ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.FullPath));
                         }
                     }
                 }
