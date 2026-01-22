@@ -1,5 +1,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using FileSpace.Models;
 using FileSpace.Utils;
@@ -13,6 +15,7 @@ namespace FileSpace.Services
         public static FileSystemService Instance => _instance.Value;
         
         private readonly SettingsService _settingsService;
+        private static readonly ConcurrentDictionary<string, string> _fileTypeCache = new();
 
         private FileSystemService() 
         {
@@ -321,48 +324,34 @@ namespace FileSpace.Services
 
         private static string GetFileType(string extension)
         {
-            return extension.ToLower() switch
+            if (string.IsNullOrEmpty(extension)) return "文件";
+            
+            var extLower = extension.ToLower();
+            if (_fileTypeCache.TryGetValue(extLower, out var cachedType))
             {
-                ".txt" => "文本文件",
-                ".log" => "日志文件",
-                ".cs" => "C# 源代码",
-                ".xml" => "XML 文件",
-                ".json" => "JSON 文件",
-                ".config" => "配置文件",
-                ".ini" => "配置文件",
-                ".md" => "Markdown 文件",
-                ".yaml" or ".yml" => "YAML 文件",
-                ".html" or ".htm" => "HTML 文件",
-                ".css" => "CSS 样式表",
-                ".js" => "JavaScript 文件",
-                ".jpg" or ".jpeg" => "JPEG 图片",
-                ".png" => "PNG 图片",
-                ".gif" => "GIF 图片",
-                ".bmp" => "位图文件",
-                ".webp" => "WebP 图片",
-                ".tiff" => "TIFF 图片",
-                ".ico" => "图标文件",
-                ".pdf" => "PDF 文档",
-                ".csv" => "CSV 表格",
-                ".exe" => "可执行文件",
-                ".msi" => "安装程序",
-                ".zip" => "ZIP 压缩包",
-                ".rar" => "RAR 压缩包",
-                ".7z" => "7Z 压缩包",
-                ".tar" => "TAR 归档",
-                ".gz" => "GZ 压缩包",
-                ".mp3" => "MP3 音频",
-                ".wav" => "WAV 音频",
-                ".flac" => "FLAC 音频",
-                ".aac" => "AAC 音频",
-                ".mp4" => "MP4 视频",
-                ".avi" => "AVI 视频",
-                ".mkv" => "MKV 视频",
-                ".mov" => "QuickTime 视频",
-                ".wmv" => "WMV 视频",
-                "" => "文件",
-                _ => $"{extension.ToUpper()} 文件"
-            };
+                return cachedType;
+            }
+
+            try
+            {
+                var shinfo = new Win32Api.SHFILEINFO();
+                Win32Api.SHGetFileInfo(
+                    extension,
+                    (uint)FileAttributes.Normal,
+                    ref shinfo,
+                    (uint)Marshal.SizeOf(shinfo),
+                    Win32Api.SHGFI_TYPENAME | Win32Api.SHGFI_USEFILEATTRIBUTES);
+
+                var typeName = shinfo.szTypeName;
+                if (!string.IsNullOrEmpty(typeName))
+                {
+                    _fileTypeCache.TryAdd(extLower, typeName);
+                    return typeName;
+                }
+            }
+            catch { }
+
+            return $"{extension.ToUpper().TrimStart('.')} 文件";
         }
 
         public static string GetFileTypePublic(string extension) => GetFileType(extension);
