@@ -2373,7 +2373,16 @@ namespace FileSpace.ViewModels
         {
             if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
             {
-                PerformRename(RenamingFile, NewFileName.Trim());
+                string trimmedName = NewFileName.Trim();
+                
+                // 如果文件名没有变化，直接取消重命名模式而不报错
+                if (trimmedName == RenamingFile.Name)
+                {
+                    CancelRename();
+                    return;
+                }
+
+                PerformRename(RenamingFile, trimmedName);
                 CancelRename();
             }
         }

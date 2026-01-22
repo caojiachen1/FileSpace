@@ -79,33 +79,38 @@ namespace FileSpace.Views
             this.PreviewMouseLeftButtonDown += MainWindow_PreviewMouseLeftButtonDown;
         }
 
+        /// <summary>
+        /// 检查点击的对象是否在重命名编辑框或地址栏编辑框内
+        /// </summary>
+        private bool IsInsideRenameEditor(DependencyObject? obj)
+        {
+            while (obj != null)
+            {
+                if (obj is System.Windows.Controls.TextBox tb)
+                {
+                    if (tb.Name == "RenameTextBox" || tb.Name == "RenameTextBox_Large" || tb.Name == "RenameTextBox_Small" || tb.Name == "AddressBarTextBox")
+                    {
+                        return true;
+                    }
+                }
+
+                if (obj is Visual || obj is System.Windows.Media.Media3D.Visual3D)
+                {
+                    obj = VisualTreeHelper.GetParent(obj);
+                }
+                else
+                {
+                    obj = LogicalTreeHelper.GetParent(obj);
+                }
+            }
+            return false;
+        }
+
         private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (ViewModel.IsRenaming || ViewModel.IsPathEditing)
             {
-                var obj = e.OriginalSource as DependencyObject;
-                bool clickedInsideEditor = false;
-
-                while (obj != null)
-                {
-                    if (obj is System.Windows.Controls.TextBox tb)
-                    {
-                        if (tb.Name == "RenameTextBox" || tb.Name == "RenameTextBox_Large" || tb.Name == "RenameTextBox_Small" || tb.Name == "AddressBarTextBox")
-                        {
-                            clickedInsideEditor = true;
-                            break;
-                        }
-                    }
-                    
-                    if (obj is Visual || obj is System.Windows.Media.Media3D.Visual3D)
-                    {
-                        obj = VisualTreeHelper.GetParent(obj);
-                    }
-                    else
-                    {
-                        obj = LogicalTreeHelper.GetParent(obj);
-                    }
-                }
+                bool clickedInsideEditor = IsInsideRenameEditor(e.OriginalSource as DependencyObject);
 
                 if (!clickedInsideEditor)
                 {
@@ -343,6 +348,7 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            if (ViewModel.IsRenaming) return;
             ViewModel.FileDoubleClickCommand.Execute(ViewModel.SelectedFile);
         }
 
@@ -1511,11 +1517,39 @@ namespace FileSpace.Views
 
         private void FileDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (ViewModel.IsRenaming)
+            {
+                if (IsInsideRenameEditor(e.OriginalSource as DependencyObject))
+                {
+                    return;
+                }
+                
+                // 在重命名时点击其他地方，拦截事件以防止改变选择
+                // MainWindow_PreviewMouseLeftButtonDown 会先行处理并取消重命名
+                e.Handled = true;
+                return;
+            }
             _dragStartPoint = e.GetPosition(null);
         }
 
         private void FileDataGrid_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (ViewModel.IsRenaming)
+            {
+                // 如果在重命名编辑器内，允许正常的鼠标移动（例如文本选择拖拽）
+                if (IsInsideRenameEditor(e.OriginalSource as DependencyObject))
+                {
+                    return;
+                }
+
+                // 如果在重命名但不在编辑器内，拦截任何拖拽尝试
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    e.Handled = true;
+                }
+                return;
+            }
+
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 Point mousePos = e.GetPosition(null);
@@ -1783,11 +1817,38 @@ namespace FileSpace.Views
 
         private void FileIconView_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (ViewModel.IsRenaming)
+            {
+                if (IsInsideRenameEditor(e.OriginalSource as DependencyObject))
+                {
+                    return;
+                }
+                
+                // 在重命名时点击其他地方，拦截事件以防止改变选择
+                e.Handled = true;
+                return;
+            }
             _dragStartPoint = e.GetPosition(null);
         }
 
         private void FileIconView_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (ViewModel.IsRenaming)
+            {
+                // 如果在重命名编辑器内，允许正常的鼠标移动（例如文本选择拖拽）
+                if (IsInsideRenameEditor(e.OriginalSource as DependencyObject))
+                {
+                    return;
+                }
+
+                // 如果在重命名但不在编辑器内，拦截任何拖拽尝试
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    e.Handled = true;
+                }
+                return;
+            }
+
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 Point mousePos = e.GetPosition(null);
