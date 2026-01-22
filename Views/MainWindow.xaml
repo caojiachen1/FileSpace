@@ -1369,6 +1369,7 @@
                                  GiveFeedback="FileDataGrid_GiveFeedback"
                                  RowStyle="{StaticResource FileDataGridRowStyle}"
                                  CellStyle="{StaticResource FileDataGridCellStyle}"
+                                 MouseLeftButtonUp="FileListView_MouseUp"
                                  Visibility="{Binding IsDetailsView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:DataGrid.ContextMenu>
                             <ContextMenu>
@@ -1576,6 +1577,7 @@
                               DragLeave="FileIconView_DragLeave"
                               Drop="FileIconView_Drop"
                               GiveFeedback="FileIconView_GiveFeedback"
+                              MouseLeftButtonUp="FileListView_MouseUp"
                               Visibility="{Binding IsIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1836,6 +1838,16 @@
                             </ContextMenu>
                         </ListView.ContextMenu>
                     </ListView>
+
+                    <!-- Selection Rectangle Canvas -->
+                    <Canvas x:Name="SelectionCanvas" IsHitTestVisible="False" Background="Transparent" 
+                            Margin="10,5,10,10">
+                        <Rectangle x:Name="SelectionRectangle" 
+                                   Stroke="#FF409EFF" 
+                                   StrokeThickness="1"
+                                   Fill="#40409EFF" 
+                                   Visibility="Collapsed"/>
+                    </Canvas>
                     </Grid>
                 </Grid>
             </Border>

@@ -30,6 +30,11 @@ namespace FileSpace.Views
         // 拖拽起始点
         private Point _dragStartPoint;
         
+        // 框选相关
+        private bool _isSelecting = false;
+        private Point _selectionStartPoint;
+        private bool _expectingPossibleMultiDrag = false;
+        
         // 拖拽指示器
         private InsertionIndicatorAdorner? _insertionAdorner;
         private DragTooltipAdorner? _dragTooltipAdorner;
@@ -362,25 +367,51 @@ namespace FileSpace.Views
 
         private void FileListView_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
-            if (fileDataGrid == null) return;
+            if (e.LeftButton != MouseButtonState.Pressed) return;
             
-            // Check if click is on empty area (not on a DataGridRow)
-            var hitTest = VisualTreeHelper.HitTest(fileDataGrid, e.GetPosition(fileDataGrid));
+            var itemsControl = sender as ItemsControl;
+            if (itemsControl == null) return;
+            
+            // Check if click is on empty area (not on a DataGridRow or ListViewItem)
+            var hitTest = VisualTreeHelper.HitTest(itemsControl, e.GetPosition(itemsControl));
             if (hitTest != null)
             {
-                var dataGridRow = FindAncestor<DataGridRow>(hitTest.VisualHit);
-                if (dataGridRow == null)
+                DependencyObject? container = null;
+                if (itemsControl is System.Windows.Controls.DataGrid)
+                    container = FindAncestor<DataGridRow>(hitTest.VisualHit);
+                else if (itemsControl is System.Windows.Controls.ListView)
+                    container = FindAncestor<System.Windows.Controls.ListViewItem>(hitTest.VisualHit);
+
+                if (container == null)
                 {
                     // Clicked on empty area, clear selection
-                    fileDataGrid.SelectedItems.Clear();
+                    if (itemsControl is System.Windows.Controls.DataGrid dg) dg.SelectedItems.Clear();
+                    else if (itemsControl is System.Windows.Controls.ListView lv) lv.SelectedItems.Clear();
+
                     if (DataContext is MainViewModel viewModel)
                     {
                         viewModel.SelectedFiles.Clear();
                     }
                     
-                    // Ensure the DataGrid gets focus for keyboard shortcuts
-                    fileDataGrid.Focus();
+                    // Ensure the control gets focus for keyboard shortcuts
+                    itemsControl.Focus();
+
+                    // Start selection dragging logic
+                    _isSelecting = true;
+                    _selectionStartPoint = e.GetPosition(itemsControl);
+                    itemsControl.CaptureMouse();
+
+                    // Initialize selection rectangle
+                    if (SelectionRectangle != null)
+                    {
+                        SelectionRectangle.Visibility = Visibility.Visible;
+                        Canvas.SetLeft(SelectionRectangle, _selectionStartPoint.X);
+                        Canvas.SetTop(SelectionRectangle, _selectionStartPoint.Y);
+                        SelectionRectangle.Width = 0;
+                        SelectionRectangle.Height = 0;
+                    }
+                    
+                    e.Handled = true;
                 }
             }
         }
@@ -1467,13 +1498,15 @@ namespace FileSpace.Views
 
                     if (oldIndex != -1 && newIndex != -1 && oldIndex != newIndex)
                     {
-                        // 插入位置修正：如果要移动到原位置之后，Insert 会将其移动到目标索引位置，但因为前面删除了一个，所以逻辑索引没问题
                         ViewModel.ReorderQuickAccessItemsCommand.Execute(new Tuple<int, int>(oldIndex, newIndex));
                     }
                 }
             }
-            else if (e.Data.GetDataPresent("FileItemModel"))
+            else if (ShellDragDropUtils.ContainsFileData(e.Data))
             {
+                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                if (droppedPaths == null || droppedPaths.Length == 0) return;
+
                 var listView = (System.Windows.Controls.ListView)sender;
                 var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
                 
@@ -1486,9 +1519,9 @@ namespace FileSpace.Views
                     {
                         // 移动到项所在的目录
                         QuickAccessItem? targetItem = targetItemContainer.Content as QuickAccessItem;
-                        if (targetItem != null)
+                        if (targetItem != null && !string.IsNullOrEmpty(targetItem.Path))
                         {
-                            ViewModel.MoveSelectedFilesToPathCommand.Execute(targetItem.Path);
+                            ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.Path));
                         }
                         return;
                     }
@@ -1504,12 +1537,117 @@ namespace FileSpace.Views
                 }
                 
                 // 将选中的文件夹固定到快速访问
-                foreach (var file in ViewModel.SelectedFiles)
+                foreach (var path in droppedPaths)
                 {
-                    if (file.IsDirectory)
+                    if (Directory.Exists(path))
                     {
-                        ViewModel.AddPathToQuickAccessCommand.Execute(new Tuple<string, int>(file.FullPath, insertionIndex));
+                        ViewModel.AddPathToQuickAccessCommand.Execute(new Tuple<string, int>(path, insertionIndex));
                         insertionIndex++;
+                    }
+                }
+            }
+        }
+
+        private void FileListView_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isSelecting)
+            {
+                _isSelecting = false;
+                if (sender is UIElement element)
+                {
+                    element.ReleaseMouseCapture();
+                }
+                if (SelectionRectangle != null)
+                {
+                    SelectionRectangle.Visibility = Visibility.Collapsed;
+                }
+            }
+
+            if (_expectingPossibleMultiDrag)
+            {
+                _expectingPossibleMultiDrag = false;
+                
+                // 用户点击了一个已选中的项但没有拖拽，此时应该变为单选该项
+                if (sender is System.Windows.Controls.DataGrid dataGrid)
+                {
+                    var row = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                    if (row != null)
+                    {
+                        dataGrid.SelectedItems.Clear();
+                        dataGrid.SelectedItems.Add(row.Item);
+                    }
+                }
+                else if (sender is System.Windows.Controls.ListView listView)
+                {
+                    var item = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                    if (item != null)
+                    {
+                        listView.SelectedItems.Clear();
+                        listView.SelectedItems.Add(item.Content);
+                    }
+                }
+            }
+        }
+
+        private void UpdateSelectionRectangle(UIElement? container, Point currentPoint)
+        {
+            if (!_isSelecting || container == null || SelectionRectangle == null) return;
+
+            double x = Math.Min(_selectionStartPoint.X, currentPoint.X);
+            double y = Math.Min(_selectionStartPoint.Y, currentPoint.Y);
+            double width = Math.Abs(_selectionStartPoint.X - currentPoint.X);
+            double height = Math.Abs(_selectionStartPoint.Y - currentPoint.Y);
+
+            Canvas.SetLeft(SelectionRectangle, x);
+            Canvas.SetTop(SelectionRectangle, y);
+            SelectionRectangle.Width = width;
+            SelectionRectangle.Height = height;
+
+            Rect selectionRect = new Rect(x, y, width, height);
+
+            if (container is ItemsControl itemsControl)
+            {
+                // Determine which items are within the selection rectangle
+                // We use ItemContainerGenerator to get containers for visible items
+                foreach (var item in itemsControl.Items)
+                {
+                    var itemContainer = itemsControl.ItemContainerGenerator.ContainerFromItem(item) as FrameworkElement;
+                    if (itemContainer != null)
+                    {
+                        try
+                        {
+                            Point topLeft = itemContainer.TranslatePoint(new Point(0, 0), itemsControl);
+                            Rect itemRect = new Rect(topLeft.X, topLeft.Y, itemContainer.ActualWidth, itemContainer.ActualHeight);
+
+                            bool isSelected = selectionRect.IntersectsWith(itemRect);
+
+                            if (itemsControl is System.Windows.Controls.DataGrid dg)
+                            {
+                                if (isSelected)
+                                {
+                                    if (!dg.SelectedItems.Contains(item)) dg.SelectedItems.Add(item);
+                                }
+                                else
+                                {
+                                    if (dg.SelectedItems.Contains(item)) dg.SelectedItems.Remove(item);
+                                }
+                            }
+                            else if (itemsControl is System.Windows.Controls.ListView lv)
+                            {
+                                if (isSelected)
+                                {
+                                    if (!lv.SelectedItems.Contains(item)) lv.SelectedItems.Add(item);
+                                }
+                                else
+                                {
+                                    if (lv.SelectedItems.Contains(item)) lv.SelectedItems.Remove(item);
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // Ignore errors during translation (e.g. if item is being removed)
+                        }
                     }
                 }
             }
@@ -1530,10 +1668,33 @@ namespace FileSpace.Views
                 return;
             }
             _dragStartPoint = e.GetPosition(null);
+
+            // 处理多选拖拽：如果点击的是已经选中的项，延迟选择改变
+            var dataGrid = sender as System.Windows.Controls.DataGrid;
+            if (dataGrid != null && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == 0)
+            {
+                var row = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                if (row != null && row.IsSelected && dataGrid.SelectedItems.Count > 1)
+                {
+                    _expectingPossibleMultiDrag = true;
+                    e.Handled = true;
+                    dataGrid.Focus();
+                }
+                else
+                {
+                    _expectingPossibleMultiDrag = false;
+                }
+            }
         }
 
         private void FileDataGrid_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (_isSelecting)
+            {
+                UpdateSelectionRectangle(sender as UIElement, e.GetPosition(sender as UIElement));
+                return;
+            }
+
             if (ViewModel.IsRenaming)
             {
                 // 如果在重命名编辑器内，允许正常的鼠标移动（例如文本选择拖拽）
@@ -1558,6 +1719,7 @@ namespace FileSpace.Views
                 if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                     Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
+                    _expectingPossibleMultiDrag = false;
                     System.Windows.Controls.DataGrid dataGrid = (System.Windows.Controls.DataGrid)sender;
                     var row = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
 
@@ -1566,13 +1728,27 @@ namespace FileSpace.Views
                         FileItemModel? item = row.Item as FileItemModel;
                         if (item != null)
                         {
+                            // 确定要拖拽的文件列表
+                            List<FileItemModel> dragItems;
+                            if (ViewModel.SelectedFiles.Contains(item))
+                            {
+                                // 如果拖拽的项已经在选中列表中，则拖拽所有选中的项
+                                dragItems = ViewModel.SelectedFiles.ToList();
+                            }
+                            else
+                            {
+                                // 如果拖拽的项不在选中列表中，则仅拖拽该项，并更新选中状态
+                                dragItems = new List<FileItemModel> { item };
+                                dataGrid.SelectedItems.Clear();
+                                dataGrid.SelectedItems.Add(item);
+                            }
+
                             // Create data object for internal drag
                             DataObject dragData = new DataObject("FileItemModel", item);
+                            dragData.SetData("FileItemModels", dragItems);
 
                             // Also add shell-compatible file drop data for external applications
-                            var selectedPaths = ViewModel.SelectedFiles.Count > 0
-                                ? ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray()
-                                : new[] { item.FullPath };
+                            var selectedPaths = dragItems.Select(f => f.FullPath).ToArray();
 
                             var shellDataObject = ShellDragDropUtils.CreateFileDropDataObject(selectedPaths);
 
@@ -1784,27 +1960,39 @@ namespace FileSpace.Views
                 _lastDragOverFileItem = null;
             }
 
-            if (e.Data.GetDataPresent("FileItemModel"))
+            var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+            if (droppedPaths != null && droppedPaths.Length > 0)
             {
                 var targetRow = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
+                string? targetPath = null;
+                
                 if (targetRow != null)
                 {
                     FileItemModel? targetItem = targetRow.Item as FileItemModel;
                     if (targetItem != null && targetItem.IsDirectory)
                     {
-                        ViewModel.MoveSelectedFilesToFolderCommand.Execute(targetItem);
+                        targetPath = targetItem.FullPath;
                     }
                 }
-            }
-            else if (ShellDragDropUtils.ContainsFileData(e.Data))
-            {
-                // Handle drop from external sources (like Windows Explorer)
-                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
-                if (droppedPaths != null && droppedPaths.Length > 0)
+                
+                // 如果没有拖拽到特定文件夹，默认拖拽到当前目录
+                if (string.IsNullOrEmpty(targetPath))
                 {
-                    var targetPath = ViewModel.CurrentPath;
-                    ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                    targetPath = ViewModel.CurrentPath;
+                    
+                    // 如果源路径就在当前目录，且是内部拖拽，则忽略
+                    if (e.Data.GetDataPresent("FileItemModel"))
+                    {
+                        var firstSourceDir = Path.GetDirectoryName(droppedPaths[0]);
+                        if (string.Equals(firstSourceDir, targetPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return; 
+                        }
+                    }
                 }
+
+                // 执行移动/复制逻辑
+                ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
             }
         }
 
@@ -1829,10 +2017,33 @@ namespace FileSpace.Views
                 return;
             }
             _dragStartPoint = e.GetPosition(null);
+
+            // 处理多选拖拽：如果点击的是已经选中的项，延迟选择改变
+            var listView = sender as System.Windows.Controls.ListView;
+            if (listView != null && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == 0)
+            {
+                var item = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                if (item != null && item.IsSelected && listView.SelectedItems.Count > 1)
+                {
+                    _expectingPossibleMultiDrag = true;
+                    e.Handled = true;
+                    listView.Focus();
+                }
+                else
+                {
+                    _expectingPossibleMultiDrag = false;
+                }
+            }
         }
 
         private void FileIconView_PreviewMouseMove(object sender, MouseEventArgs e)
         {
+            if (_isSelecting)
+            {
+                UpdateSelectionRectangle(sender as UIElement, e.GetPosition(sender as UIElement));
+                return;
+            }
+
             if (ViewModel.IsRenaming)
             {
                 // 如果在重命名编辑器内，允许正常的鼠标移动（例如文本选择拖拽）
@@ -1857,6 +2068,7 @@ namespace FileSpace.Views
                 if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                     Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
+                    _expectingPossibleMultiDrag = false;
                     System.Windows.Controls.ListView listView = (System.Windows.Controls.ListView)sender;
                     var item = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
 
@@ -1865,13 +2077,27 @@ namespace FileSpace.Views
                         FileItemModel? fileItem = item.Content as FileItemModel;
                         if (fileItem != null)
                         {
+                            // 确定要拖拽的文件列表
+                            List<FileItemModel> dragItems;
+                            if (ViewModel.SelectedFiles.Contains(fileItem))
+                            {
+                                // 如果拖拽的项已经在选中列表中，则拖拽所有选中的项
+                                dragItems = ViewModel.SelectedFiles.ToList();
+                            }
+                            else
+                            {
+                                // 如果拖拽的项不在选中列表中，则仅拖拽该项，并更新选中状态
+                                dragItems = new List<FileItemModel> { fileItem };
+                                listView.SelectedItems.Clear();
+                                listView.SelectedItems.Add(fileItem);
+                            }
+
                             // Create data object for internal drag
                             DataObject dragData = new DataObject("FileItemModel", fileItem);
+                            dragData.SetData("FileItemModels", dragItems);
 
                             // Also add shell-compatible file drop data for external applications
-                            var selectedPaths = ViewModel.SelectedFiles.Count > 0
-                                ? ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray()
-                                : new[] { fileItem.FullPath };
+                            var selectedPaths = dragItems.Select(f => f.FullPath).ToArray();
 
                             var shellDataObject = ShellDragDropUtils.CreateFileDropDataObject(selectedPaths);
 
@@ -2082,27 +2308,36 @@ namespace FileSpace.Views
                 _lastDragOverFileItem = null;
             }
 
-            if (e.Data.GetDataPresent("FileItemModel"))
+            var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+            if (droppedPaths != null && droppedPaths.Length > 0)
             {
                 var targetItemContainer = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
+                string? targetPath = null;
+
                 if (targetItemContainer != null)
                 {
                     FileItemModel? targetItem = targetItemContainer.Content as FileItemModel;
                     if (targetItem != null && targetItem.IsDirectory)
                     {
-                        ViewModel.MoveSelectedFilesToFolderCommand.Execute(targetItem);
+                        targetPath = targetItem.FullPath;
                     }
                 }
-            }
-            else if (ShellDragDropUtils.ContainsFileData(e.Data))
-            {
-                // Handle drop from external sources (like Windows Explorer)
-                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
-                if (droppedPaths != null && droppedPaths.Length > 0)
+
+                if (string.IsNullOrEmpty(targetPath))
                 {
-                    var targetPath = ViewModel.CurrentPath;
-                    ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                    targetPath = ViewModel.CurrentPath;
+                    
+                    if (e.Data.GetDataPresent("FileItemModel"))
+                    {
+                        var firstSourceDir = Path.GetDirectoryName(droppedPaths[0]);
+                        if (string.Equals(firstSourceDir, targetPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return;
+                        }
+                    }
                 }
+
+                ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
             }
         }
 
@@ -2264,40 +2499,16 @@ namespace FileSpace.Views
                 _lastDragOverDirectoryItem = null;
             }
 
-            if (e.Data.GetDataPresent("FileItemModel"))
+            var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+            if (droppedPaths != null && droppedPaths.Length > 0)
             {
                 var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
                 if (targetItemContainer != null)
                 {
                     DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
-                    if (targetItem != null)
+                    if (targetItem != null && !string.IsNullOrEmpty(targetItem.FullPath))
                     {
-                        // Use the path from DirectoryItemModel
-                        var path = targetItem.FullPath;
-                        if (!string.IsNullOrEmpty(path))
-                        {
-                            // We need a FileItemModel to use MoveSelectedFilesToFolderCommand
-                            // or create a new command that takes a path
-                            // For now, let's see if we can use an alternative or just navigate
-                            ViewModel.MoveSelectedFilesToPathCommand.Execute(path);
-                        }
-                    }
-                }
-            }
-            else if (ShellDragDropUtils.ContainsFileData(e.Data))
-            {
-                // Handle drop from external sources (like Windows Explorer)
-                var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
-                if (droppedPaths != null && droppedPaths.Length > 0)
-                {
-                    var targetItemContainer = FindAncestor<System.Windows.Controls.TreeViewItem>(e.OriginalSource as DependencyObject);
-                    if (targetItemContainer != null)
-                    {
-                        DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
-                        if (targetItem != null)
-                        {
-                            ViewModel.ProcessExternalDropCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.FullPath));
-                        }
+                        ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.FullPath));
                     }
                 }
             }
@@ -2533,17 +2744,17 @@ namespace FileSpace.Views
             }
             RemoveDragTooltip();
 
-            string[]? sourcePaths = null;
-            if (e.Data.GetDataPresent("FileItemModel"))
+            var sourcePaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+            
+            if (sourcePaths == null || sourcePaths.Length == 0)
             {
-                sourcePaths = ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray();
-            }
-            else if (e.Data.GetDataPresent("QuickAccessItem"))
-            {
-                var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
-                if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                if (e.Data.GetDataPresent("QuickAccessItem"))
                 {
-                    sourcePaths = new[] { qaItem.Path };
+                    var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
+                    if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                    {
+                        sourcePaths = new[] { qaItem.Path };
+                    }
                 }
             }
 
