@@ -134,12 +134,16 @@ namespace FileSpace.Views
             }
         }
 
+        // Fields to store scroll positions
+        private double _dataGridScrollOffset = 0;
+        private double _iconViewScrollOffset = 0;
+
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
         {
             // 监听GridSplitter的大小变化来保存用户自定义的大小
             var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
             var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
-            
+
             if (leftColumn != null)
             {
                 leftColumn.Width = new GridLength(_leftPanelWidth);
@@ -185,6 +189,112 @@ namespace FileSpace.Views
                 if (FileIconView?.ContextMenu != null) FileIconView.ContextMenu.ApplyTemplate();
                 if (QuickAccessListView?.ContextMenu != null) QuickAccessListView.ContextMenu.ApplyTemplate();
             }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+            // Hook up scroll position tracking
+            HookScrollPositionTracking();
+        }
+
+        /// <summary>
+        /// Hooks up scroll position tracking for file list controls
+        /// </summary>
+        private void HookScrollPositionTracking()
+        {
+            // Track DataGrid scroll position
+            if (FileDataGrid != null)
+            {
+                FileDataGrid.Loaded += (s, e) => RestoreDataGridScrollPosition();
+
+                // Listen to scroll changes to save position
+                FileDataGrid.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(DataGrid_ScrollChanged));
+            }
+
+            // Track IconView scroll position
+            if (FileIconView != null)
+            {
+                FileIconView.Loaded += (s, e) => RestoreIconViewScrollPosition();
+
+                // Listen to scroll changes to save position
+                FileIconView.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(IconView_ScrollChanged));
+            }
+        }
+
+        /// <summary>
+        /// Handles DataGrid scroll changes to save position
+        /// </summary>
+        private void DataGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (FileDataGrid != null)
+            {
+                var scrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                if (scrollViewer != null)
+                {
+                    _dataGridScrollOffset = scrollViewer.VerticalOffset;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles IconView scroll changes to save position
+        /// </summary>
+        private void IconView_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (FileIconView != null)
+            {
+                var scrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                if (scrollViewer != null)
+                {
+                    _iconViewScrollOffset = scrollViewer.VerticalOffset;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Restores DataGrid scroll position
+        /// </summary>
+        private void RestoreDataGridScrollPosition()
+        {
+            if (FileDataGrid != null)
+            {
+                var scrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                if (scrollViewer != null)
+                {
+                    scrollViewer.ScrollToVerticalOffset(_dataGridScrollOffset);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Restores IconView scroll position
+        /// </summary>
+        private void RestoreIconViewScrollPosition()
+        {
+            if (FileIconView != null)
+            {
+                var scrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                if (scrollViewer != null)
+                {
+                    scrollViewer.ScrollToVerticalOffset(_iconViewScrollOffset);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the ScrollViewer within a control
+        /// </summary>
+        private static ScrollViewer? GetScrollViewer(DependencyObject? element)
+        {
+            if (element == null) return null;
+
+            if (element is ScrollViewer viewer) return viewer;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+            {
+                var child = VisualTreeHelper.GetChild(element, i);
+                var result = GetScrollViewer(child);
+                if (result != null) return result;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -204,6 +314,56 @@ namespace FileSpace.Views
             {
                 UpdateDataGridSortArrows();
             }
+        }
+
+        /// <summary>
+        /// Refreshes the file list while preserving scroll position
+        /// </summary>
+        public void RefreshFileListWithScrollPreservation()
+        {
+            // Save current scroll positions
+            if (FileDataGrid != null)
+            {
+                var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                if (dataGridScrollViewer != null)
+                {
+                    _dataGridScrollOffset = dataGridScrollViewer.VerticalOffset;
+                }
+            }
+
+            if (FileIconView != null)
+            {
+                var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                if (iconViewScrollViewer != null)
+                {
+                    _iconViewScrollOffset = iconViewScrollViewer.VerticalOffset;
+                }
+            }
+
+            // Trigger the refresh in the ViewModel
+            ViewModel.RefreshCommand.Execute(null);
+
+            // Restore scroll positions after a brief delay to allow the UI to update
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (FileDataGrid != null)
+                {
+                    var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                    if (dataGridScrollViewer != null)
+                    {
+                        dataGridScrollViewer.ScrollToVerticalOffset(_dataGridScrollOffset);
+                    }
+                }
+
+                if (FileIconView != null)
+                {
+                    var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                    if (iconViewScrollViewer != null)
+                    {
+                        iconViewScrollViewer.ScrollToVerticalOffset(_iconViewScrollOffset);
+                    }
+                }
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void UpdateDataGridSortArrows()

@@ -487,6 +487,10 @@ namespace FileSpace.ViewModels
         private NavigationService _navigationService;
         private readonly SettingsService _settingsService;
 
+        // File system watcher for automatic refresh
+        private FileSystemWatcher? _fileSystemWatcher;
+        private readonly object _watcherLock = new object();
+
         public MainViewModel() : this(null) { }
 
         public MainViewModel(TabItemModel? initialTab)
@@ -678,6 +682,103 @@ namespace FileSpace.ViewModels
             SaveQuickAccessOrder();
         }
 
+        /// <summary>
+        /// Sets up a file system watcher to monitor changes in the current directory
+        /// and automatically refresh the file list when changes occur.
+        /// </summary>
+        private void SetupFileSystemWatcher(string path)
+        {
+            lock (_watcherLock)
+            {
+                // Stop the previous watcher if it exists
+                _fileSystemWatcher?.Dispose();
+                _fileSystemWatcher = null;
+
+                if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+                    return;
+
+                try
+                {
+                    _fileSystemWatcher = new FileSystemWatcher(path)
+                    {
+                        IncludeSubdirectories = false, // Only watch the current directory, not subdirectories
+                        EnableRaisingEvents = true,
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName |
+                                      NotifyFilters.Size | NotifyFilters.LastWrite |
+                                      NotifyFilters.CreationTime
+                    };
+
+                    // Subscribe to all change events
+                    _fileSystemWatcher.Created += OnFileSystemChanged;
+                    _fileSystemWatcher.Deleted += OnFileSystemChanged;
+                    _fileSystemWatcher.Renamed += OnFileSystemRenamed;
+                    _fileSystemWatcher.Changed += OnFileSystemChanged;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to setup file system watcher: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles file system change events (created, deleted, changed)
+        /// </summary>
+        private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
+        {
+            // Debounce rapid changes to prevent too many refreshes
+            await Task.Delay(100); // Wait 100ms to allow for batch operations
+
+            // Only refresh if we're still in the same directory
+            if (string.Equals(Path.GetDirectoryName(e.FullPath), CurrentPath, StringComparison.OrdinalIgnoreCase))
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    // Refresh the file list with scroll position preservation
+                    // We need to access the main window to call the enhanced refresh method
+                    var mainWindow = Application.Current.MainWindow as MainWindow;
+                    if (mainWindow != null)
+                    {
+                        mainWindow.RefreshFileListWithScrollPreservation();
+                    }
+                    else
+                    {
+                        // Fallback to regular load if we can't access the main window
+                        LoadFiles();
+                    }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Handles file system rename events
+        /// </summary>
+        private async void OnFileSystemRenamed(object sender, RenamedEventArgs e)
+        {
+            // Debounce rapid changes to prevent too many refreshes
+            await Task.Delay(100); // Wait 100ms to allow for batch operations
+
+            // Only refresh if we're still in the same directory
+            if (string.Equals(Path.GetDirectoryName(e.FullPath), CurrentPath, StringComparison.OrdinalIgnoreCase))
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    // Refresh the file list with scroll position preservation
+                    // We need to access the main window to call the enhanced refresh method
+                    var mainWindow = Application.Current.MainWindow as MainWindow;
+                    if (mainWindow != null)
+                    {
+                        mainWindow.RefreshFileListWithScrollPreservation();
+                    }
+                    else
+                    {
+                        // Fallback to regular load if we can't access the main window
+                        LoadFiles();
+                    }
+                });
+            }
+        }
+
         partial void OnCurrentPathChanged(string value)
         {
             // 加载该文件夹的排序设置
@@ -689,20 +790,23 @@ namespace FileSpace.ViewModels
 
             LoadFiles();
             UpdateBreadcrumbFolders();
-            
+
+            // Set up file system watcher for the current directory
+            SetupFileSystemWatcher(value);
+
             // Add to recent paths if it's a valid directory
             if (!string.IsNullOrWhiteSpace(value) && Directory.Exists(value))
             {
                 _settingsService.AddRecentPath(value);
                 UpdateQuickAccessList(value);
             }
-            
+
             // 更新当前选中标签页的路径（如果不是标签页切换引起的）
             if (!_isTabSwitching && SelectedTab != null && SelectedTab.Path != value)
             {
                 SelectedTab.Path = value;
             }
-            
+
             // Update navigation history and breadcrumbs for Windows Explorer-like experience
             if (!string.IsNullOrEmpty(value))
             {
@@ -714,11 +818,11 @@ namespace FileSpace.ViewModels
                     {
                         NavigationHistory.RemoveAt(NavigationHistory.Count - 1);
                     }
-                    
+
                     NavigationHistory.Add(value);
                     CurrentNavigationIndex = NavigationHistory.Count - 1;
                 }
-                
+
                 UpdateBreadcrumbs(value);
             }
 
@@ -2717,6 +2821,13 @@ namespace FileSpace.ViewModels
             FileOperationsService.Instance.OperationProgress -= _fileOperationEventHandler.OnFileOperationProgress;
             FileOperationsService.Instance.OperationCompleted -= _fileOperationEventHandler.OnFileOperationCompleted;
             FileOperationsService.Instance.OperationFailed -= _fileOperationEventHandler.OnFileOperationFailed;
+
+            // Stop and dispose file system watcher
+            lock (_watcherLock)
+            {
+                _fileSystemWatcher?.Dispose();
+                _fileSystemWatcher = null;
+            }
 
             // Cancel any ongoing operations
             _previewCancellationTokenSource?.Cancel();
