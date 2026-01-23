@@ -29,6 +29,9 @@ namespace FileSpace.ViewModels
         
         // Event to notify UI to focus on address bar
         public event EventHandler? FocusAddressBarRequested;
+
+        // Event to notify UI to bring a folder into view
+        public event EventHandler<FolderFocusRequestEventArgs>? BringFolderIntoViewRequested;
         
         // Tab management
         [ObservableProperty]
@@ -60,6 +63,11 @@ namespace FileSpace.ViewModels
 
         // 用于防止在标签页切换时重复更新
         private bool _isTabSwitching = false;
+
+        // 跟踪当前路径变化前的值以及待聚焦的文件夹
+        private string _previousPath = string.Empty;
+        private string? _pendingReturnFolderPath;
+        private bool _alignPendingFolderToBottom;
         
         public const string ThisPCPath = "此电脑";
         public const string LinuxPath = "Linux";
@@ -781,6 +789,8 @@ namespace FileSpace.ViewModels
 
         partial void OnCurrentPathChanged(string value)
         {
+            EvaluatePendingFolderFocus(value);
+
             // 加载该文件夹的排序设置
             var savedSort = _settingsService.GetFolderSortSettings(value);
             _sortMode = savedSort.SortMode;
@@ -830,6 +840,29 @@ namespace FileSpace.ViewModels
             if (SelectedFile == null)
             {
                 _ = ShowPreviewAsync();
+            }
+        }
+
+        partial void OnCurrentPathChanging(string value)
+        {
+            _previousPath = _currentPath;
+        }
+
+        private void EvaluatePendingFolderFocus(string newPath)
+        {
+            _pendingReturnFolderPath = null;
+            _alignPendingFolderToBottom = false;
+
+            if (string.IsNullOrEmpty(_previousPath) || string.IsNullOrEmpty(newPath))
+            {
+                return;
+            }
+
+            var parent = NavigationUtils.GoUp(_previousPath);
+            if (parent != null && string.Equals(parent, newPath, StringComparison.OrdinalIgnoreCase))
+            {
+                _pendingReturnFolderPath = _previousPath;
+                _alignPendingFolderToBottom = true;
             }
         }
 
@@ -1214,6 +1247,8 @@ namespace FileSpace.ViewModels
                     StatusText = "0 个项目";
                 }
 
+                TriggerPendingFolderFocus();
+
                 SelectAllCommand.NotifyCanExecuteChanged();
 
                 // 异步加载缩略图
@@ -1224,6 +1259,21 @@ namespace FileSpace.ViewModels
             {
                 StatusText = $"加载文件错误: {ex.Message}";
             }
+        }
+
+        private void TriggerPendingFolderFocus()
+        {
+            if (string.IsNullOrEmpty(_pendingReturnFolderPath))
+            {
+                return;
+            }
+
+            var targetPath = _pendingReturnFolderPath;
+            var alignToBottom = _alignPendingFolderToBottom;
+            _pendingReturnFolderPath = null;
+            _alignPendingFolderToBottom = false;
+
+            BringFolderIntoViewRequested?.Invoke(this, new FolderFocusRequestEventArgs(targetPath, alignToBottom));
         }
 
         /// <summary>

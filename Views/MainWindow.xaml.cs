@@ -64,6 +64,8 @@ namespace FileSpace.Views
             
             // 订阅地址栏焦点事件
             ViewModel.FocusAddressBarRequested += OnFocusAddressBarRequested;
+
+            ViewModel.BringFolderIntoViewRequested += OnBringFolderIntoViewRequested;
             
             // 订阅面板可见性变化事件
             ViewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -314,6 +316,141 @@ namespace FileSpace.Views
             {
                 UpdateDataGridSortArrows();
             }
+        }
+
+        private void OnBringFolderIntoViewRequested(object? sender, FolderFocusRequestEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() => HandleBringFolderIntoView(e)), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void HandleBringFolderIntoView(FolderFocusRequestEventArgs args)
+        {
+            var target = ViewModel.Files.FirstOrDefault(f => string.Equals(f.FullPath, args.TargetPath, StringComparison.OrdinalIgnoreCase));
+            if (target == null)
+            {
+                return;
+            }
+
+            ViewModel.SelectedFile = target;
+
+            if (ViewModel.IsDetailsView)
+            {
+                AlignFolderInDetailsView(target, args.AlignToBottom);
+            }
+            else
+            {
+                AlignFolderInIconView(target, args.AlignToBottom);
+            }
+        }
+
+        private void AlignFolderInDetailsView(FileItemModel target, bool alignToBottom)
+        {
+            var dataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+            if (dataGrid == null)
+            {
+                return;
+            }
+
+            dataGrid.UpdateLayout();
+            dataGrid.ScrollIntoView(target);
+
+            if (!alignToBottom)
+            {
+                return;
+            }
+
+            var scrollViewer = GetScrollViewer(dataGrid);
+            if (scrollViewer == null)
+            {
+                return;
+            }
+
+            double rowHeight = dataGrid.RowHeight;
+            if (double.IsNaN(rowHeight) || rowHeight <= 0)
+            {
+                rowHeight = 32;
+            }
+
+            int index = dataGrid.Items.IndexOf(target);
+            if (index < 0)
+            {
+                return;
+            }
+
+            double viewportHeight = scrollViewer.ViewportHeight;
+            if (viewportHeight <= 0)
+            {
+                viewportHeight = dataGrid.ActualHeight;
+            }
+
+            if (viewportHeight <= 0)
+            {
+                return;
+            }
+
+            double extentHeight = scrollViewer.ExtentHeight;
+            double desiredOffset = ((index + 1) * rowHeight) - viewportHeight;
+            double maxOffset = Math.Max(0, extentHeight - viewportHeight);
+
+            desiredOffset = Math.Max(0, Math.Min(maxOffset, desiredOffset));
+
+            scrollViewer.ScrollToVerticalOffset(desiredOffset);
+        }
+
+        private void AlignFolderInIconView(FileItemModel target, bool alignToBottom)
+        {
+            var listView = FindName("FileIconView") as System.Windows.Controls.ListView;
+            if (listView == null)
+            {
+                return;
+            }
+
+            listView.UpdateLayout();
+            listView.ScrollIntoView(target);
+
+            if (!alignToBottom)
+            {
+                return;
+            }
+
+            var scrollViewer = GetScrollViewer(listView);
+            if (scrollViewer == null)
+            {
+                return;
+            }
+
+            var container = listView.ItemContainerGenerator.ContainerFromItem(target) as System.Windows.Controls.ListViewItem;
+            if (container == null)
+            {
+                return;
+            }
+
+            Point relativePoint;
+            try
+            {
+                relativePoint = container.TransformToAncestor(scrollViewer).Transform(new Point(0, 0));
+            }
+            catch
+            {
+                return;
+            }
+
+            double viewportHeight = scrollViewer.ViewportHeight;
+            if (viewportHeight <= 0)
+            {
+                viewportHeight = listView.ActualHeight;
+            }
+
+            if (viewportHeight <= 0)
+            {
+                return;
+            }
+
+            double desiredOffset = scrollViewer.VerticalOffset + relativePoint.Y + container.ActualHeight - viewportHeight;
+            double maxOffset = Math.Max(0, scrollViewer.ExtentHeight - viewportHeight);
+            desiredOffset = Math.Max(0, Math.Min(maxOffset, desiredOffset));
+
+            scrollViewer.ScrollToVerticalOffset(desiredOffset);
         }
 
         /// <summary>
