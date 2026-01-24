@@ -219,21 +219,16 @@ namespace FileSpace.Services
             var panel = new StackPanel { Margin = new Thickness(0) };
 
             // 1. Visual Icon (This PC shell icon)
-            var previewContainer = new Border
+            var defaultThisPcIcon = new Wpf.Ui.Controls.SymbolIcon
             {
-                Height = PREVIEW_CONTAINER_HEIGHT,
-                Background = PREVIEW_BACKGROUND_BRUSH,
-                Margin = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-                Child = new Wpf.Ui.Controls.SymbolIcon
-                {
-                    Symbol = Wpf.Ui.Controls.SymbolRegular.Laptop24,
-                    FontSize = 100,
-                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                }
+                Symbol = Wpf.Ui.Controls.SymbolRegular.Laptop24,
+                FontSize = 100,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             };
+
+            var previewContainer = CreatePreviewContainer(defaultThisPcIcon);
 
             // Try to get high quality shell icon for This PC
             var thisPCIcon = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 256, 256);
@@ -257,8 +252,6 @@ namespace FileSpace.Services
             panel.Children.Add(detailsPanel);
 
             // 2. Name
-            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            
             UIElement nameIcon;
             if (thisPCIcon != null)
             {
@@ -285,17 +278,8 @@ namespace FileSpace.Services
                     VerticalAlignment = VerticalAlignment.Center 
                 };
             }
-            
-            var nameBlock = new TextBlock
-            {
-                Text = "此电脑",
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            namePanel.Children.Add(nameIcon);
-            namePanel.Children.Add(nameBlock);
-            detailsPanel.Children.Add(namePanel);
+
+            detailsPanel.Children.Add(CreateNamePanel(nameIcon, "此电脑"));
 
             // 3. Stats
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("系统摘要"));
@@ -345,14 +329,7 @@ namespace FileSpace.Services
             var panel = new StackPanel { Margin = new Thickness(0) };
 
             // 1. Visual Icon
-            var previewContainer = new Border
-            {
-                Height = PREVIEW_CONTAINER_HEIGHT,
-                Background = PREVIEW_BACKGROUND_BRUSH,
-                Margin = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-                Child = CreateDrivePreviewVisual(drive)
-            };
+            var previewContainer = CreatePreviewContainer(CreateDrivePreviewVisual(drive));
             panel.Children.Add(previewContainer);
 
             // Container for details
@@ -360,8 +337,6 @@ namespace FileSpace.Services
             panel.Children.Add(detailsPanel);
 
             // 2. Name
-            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            
             UIElement icon;
             if (drive.Thumbnail != null)
             {
@@ -388,19 +363,8 @@ namespace FileSpace.Services
                     VerticalAlignment = VerticalAlignment.Center 
                 };
             }
-            
-            var nameBlock = new TextBlock
-            {
-                Text = drive.Name,
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 250
-            };
-            namePanel.Children.Add(icon);
-            namePanel.Children.Add(nameBlock);
-            detailsPanel.Children.Add(namePanel);
+
+            detailsPanel.Children.Add(CreateNamePanel(icon, drive.Name));
 
             // 3. Details
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("磁盘信息"));
@@ -479,6 +443,37 @@ namespace FileSpace.Services
             };
         }
 
+        // 通用 UI 构建帮助方法，提取重复代码
+        private static Border CreatePreviewContainer(UIElement? child = null, bool clipToBounds = false)
+        {
+            return new Border
+            {
+                Height = PREVIEW_CONTAINER_HEIGHT,
+                Background = PREVIEW_BACKGROUND_BRUSH,
+                Margin = new Thickness(0),
+                ClipToBounds = clipToBounds,
+                CornerRadius = new CornerRadius(0),
+                Child = child
+            };
+        }
+
+        private static StackPanel CreateNamePanel(UIElement icon, string name, double maxWidth = 250)
+        {
+            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
+            var nameBlock = new TextBlock
+            {
+                Text = name,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = maxWidth
+            };
+            namePanel.Children.Add(icon);
+            namePanel.Children.Add(nameBlock);
+            return namePanel;
+        }
+
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
             string extension = Path.GetExtension(file.FullPath).ToLower();
@@ -493,14 +488,7 @@ namespace FileSpace.Services
             var panel = new StackPanel { Margin = new Thickness(0) };
 
             // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
-            var previewContainer = new Border
-            {
-                Height = PREVIEW_CONTAINER_HEIGHT,
-                Background = PREVIEW_BACKGROUND_BRUSH, 
-                Margin = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-                Child = CreatePreviewVisual(file)
-            };
+            var previewContainer = CreatePreviewContainer(CreatePreviewVisual(file));
             panel.Children.Add(previewContainer);
 
             // Container for details
@@ -515,20 +503,7 @@ namespace FileSpace.Services
             detailsPanel.Children.Add(warningBlock);
 
             // File Name and Icon
-            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            var icon = CreateSmallPreviewIcon(file);
-            var nameBlock = new TextBlock
-            {
-                Text = file.Name,
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = 250,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            namePanel.Children.Add(icon);
-            namePanel.Children.Add(nameBlock);
-            detailsPanel.Children.Add(namePanel);
+            detailsPanel.Children.Add(CreateNamePanel(CreateSmallPreviewIcon(file), file.Name));
 
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
             detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", file.Type));
@@ -557,15 +532,8 @@ namespace FileSpace.Services
             var panel = new StackPanel { Margin = new Thickness(0) };
 
             // 1. Visual Preview (Fixed Height Part) - No Margin to stick to borders
-            var previewContainer = new Border
-            {
-                Height = PREVIEW_CONTAINER_HEIGHT,
-                Background = PREVIEW_BACKGROUND_BRUSH, // Distinct light gray
-                Margin = new Thickness(0), // No margin to stick to edges
-                ClipToBounds = true,
-                CornerRadius = new CornerRadius(0)
-            };
-            
+            var previewContainer = CreatePreviewContainer(null, true);
+
             var previewContentPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             await AddPreviewContentAsync(previewContentPanel, fileInfo, fileType, cancellationToken);
             
@@ -604,20 +572,7 @@ namespace FileSpace.Services
             panel.Children.Add(detailsPanel);
 
             // 2. File Name and Icon
-            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            var icon = CreateSmallPreviewIcon(file);
-            var nameBlock = new TextBlock
-            {
-                Text = file.Name,
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = 250,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            namePanel.Children.Add(icon);
-            namePanel.Children.Add(nameBlock);
-            detailsPanel.Children.Add(namePanel);
+            detailsPanel.Children.Add(CreateNamePanel(CreateSmallPreviewIcon(file), file.Name));
 
             // 3. Detailed Info Header
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
@@ -744,14 +699,7 @@ namespace FileSpace.Services
             var panel = new StackPanel { Margin = new Thickness(0) };
 
             // 1. Visual Icon (Fixed Height) - No Margin to stick to borders
-            var previewContainer = new Border
-            {
-                Height = PREVIEW_CONTAINER_HEIGHT,
-                Background = PREVIEW_BACKGROUND_BRUSH, 
-                Margin = new Thickness(0),
-                CornerRadius = new CornerRadius(0),
-                Child = CreatePreviewVisual(file)
-            };
+            var previewContainer = CreatePreviewContainer(CreatePreviewVisual(file));
             panel.Children.Add(previewContainer);
 
             // Container for everything else to keep margins for directory details
@@ -759,20 +707,7 @@ namespace FileSpace.Services
             panel.Children.Add(detailsPanel);
 
             // 2. Name
-            var namePanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-            var icon = CreateSmallPreviewIcon(file);
-            var nameBlock = new TextBlock
-            {
-                Text = file.Name,
-                FontSize = 18,
-                FontWeight = FontWeights.SemiBold,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 250
-            };
-            namePanel.Children.Add(icon);
-            namePanel.Children.Add(nameBlock);
-            detailsPanel.Children.Add(namePanel);
+            detailsPanel.Children.Add(CreateNamePanel(CreateSmallPreviewIcon(file), file.Name));
 
             // 3. Detailed Info Header
             detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
