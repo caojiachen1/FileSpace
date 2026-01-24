@@ -7,12 +7,12 @@ namespace FileSpace.Services
 {
     public class FolderAnalysisService
     {
-        private readonly HighPerformanceDuplicateDetectionService _duplicateDetectionService;
+        private readonly DuplicateDetectionService _duplicateDetectionService;
         private readonly ParallelFolderScanService _parallelScanService;
 
         public FolderAnalysisService()
         {
-            _duplicateDetectionService = new HighPerformanceDuplicateDetectionService();
+            _duplicateDetectionService = new DuplicateDetectionService();
             _parallelScanService = new ParallelFolderScanService();
         }
 

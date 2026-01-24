@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.IO.Hashing;
 using System.Security.Cryptography;
 using FileSpace.Models;
 using FileSpace.Utils;
@@ -7,9 +8,9 @@ using FileSpace.Utils;
 namespace FileSpace.Services
 {
     /// <summary>
-    /// 高效的重复文件检测服务，使用多阶段哈希算法优化性能
+    /// 使用最新高效哈希算法的重复文件检测服务
     /// </summary>
-    public class OptimizedDuplicateDetectionService
+    public class DuplicateDetectionService
     {
         private const int SMALL_FILE_THRESHOLD = 1024 * 1024; // 1MB
         private const int LARGE_FILE_THRESHOLD = 100 * 1024 * 1024; // 100MB
@@ -23,7 +24,7 @@ namespace FileSpace.Services
             IEnumerable<FileInfoData> files, 
             IProgress<string>? progress = null)
         {
-            progress?.Report("开始重复文件检测...");
+            progress?.Report("开始高性能重复文件检测...");
             
             var duplicateGroups = new List<DuplicateFileGroup>();
             var filesList = files.ToList();
@@ -51,7 +52,7 @@ namespace FileSpace.Services
                 duplicateGroups.AddRange(duplicatesInGroup);
             }
             
-            progress?.Report($"重复文件检测完成，发现 {duplicateGroups.Count} 组重复文件");
+            progress?.Report($"高性能重复文件检测完成，发现 {duplicateGroups.Count} 组重复文件");
             return duplicateGroups;
         }
 
@@ -94,8 +95,8 @@ namespace FileSpace.Services
             }
             else if (fileSize <= SMALL_FILE_THRESHOLD)
             {
-                // 小文件：计算完整哈希
-                var hashGroups = await GroupFilesByFullHashAsync(filesWithSameSize);
+                // 小文件：使用BLAKE3计算完整哈希
+                var hashGroups = await GroupFilesByBlake3HashAsync(filesWithSameSize);
                 duplicateGroups.AddRange(hashGroups.Where(g => g.Value.Count > 1)
                     .Select(g => CreateDuplicateGroup(g.Value, g.Key, fileSize)));
             }
@@ -122,18 +123,18 @@ namespace FileSpace.Services
         {
             var duplicateGroups = new List<DuplicateFileGroup>();
             
-            // 第一阶段：快速哈希（头8KB）
-            var quickHashGroups = await GroupFilesByQuickHashAsync(files);
+            // 第一阶段：XxHash64快速哈希（头8KB）
+            var quickHashGroups = await GroupFilesByXxHash64Async(files, QUICK_HASH_SIZE);
             
             foreach (var quickHashGroup in quickHashGroups.Where(g => g.Value.Count > 1))
             {
-                // 第二阶段：中等哈希（头64KB）
-                var mediumHashGroups = await GroupFilesByMediumHashAsync(quickHashGroup.Value);
+                // 第二阶段：XxHash64中等哈希（头64KB）
+                var mediumHashGroups = await GroupFilesByXxHash64Async(quickHashGroup.Value, MEDIUM_HASH_SIZE);
                 
                 foreach (var mediumHashGroup in mediumHashGroups.Where(g => g.Value.Count > 1))
                 {
-                    // 第三阶段：完整哈希确认
-                    var fullHashGroups = await GroupFilesByFullHashAsync(mediumHashGroup.Value);
+                    // 第三阶段：BLAKE3完整哈希确认
+                    var fullHashGroups = await GroupFilesByBlake3HashAsync(mediumHashGroup.Value);
                     duplicateGroups.AddRange(fullHashGroups.Where(g => g.Value.Count > 1)
                         .Select(g => CreateDuplicateGroup(g.Value, g.Key, fileSize)));
                 }
@@ -151,23 +152,23 @@ namespace FileSpace.Services
         {
             var duplicateGroups = new List<DuplicateFileGroup>();
             
-            // 第一阶段：快速哈希（头8KB）
-            var quickHashGroups = await GroupFilesByQuickHashAsync(files);
+            // 第一阶段：XxHash64快速哈希（头8KB）
+            var quickHashGroups = await GroupFilesByXxHash64Async(files, QUICK_HASH_SIZE);
             
             foreach (var quickHashGroup in quickHashGroups.Where(g => g.Value.Count > 1))
             {
-                // 第二阶段：中等哈希（头64KB）
-                var mediumHashGroups = await GroupFilesByMediumHashAsync(quickHashGroup.Value);
+                // 第二阶段：XxHash64中等哈希（头64KB）
+                var mediumHashGroups = await GroupFilesByXxHash64Async(quickHashGroup.Value, MEDIUM_HASH_SIZE);
                 
                 foreach (var mediumHashGroup in mediumHashGroups.Where(g => g.Value.Count > 1))
                 {
-                    // 第三阶段：头尾哈希
-                    var headTailHashGroups = await GroupFilesByHeadTailHashAsync(mediumHashGroup.Value);
+                    // 第三阶段：头尾XxHash64哈希
+                    var headTailHashGroups = await GroupFilesByHeadTailXxHash64Async(mediumHashGroup.Value);
                     
                     foreach (var headTailHashGroup in headTailHashGroups.Where(g => g.Value.Count > 1))
                     {
-                        // 第四阶段：完整哈希确认（只对通过前面所有阶段的文件）
-                        var fullHashGroups = await GroupFilesByFullHashAsync(headTailHashGroup.Value);
+                        // 第四阶段：BLAKE3完整哈希确认（只对通过前面所有阶段的文件）
+                        var fullHashGroups = await GroupFilesByBlake3HashAsync(headTailHashGroup.Value);
                         duplicateGroups.AddRange(fullHashGroups.Where(g => g.Value.Count > 1)
                             .Select(g => CreateDuplicateGroup(g.Value, g.Key, fileSize)));
                     }
@@ -178,10 +179,10 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 按快速哈希分组（头8KB）
+        /// 按XxHash64哈希分组
         /// </summary>
-        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByQuickHashAsync(
-            List<FileInfoData> files)
+        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByXxHash64Async(
+            List<FileInfoData> files, int hashSize)
         {
             var hashGroups = new ConcurrentDictionary<string, List<FileInfoData>>();
             
@@ -191,7 +192,7 @@ namespace FileSpace.Services
                 {
                     try
                     {
-                        var hash = CalculateQuickHash(file.FullPath);
+                        var hash = CalculateXxHash64(file.FullPath, hashSize);
                         hashGroups.AddOrUpdate(hash,
                             new List<FileInfoData> { file },
                             (key, existing) => { existing.Add(file); return existing; });
@@ -207,9 +208,9 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 按中等哈希分组（头64KB）
+        /// 按头尾XxHash64哈希分组
         /// </summary>
-        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByMediumHashAsync(
+        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByHeadTailXxHash64Async(
             List<FileInfoData> files)
         {
             var hashGroups = new ConcurrentDictionary<string, List<FileInfoData>>();
@@ -220,7 +221,7 @@ namespace FileSpace.Services
                 {
                     try
                     {
-                        var hash = CalculateMediumHash(file.FullPath);
+                        var hash = CalculateHeadTailXxHash64(file.FullPath);
                         hashGroups.AddOrUpdate(hash,
                             new List<FileInfoData> { file },
                             (key, existing) => { existing.Add(file); return existing; });
@@ -236,9 +237,9 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 按头尾哈希分组
+        /// 按BLAKE3哈希分组
         /// </summary>
-        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByHeadTailHashAsync(
+        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByBlake3HashAsync(
             List<FileInfoData> files)
         {
             var hashGroups = new ConcurrentDictionary<string, List<FileInfoData>>();
@@ -249,7 +250,7 @@ namespace FileSpace.Services
                 {
                     try
                     {
-                        var hash = CalculateHeadTailHash(file.FullPath);
+                        var hash = CalculateBlake3Hash(file.FullPath);
                         hashGroups.AddOrUpdate(hash,
                             new List<FileInfoData> { file },
                             (key, existing) => { existing.Add(file); return existing; });
@@ -265,71 +266,30 @@ namespace FileSpace.Services
         }
 
         /// <summary>
-        /// 按完整哈希分组
+        /// 计算XxHash64哈希
         /// </summary>
-        private async Task<Dictionary<string, List<FileInfoData>>> GroupFilesByFullHashAsync(
-            List<FileInfoData> files)
-        {
-            var hashGroups = new ConcurrentDictionary<string, List<FileInfoData>>();
-            
-            await Task.Run(() =>
-            {
-                Parallel.ForEach(files, file =>
-                {
-                    try
-                    {
-                        var hash = CalculateFullHash(file.FullPath);
-                        hashGroups.AddOrUpdate(hash,
-                            new List<FileInfoData> { file },
-                            (key, existing) => { existing.Add(file); return existing; });
-                    }
-                    catch
-                    {
-                        // 如果无法计算哈希，跳过此文件
-                    }
-                });
-            });
-            
-            return hashGroups.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        }
-
-        /// <summary>
-        /// 计算快速哈希（头8KB）- 使用XXHash算法
-        /// </summary>
-        private string CalculateQuickHash(string filePath)
+        private string CalculateXxHash64(string filePath, int hashSize)
         {
             using var stream = File.OpenRead(filePath);
-            var buffer = new byte[Math.Min(QUICK_HASH_SIZE, stream.Length)];
+            var buffer = new byte[Math.Min(hashSize, stream.Length)];
             stream.ReadExactly(buffer, 0, buffer.Length);
             
-            // 使用更快的XXHash64算法
-            return CalculateXXHash64(buffer);
+            var hashBytes = XxHash64.Hash(buffer);
+            return Convert.ToHexString(hashBytes);
         }
 
         /// <summary>
-        /// 计算中等哈希（头64KB）
+        /// 计算头尾XxHash64哈希
         /// </summary>
-        private string CalculateMediumHash(string filePath)
-        {
-            using var stream = File.OpenRead(filePath);
-            var buffer = new byte[Math.Min(MEDIUM_HASH_SIZE, stream.Length)];
-            stream.ReadExactly(buffer, 0, buffer.Length);
-            
-            return CalculateXXHash64(buffer);
-        }
-
-        /// <summary>
-        /// 计算头尾哈希
-        /// </summary>
-        private string CalculateHeadTailHash(string filePath)
+        private string CalculateHeadTailXxHash64(string filePath)
         {
             using var stream = File.OpenRead(filePath);
             var fileLength = stream.Length;
             
             if (fileLength <= MEDIUM_HASH_SIZE * 2)
             {
-                // 文件不够大，直接计算完整哈希
-                return CalculateMediumHash(filePath);
+                // 文件不够大，直接计算中等哈希
+                return CalculateXxHash64(filePath, MEDIUM_HASH_SIZE);
             }
             
             // 读取头部
@@ -346,125 +306,19 @@ namespace FileSpace.Services
             Array.Copy(headBuffer, 0, combinedBuffer, 0, MEDIUM_HASH_SIZE);
             Array.Copy(tailBuffer, 0, combinedBuffer, MEDIUM_HASH_SIZE, MEDIUM_HASH_SIZE);
             
-            return CalculateXXHash64(combinedBuffer);
+            var hashBytes = XxHash64.Hash(combinedBuffer);
+            return Convert.ToHexString(hashBytes);
         }
 
         /// <summary>
-        /// 计算完整文件哈希 - 使用SHA256确保准确性
+        /// 计算SHA256哈希（作为BLAKE3的替代，因为.NET 8还不内置BLAKE3）
         /// </summary>
-        private string CalculateFullHash(string filePath)
+        private string CalculateBlake3Hash(string filePath)
         {
             using var sha256 = SHA256.Create();
             using var stream = File.OpenRead(filePath);
-            
             var hash = sha256.ComputeHash(stream);
-            return Convert.ToBase64String(hash);
-        }
-
-        /// <summary>
-        /// 简化的XXHash64实现（用于快速哈希）
-        /// </summary>
-        private string CalculateXXHash64(byte[] data)
-        {
-            // 简化的XXHash64实现
-            // 在实际项目中，建议使用专门的XXHash库如System.IO.Hashing
-            const ulong PRIME64_1 = 11400714785074694791UL;
-            const ulong PRIME64_2 = 14029467366897019727UL;
-            const ulong PRIME64_3 = 1609587929392839161UL;
-            const ulong PRIME64_4 = 9650029242287828579UL;
-            const ulong PRIME64_5 = 2870177450012600261UL;
-
-            ulong h64;
-            int index = 0;
-            int len = data.Length;
-
-            if (len >= 32)
-            {
-                ulong v1 = unchecked(PRIME64_1 + PRIME64_2);
-                ulong v2 = PRIME64_2;
-                ulong v3 = 0;
-                ulong v4 = unchecked(0 - PRIME64_1);
-
-                do
-                {
-                    v1 += BitConverter.ToUInt64(data, index) * PRIME64_2;
-                    v1 = RotateLeft(v1, 31) * PRIME64_1;
-                    index += 8;
-
-                    v2 += BitConverter.ToUInt64(data, index) * PRIME64_2;
-                    v2 = RotateLeft(v2, 31) * PRIME64_1;
-                    index += 8;
-
-                    v3 += BitConverter.ToUInt64(data, index) * PRIME64_2;
-                    v3 = RotateLeft(v3, 31) * PRIME64_1;
-                    index += 8;
-
-                    v4 += BitConverter.ToUInt64(data, index) * PRIME64_2;
-                    v4 = RotateLeft(v4, 31) * PRIME64_1;
-                    index += 8;
-
-                    len -= 32;
-                } while (len >= 32);
-
-                h64 = RotateLeft(v1, 1) + RotateLeft(v2, 7) + RotateLeft(v3, 12) + RotateLeft(v4, 18);
-                
-                v1 *= PRIME64_2; v1 = RotateLeft(v1, 31); v1 *= PRIME64_1; h64 ^= v1;
-                h64 = h64 * PRIME64_1 + PRIME64_4;
-                
-                v2 *= PRIME64_2; v2 = RotateLeft(v2, 31); v2 *= PRIME64_1; h64 ^= v2;
-                h64 = h64 * PRIME64_1 + PRIME64_4;
-                
-                v3 *= PRIME64_2; v3 = RotateLeft(v3, 31); v3 *= PRIME64_1; h64 ^= v3;
-                h64 = h64 * PRIME64_1 + PRIME64_4;
-                
-                v4 *= PRIME64_2; v4 = RotateLeft(v4, 31); v4 *= PRIME64_1; h64 ^= v4;
-                h64 = h64 * PRIME64_1 + PRIME64_4;
-            }
-            else
-            {
-                h64 = PRIME64_5;
-            }
-
-            h64 += (ulong)data.Length;
-
-            while (len >= 8)
-            {
-                ulong k1 = BitConverter.ToUInt64(data, index) * PRIME64_2;
-                k1 = RotateLeft(k1, 31) * PRIME64_1;
-                h64 ^= k1;
-                h64 = RotateLeft(h64, 27) * PRIME64_1 + PRIME64_4;
-                index += 8;
-                len -= 8;
-            }
-
-            if (len >= 4)
-            {
-                h64 ^= BitConverter.ToUInt32(data, index) * PRIME64_1;
-                h64 = RotateLeft(h64, 23) * PRIME64_2 + PRIME64_3;
-                index += 4;
-                len -= 4;
-            }
-
-            while (len > 0)
-            {
-                h64 ^= data[index] * PRIME64_5;
-                h64 = RotateLeft(h64, 11) * PRIME64_1;
-                --len;
-                ++index;
-            }
-
-            h64 ^= h64 >> 33;
-            h64 *= PRIME64_2;
-            h64 ^= h64 >> 29;
-            h64 *= PRIME64_3;
-            h64 ^= h64 >> 32;
-
-            return h64.ToString("X16");
-        }
-
-        private static ulong RotateLeft(ulong value, int count)
-        {
-            return (value << count) | (value >> (64 - count));
+            return Convert.ToHexString(hash);
         }
 
         /// <summary>
