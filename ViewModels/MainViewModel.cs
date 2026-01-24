@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -1208,11 +1209,10 @@ namespace FileSpace.ViewModels
                 IsThisPCView = false;
                 IsLinuxView = false;
                 
-                // 立即清空并显示加载状态
-                Files.Clear();
                 StatusText = "正在加载文件...";
 
                 // 预分配容量以减少内存重新分配
+                var enumerationWatch = Stopwatch.StartNew();
                 var allLoadedFiles = new List<FileItemModel>(4096);
                 int count = 0;
 
@@ -1228,27 +1228,35 @@ namespace FileSpace.ViewModels
                         StatusText = $"正在扫描目录... 已发现 {count} 个项目";
                     }
                 }
+                enumerationWatch.Stop();
 
                 if (token.IsCancellationRequested) return;
 
                 // 在后台线程排序
+                long sortDurationMs = 0;
+                List<FileItemModel> sortedList = new(allLoadedFiles);
                 if (allLoadedFiles.Count > 0)
                 {
                     StatusText = $"正在整理 {allLoadedFiles.Count} 个项目...";
-                    
-                    var sortedList = await Task.Run(() => SortListOptimized(allLoadedFiles), token);
-                    
+
+                    var sortWatch = Stopwatch.StartNew();
+                    sortedList = await Task.Run(() => SortListOptimized(allLoadedFiles), token);
+                    sortWatch.Stop();
+                    sortDurationMs = sortWatch.ElapsedMilliseconds;
+
                     if (token.IsCancellationRequested) return;
-
-                    // 使用 ReplaceAll 一次性替换整个集合，只触发一次 UI 更新
-                    Files.ReplaceAll(sortedList);
-
-                    StatusText = $"{sortedList.Count} 个项目";
                 }
-                else
+                
+                if (sortedList.Count == 0)
                 {
                     StatusText = "0 个项目";
                 }
+                else
+                {
+                    StatusText = $"{sortedList.Count} 个项目 (扫描 {enumerationWatch.ElapsedMilliseconds}ms，排序 {sortDurationMs}ms)";
+                }
+
+                Files.ReplaceAll(sortedList);
 
                 if (!TriggerPendingFolderFocus())
                 {
