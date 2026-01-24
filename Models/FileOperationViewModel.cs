@@ -10,7 +10,7 @@ namespace FileSpace.Models
     public class FileOperationViewModel : INotifyPropertyChanged
     {
         private readonly FileOperationManager fileOpManager;
-        private string _statusMessage;
+        private string _statusMessage = string.Empty;
         private double _progressPercentage;
         private bool _isOperationInProgress;
 
@@ -138,7 +138,7 @@ namespace FileSpace.Models
             }
         }
 
-        private void OnProgressChanged(object sender, FileOperationEventArgs e)
+        private void OnProgressChanged(object? sender, FileOperationEventArgs e)
         {
             // Calculate progress percentage
             if (e.TotalFiles > 0)
@@ -153,13 +153,13 @@ namespace FileSpace.Models
             StatusMessage = $"Processing: {e.CurrentFile} ({e.FilesCompleted}/{e.TotalFiles})";
         }
 
-        private void OnOperationCompleted(object sender, FileOperationEventArgs e)
+        private void OnOperationCompleted(object? sender, FileOperationEventArgs e)
         {
             StatusMessage = $"{e.Operation} operation completed successfully";
             ProgressPercentage = 100.0;
         }
 
-        private void OnOperationError(object sender, string errorMessage)
+        private void OnOperationError(object? sender, string errorMessage)
         {
             StatusMessage = $"Error: {errorMessage}";
             IsOperationInProgress = false;
@@ -170,9 +170,9 @@ namespace FileSpace.Models
             fileOpManager?.Dispose();
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }

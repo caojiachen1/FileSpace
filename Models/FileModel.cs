@@ -123,9 +123,9 @@ namespace FileSpace.Models
     {
         private bool disposedValue;
 
-        public event EventHandler<FileOperationEventArgs> ProgressChanged;
-        public event EventHandler<FileOperationEventArgs> OperationCompleted;
-        public event EventHandler<string> OperationError;
+        public event EventHandler<FileOperationEventArgs>? ProgressChanged;
+        public event EventHandler<FileOperationEventArgs>? OperationCompleted;
+        public event EventHandler<string>? OperationError;
 
         /// <summary>
         /// Copies files to the clipboard using Windows Shell API

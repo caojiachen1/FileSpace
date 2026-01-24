@@ -127,7 +127,7 @@ namespace FileSpace.Services
             { 
                 Symbol = file.Icon, 
                 FontSize = 80, 
-                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray,
+                Foreground = (new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") as Brush) ?? Brushes.Gray,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -169,7 +169,7 @@ namespace FileSpace.Services
                 Symbol = file.Icon, 
                 FontSize = 24, 
                 Margin = new Thickness(0, 0, 10, 0),
-                Foreground = (Brush?)new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") ?? Brushes.Gray,
+                Foreground = (new BrushConverter().ConvertFromString(file.IconColor ?? "#FFFFFF") as Brush) ?? Brushes.Gray,
                 VerticalAlignment = VerticalAlignment.Center
             };
         }
@@ -814,13 +814,13 @@ namespace FileSpace.Services
         {
             // Check if it's a drive root - do not do recursive scan for entire drives
             var driveRoot = Path.GetPathRoot(folderPath);
-            if (!string.IsNullOrEmpty(folderPath) && 
+            if (!string.IsNullOrEmpty(folderPath) && !string.IsNullOrEmpty(driveRoot) && 
                 (folderPath.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) || 
-                 folderPath.Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
+                 folderPath.Equals(driveRoot.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
             {
                 try
                 {
-                    var drive = new DriveInfo(driveRoot);
+                    var drive = new DriveInfo(driveRoot!);
                     if (drive.IsReady)
                     {
                         ((Grid)sizeRow)?.Children[1]?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
@@ -846,29 +846,33 @@ namespace FileSpace.Services
             var cachedSize = backgroundCalculator.GetCachedSize(folderPath);
             var isActiveCalculation = backgroundCalculator.IsCalculationActive(folderPath);
 
+            var sizeValueBlock = ((Grid)sizeRow).Children.Count > 1 ? ((Grid)sizeRow).Children[1] as TextBlock : null;
+            var fileCountValueBlock = ((Grid)fileCountRow).Children.Count > 1 ? ((Grid)fileCountRow).Children[1] as TextBlock : null;
+            var dirCountValueBlock = ((Grid)dirCountRow).Children.Count > 1 ? ((Grid)dirCountRow).Children[1] as TextBlock : null;
+
             if (cachedSize != null && !string.IsNullOrEmpty(cachedSize.Error))
             {
-                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, $"计算失败: {cachedSize.Error}");
+                if (sizeValueBlock != null) sizeValueBlock.Text = $"计算失败: {cachedSize.Error}";
             }
             else if (cachedSize != null && cachedSize.IsCalculationComplete)
             {
-                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, cachedSize.FormattedSize);
-                ((Grid)fileCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.FileCount:N0} 个");
-                ((Grid)dirCountRow).Children[1].SetValue(TextBlock.TextProperty, $"{cachedSize.DirectoryCount:N0} 个");
+                if (sizeValueBlock != null) sizeValueBlock.Text = cachedSize.FormattedSize;
+                if (fileCountValueBlock != null) fileCountValueBlock.Text = $"{cachedSize.FileCount:N0} 个";
+                if (dirCountValueBlock != null) dirCountValueBlock.Text = $"{cachedSize.DirectoryCount:N0} 个";
             }
             else if (isActiveCalculation)
             {
-                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, "正在后台计算...");
+                if (sizeValueBlock != null) sizeValueBlock.Text = "正在后台计算...";
             }
             else
             {
-                ((Grid)sizeRow).Children[1].SetValue(TextBlock.TextProperty, "准备计算...");
+                if (sizeValueBlock != null) sizeValueBlock.Text = "准备计算...";
                 backgroundCalculator.QueueFolderSizeCalculation(folderPath,
                     new { 
                         PreviewPanel = panel, 
-                        StatusBlock = ((Grid)sizeRow).Children[1] as TextBlock, 
-                        FileCountBlock = ((Grid)fileCountRow).Children[1] as TextBlock, 
-                        DirCountBlock = ((Grid)dirCountRow).Children[1] as TextBlock 
+                        StatusBlock = sizeValueBlock, 
+                        FileCountBlock = fileCountValueBlock, 
+                        DirCountBlock = dirCountValueBlock 
                     });
             }
         }
