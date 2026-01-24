@@ -288,7 +288,7 @@ namespace FileSpace.Views
 
         private void OnBringFolderIntoViewRequested(object? sender, FolderFocusRequestEventArgs e)
         {
-            Dispatcher.BeginInvoke(new Action(() => HandleBringFolderIntoView(e)), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(new Action(() => HandleBringFolderIntoView(e)), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private void HandleBringFolderIntoView(FolderFocusRequestEventArgs args)
@@ -363,7 +363,6 @@ namespace FileSpace.Views
             }
 
             dataGrid.UpdateLayout();
-            dataGrid.ScrollIntoView(target);
 
             if (!alignToBottom)
             {
@@ -415,9 +414,6 @@ namespace FileSpace.Views
             {
                 return;
             }
-
-            listView.UpdateLayout();
-            listView.ScrollIntoView(target);
 
             if (!alignToBottom)
             {
