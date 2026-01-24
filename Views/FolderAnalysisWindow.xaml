@@ -19,7 +19,7 @@
         <SolidColorBrush x:Key="DarkElevatedCardBackgroundBrush" Color="#FF363636"/>
         <SolidColorBrush x:Key="DarkTextPrimaryBrush" Color="#FFDEDEDE"/>
         <SolidColorBrush x:Key="DarkTextSecondaryBrush" Color="#FFDEDEDE"/>
-        <SolidColorBrush x:Key="DarkTextMutedBrush" Color="#FF80DEDEDE"/>
+        <SolidColorBrush x:Key="DarkTextMutedBrush" Color="#80DEDEDE"/>
         <SolidColorBrush x:Key="DarkBorderBrush" Color="#FF404040"/>
         <SolidColorBrush x:Key="DarkHoverBrush" Color="#FF3A3A3A"/>
         <SolidColorBrush x:Key="DarkAccentGreenBrush" Color="#FF4CAF50"/>
