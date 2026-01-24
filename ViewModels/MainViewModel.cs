@@ -1011,7 +1011,6 @@ namespace FileSpace.ViewModels
                 allFiles.AddRange(directories);
                 allFiles.AddRange(files);
 
-                Files.Clear();
                 var sortedResults = await Task.Run(() => SortList(allFiles));
                 Files.ReplaceAll(sortedResults);
 
@@ -1140,13 +1139,28 @@ namespace FileSpace.ViewModels
 
         private CancellationTokenSource? _loadFilesCancellationTokenSource;
 
+        // Helper to safely cancel and dispose existing CTS and create a new one
+        private CancellationTokenSource CreateOrResetCancellationTokenSource(ref CancellationTokenSource? cts)
+        {
+            try
+            {
+                if (cts != null)
+                {
+                    try { cts.Cancel(); } catch { }
+                    try { cts.Dispose(); } catch { }
+                }
+            }
+            catch { }
+
+            cts = new CancellationTokenSource();
+            return cts;
+        }
+
         private async void LoadFiles()
         {
             try
             {
-                _loadFilesCancellationTokenSource?.Cancel();
-                _loadFilesCancellationTokenSource = new CancellationTokenSource();
-                var token = _loadFilesCancellationTokenSource.Token;
+                var token = CreateOrResetCancellationTokenSource(ref _loadFilesCancellationTokenSource).Token;
 
                 // Clear selection when changing directory
                 SelectedFile = null;
@@ -1370,9 +1384,7 @@ namespace FileSpace.ViewModels
         {
             try
             {
-                _thumbnailCancellationTokenSource?.Cancel();
-                _thumbnailCancellationTokenSource = new CancellationTokenSource();
-                var token = _thumbnailCancellationTokenSource.Token;
+                var token = CreateOrResetCancellationTokenSource(ref _thumbnailCancellationTokenSource).Token;
 
                 var filesSnapshot = Files.ToList();
                 double targetSize = IconSize;
@@ -1528,10 +1540,8 @@ namespace FileSpace.ViewModels
                 return;
             }
 
-            // Cancel any ongoing preview operation
-            _previewCancellationTokenSource?.Cancel();
-            _previewCancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = _previewCancellationTokenSource.Token;
+            // Cancel any ongoing preview operation and create a fresh token source
+            var cancellationToken = CreateOrResetCancellationTokenSource(ref _previewCancellationTokenSource).Token;
 
             // Wait for any ongoing preview to complete
             await _previewSemaphore.WaitAsync(cancellationToken);
@@ -2066,8 +2076,7 @@ namespace FileSpace.ViewModels
                 FileOperationProgress = 0;
                 FileOperationStatus = "正在准备粘贴操作...";
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-                var token = _fileOperationCancellationTokenSource.Token;
+                var token = CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token;
 
                 var operation = ClipboardService.Instance.GetClipboardOperation();
                 var sourceFiles = ClipboardService.Instance.GetClipboardFiles().ToList();
@@ -2140,7 +2149,6 @@ namespace FileSpace.ViewModels
                 FileOperationStatus = isSameDrive ? "正在移动文件..." : "正在复制文件...";
                 FileOperationProgress = 0;
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
                 if (isSameDrive)
                 {
                     // 检查是否在移动到自身或父目录
@@ -2150,11 +2158,11 @@ namespace FileSpace.ViewModels
                         StatusText = "目标位置无效";
                         return;
                     }
-                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
                 }
                 else
                 {
-                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
                 }
             }
             catch (OperationCanceledException)
@@ -2189,8 +2197,7 @@ namespace FileSpace.ViewModels
                 FileOperationStatus = "正在复制文件...";
                 FileOperationProgress = 0;
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-                await FileOperationsService.Instance.CopyFilesAsync(sourceFiles, destinationFolder, _fileOperationCancellationTokenSource.Token);
+                await FileOperationsService.Instance.CopyFilesAsync(sourceFiles, destinationFolder, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
             }
             catch (OperationCanceledException)
             {
@@ -2231,8 +2238,7 @@ namespace FileSpace.ViewModels
                 FileOperationStatus = "正在移动文件...";
                 FileOperationProgress = 0;
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-                await FileOperationsService.Instance.MoveFilesAsync(sourceFiles, destinationFolder, _fileOperationCancellationTokenSource.Token);
+                await FileOperationsService.Instance.MoveFilesAsync(sourceFiles, destinationFolder, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
             }
             catch (OperationCanceledException)
             {
@@ -2275,8 +2281,6 @@ namespace FileSpace.ViewModels
                 FileOperationStatus = isSameDrive ? "正在移动文件..." : "正在复制文件...";
                 FileOperationProgress = 0;
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-
                 if (isSameDrive)
                 {
                     // Check if we're moving to the same location
@@ -2286,11 +2290,11 @@ namespace FileSpace.ViewModels
                         StatusText = "目标位置无效";
                         return;
                     }
-                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
                 }
                 else
                 {
-                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, _fileOperationCancellationTokenSource.Token);
+                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
                 }
             }
             catch (OperationCanceledException)
@@ -2325,12 +2329,9 @@ namespace FileSpace.ViewModels
                 FileOperationProgress = 0;
                 FileOperationStatus = "正在永久删除文件...";
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-                var token = _fileOperationCancellationTokenSource.Token;
-
+                var token = CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token;
                 var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
-
-                await FileOperationsService.Instance.DeleteFilesPermanentlyAsync(filesToDelete);
+                await FileOperationsService.Instance.DeleteFilesPermanentlyAsync(filesToDelete, token);
             }
             catch (OperationCanceledException)
             {
@@ -2362,12 +2363,9 @@ namespace FileSpace.ViewModels
                 FileOperationProgress = 0;
                 FileOperationStatus = "正在删除文件...";
 
-                _fileOperationCancellationTokenSource = new CancellationTokenSource();
-                var token = _fileOperationCancellationTokenSource.Token;
-
+                var token = CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token;
                 var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
-
-                await FileOperationsService.Instance.DeleteFilesToRecycleBinAsync(filesToDelete);
+                await FileOperationsService.Instance.DeleteFilesToRecycleBinAsync(filesToDelete, token);
             }
             catch (OperationCanceledException)
             {
@@ -2503,12 +2501,10 @@ namespace FileSpace.ViewModels
 
             if (orderChanged)
             {
-                Files.Clear();
-                foreach (var file in sortedFiles)
-                {
-                    Files.Add(file);
-                }
+                // Use ReplaceAll to batch update UI-bound collection and reduce UI thrashing
+                Files.ReplaceAll(sortedFiles);
 
+                // Restore selection reference if the previously selected item still exists in the new list
                 if (selectedFile != null && Files.Contains(selectedFile))
                 {
                     SelectedFile = selectedFile;
@@ -2903,9 +2899,15 @@ namespace FileSpace.ViewModels
             _previewCancellationTokenSource?.Cancel();
             _fileOperationCancellationTokenSource?.Cancel();
 
+            // Cancel thumbnail and load operations as well
+            _thumbnailCancellationTokenSource?.Cancel();
+            _loadFilesCancellationTokenSource?.Cancel();
+
             // Dispose resources
             _previewSemaphore?.Dispose();
             _previewCancellationTokenSource?.Dispose();
+            _thumbnailCancellationTokenSource?.Dispose();
+            _loadFilesCancellationTokenSource?.Dispose();
             _fileOperationCancellationTokenSource?.Dispose();
         }
 
