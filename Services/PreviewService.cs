@@ -705,7 +705,6 @@ namespace FileSpace.Services
 
                 case FilePreviewType.General:
                     panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("访问时间", fileInfo.LastAccessTime.ToString("yyyy/M/d HH:mm")));
-                    panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("属性", fileInfo.Attributes.ToString()));
                     break;
             }
         }
