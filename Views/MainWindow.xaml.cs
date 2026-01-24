@@ -65,6 +65,8 @@ namespace FileSpace.Views
             // 订阅地址栏焦点事件
             ViewModel.FocusAddressBarRequested += OnFocusAddressBarRequested;
 
+            ViewModel.ResetScrollRequested += OnResetScrollRequested;
+
             ViewModel.BringFolderIntoViewRequested += OnBringFolderIntoViewRequested;
             
             // 订阅面板可见性变化事件
@@ -204,8 +206,6 @@ namespace FileSpace.Views
             // Track DataGrid scroll position
             if (FileDataGrid != null)
             {
-                FileDataGrid.Loaded += (s, e) => RestoreDataGridScrollPosition();
-
                 // Listen to scroll changes to save position
                 FileDataGrid.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(DataGrid_ScrollChanged));
             }
@@ -213,8 +213,6 @@ namespace FileSpace.Views
             // Track IconView scroll position
             if (FileIconView != null)
             {
-                FileIconView.Loaded += (s, e) => RestoreIconViewScrollPosition();
-
                 // Listen to scroll changes to save position
                 FileIconView.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(IconView_ScrollChanged));
             }
@@ -246,36 +244,6 @@ namespace FileSpace.Views
                 if (scrollViewer != null)
                 {
                     _iconViewScrollOffset = scrollViewer.VerticalOffset;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Restores DataGrid scroll position
-        /// </summary>
-        private void RestoreDataGridScrollPosition()
-        {
-            if (FileDataGrid != null)
-            {
-                var scrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
-                if (scrollViewer != null)
-                {
-                    scrollViewer.ScrollToVerticalOffset(_dataGridScrollOffset);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Restores IconView scroll position
-        /// </summary>
-        private void RestoreIconViewScrollPosition()
-        {
-            if (FileIconView != null)
-            {
-                var scrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
-                if (scrollViewer != null)
-                {
-                    scrollViewer.ScrollToVerticalOffset(_iconViewScrollOffset);
                 }
             }
         }
@@ -341,6 +309,49 @@ namespace FileSpace.Views
             {
                 AlignFolderInIconView(target, args.AlignToBottom);
             }
+        }
+
+        private void OnResetScrollRequested(object? sender, EventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(HandleResetScrollPositions), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private void HandleResetScrollPositions()
+        {
+            _dataGridScrollOffset = 0;
+            _iconViewScrollOffset = 0;
+
+            ResetDataGridToTop();
+            ResetIconViewToTop();
+
+            ViewModel.SelectedFile = null;
+            ViewModel.SelectedFiles.Clear();
+        }
+
+        private void ResetDataGridToTop()
+        {
+            var dataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
+            if (dataGrid == null)
+            {
+                return;
+            }
+
+            var scrollViewer = GetScrollViewer(dataGrid);
+            scrollViewer?.ScrollToVerticalOffset(0);
+            dataGrid.SelectedItems.Clear();
+        }
+
+        private void ResetIconViewToTop()
+        {
+            var listView = FindName("FileIconView") as System.Windows.Controls.ListView;
+            if (listView == null)
+            {
+                return;
+            }
+
+            var scrollViewer = GetScrollViewer(listView);
+            scrollViewer?.ScrollToVerticalOffset(0);
+            listView.SelectedItems.Clear();
         }
 
         private void AlignFolderInDetailsView(FileItemModel target, bool alignToBottom)

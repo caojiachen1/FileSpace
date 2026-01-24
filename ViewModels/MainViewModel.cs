@@ -32,6 +32,9 @@ namespace FileSpace.ViewModels
 
         // Event to notify UI to bring a folder into view
         public event EventHandler<FolderFocusRequestEventArgs>? BringFolderIntoViewRequested;
+
+        // Event to notify UI to reset scrolling/selection when we enter a fresh folder
+        public event EventHandler? ResetScrollRequested;
         
         // Tab management
         [ObservableProperty]
@@ -1247,7 +1250,10 @@ namespace FileSpace.ViewModels
                     StatusText = "0 个项目";
                 }
 
-                TriggerPendingFolderFocus();
+                if (!TriggerPendingFolderFocus())
+                {
+                    NotifyScrollReset();
+                }
 
                 SelectAllCommand.NotifyCanExecuteChanged();
 
@@ -1261,11 +1267,11 @@ namespace FileSpace.ViewModels
             }
         }
 
-        private void TriggerPendingFolderFocus()
+        private bool TriggerPendingFolderFocus()
         {
             if (string.IsNullOrEmpty(_pendingReturnFolderPath))
             {
-                return;
+                return false;
             }
 
             var targetPath = _pendingReturnFolderPath;
@@ -1274,6 +1280,12 @@ namespace FileSpace.ViewModels
             _alignPendingFolderToBottom = false;
 
             BringFolderIntoViewRequested?.Invoke(this, new FolderFocusRequestEventArgs(targetPath, alignToBottom));
+            return true;
+        }
+
+        private void NotifyScrollReset()
+        {
+            ResetScrollRequested?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
