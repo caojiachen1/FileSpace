@@ -9,6 +9,15 @@ using FileSpace.Utils;
 using magika;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
+using MetadataExtractor.Formats.Iptc;
+using MetadataExtractor.Formats.QuickTime;
+using MetadataExtractor.Formats.Avi;
+using MetadataExtractor.Formats.Mpeg;
+using MetadataExtractor.Formats.Xmp;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FileSpace.Services
 {
@@ -645,6 +654,203 @@ namespace FileSpace.Services
                         {
                             panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("分辨率", $"{imageInfo.Value.Width} x {imageInfo.Value.Height}"));
                         }
+
+                        // 使用 MetadataExtractor 获取更多信息
+                        var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
+                        
+                        // 标记 (IPTC Keywords / EXIF Win XP Keywords)
+                        var keywords = directories.OfType<IptcDirectory>().FirstOrDefault()?.GetDescription(IptcDirectory.TagKeywords);
+                        if (string.IsNullOrEmpty(keywords))
+                        {
+                            keywords = directories.OfType<ExifIfd0Directory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagWinKeywords);
+                        }
+                        
+                        if (!string.IsNullOrEmpty(keywords))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("标记", keywords));
+
+                        // 人员 (IPTC Person In Image / XMP)
+                        // Note: TagKeywords often contains persons too, or use a search by name for "Person"
+                        var people = directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name.Contains("Person") || t.Name.Contains("People"))?.Description;
+                        if (!string.IsNullOrEmpty(people))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("人员", people));
+
+                        // 拍摄日期
+                        var dateTaken = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagDateTimeOriginal);
+                        if (!string.IsNullOrEmpty(dateTaken))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("拍摄日期", dateTaken));
+
+                        // 相机型号
+                        var cameraModel = directories.OfType<ExifIfd0Directory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagModel);
+                        if (!string.IsNullOrEmpty(cameraModel))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("相机型号", cameraModel));
+
+                        // 镜头型号
+                        var lensModel = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagLensModel);
+                        if (!string.IsNullOrEmpty(lensModel))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("镜头型号", lensModel));
+
+                        // 光圈值
+                        var aperture = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagFNumber);
+                        if (string.IsNullOrEmpty(aperture))
+                            aperture = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagAperture);
+                        if (!string.IsNullOrEmpty(aperture))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("光圈值", aperture));
+
+                        // 曝光时间
+                        var exposureTime = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagExposureTime);
+                        if (!string.IsNullOrEmpty(exposureTime))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("曝光时间", exposureTime));
+
+                        // ISO
+                        var iso = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagIsoEquivalent);
+                        if (!string.IsNullOrEmpty(iso))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("ISO", iso));
+
+                        // 焦距
+                        var focalLength = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault()?.GetDescription(ExifDirectoryBase.TagFocalLength);
+                        if (!string.IsNullOrEmpty(focalLength))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("焦距", focalLength));
+
+                        // 拍摄地点 (GPS)
+                        var gpsDir = directories.OfType<GpsDirectory>().FirstOrDefault();
+                        if (gpsDir != null && gpsDir.TryGetGeoLocation(out var location))
+                        {
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("拍摄地点", $"{location.Latitude:F6}, {location.Longitude:F6}"));
+                        }
+                    }
+                    catch { }
+                    break;
+
+                case FilePreviewType.Video:
+                    try
+                    {
+                        var mediaInfo = new Dictionary<string, string>();
+                        var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
+                        var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+                        
+                        // 时长
+                        var duration = mediaInfo.ContainsKey("Duration") ? mediaInfo["Duration"] : 
+                                      (shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null);
+                        if (string.IsNullOrEmpty(duration))
+                        {
+                            duration = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeMovieHeaderDirectory.TagDuration)
+                                    ?? directories.OfType<AviDirectory>().FirstOrDefault()?.GetDescription(AviDirectory.TagDuration);
+                        }
+                        if (!string.IsNullOrEmpty(duration))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("时长", duration));
+
+                        // 格式 (容器)
+                        if (mediaInfo.ContainsKey("Format"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("容器格式", mediaInfo["Format"]));
+
+                        // 视频轨道详情
+                        if (mediaInfo.ContainsKey("VideoFormat"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频编码", mediaInfo["VideoFormat"]));
+
+                        // 帧宽度/高度
+                        var width = mediaInfo.ContainsKey("Width") ? mediaInfo["Width"] : 
+                                   (shellInfo.ContainsKey("Width") ? shellInfo["Width"] : null);
+                        if (string.IsNullOrEmpty(width))
+                        {
+                            width = directories.OfType<QuickTimeTrackHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeTrackHeaderDirectory.TagWidth)
+                                 ?? directories.OfType<AviDirectory>().FirstOrDefault()?.GetDescription(AviDirectory.TagWidth);
+                        }
+                        
+                        var height = mediaInfo.ContainsKey("Height") ? mediaInfo["Height"] : 
+                                    (shellInfo.ContainsKey("Height") ? shellInfo["Height"] : null);
+                        if (string.IsNullOrEmpty(height))
+                        {
+                            height = directories.OfType<QuickTimeTrackHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeTrackHeaderDirectory.TagHeight)
+                                  ?? directories.OfType<AviDirectory>().FirstOrDefault()?.GetDescription(AviDirectory.TagHeight);
+                        }
+                        
+                        if (!string.IsNullOrEmpty(width)) panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("帧宽度", width + " 像素"));
+                        if (!string.IsNullOrEmpty(height)) panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("帧高度", height + " 像素"));
+
+                        // 宽高比
+                        if (mediaInfo.ContainsKey("AspectRatio"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("宽高比", mediaInfo["AspectRatio"]));
+
+                        // 帧速率
+                        var frameRate = mediaInfo.ContainsKey("FrameRate") ? mediaInfo["FrameRate"] : 
+                                       (shellInfo.ContainsKey("FrameRate") ? shellInfo["FrameRate"] : null);
+                        if (string.IsNullOrEmpty(frameRate))
+                        {
+                            frameRate = directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name.Contains("Frame Rate") || t.Name.Contains("FPS"))?.Description
+                                     ?? directories.OfType<AviDirectory>().FirstOrDefault()?.GetDescription(AviDirectory.TagFramesPerSecond);
+                        }
+                        if (!string.IsNullOrEmpty(frameRate))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("帧速率", frameRate + (frameRate.Contains("帧/秒") ? "" : " 帧/秒")));
+
+                        // 比特率
+                        if (mediaInfo.ContainsKey("VideoBitrate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频比特率", mediaInfo["VideoBitrate"]));
+                        
+                        if (mediaInfo.ContainsKey("OverallBitrate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总比特率", mediaInfo["OverallBitrate"]));
+                        else
+                        {
+                            var totalBitrate = shellInfo.ContainsKey("TotalBitrate") ? shellInfo["TotalBitrate"] : null;
+                            if (string.IsNullOrEmpty(totalBitrate))
+                            {
+                                totalBitrate = directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name == "Bit Rate")?.Description;
+                            }
+                            if (!string.IsNullOrEmpty(totalBitrate))
+                                panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总比特率", totalBitrate));
+                        }
+
+                        // 音频简要信息 (在播放视频时很有用)
+                        if (mediaInfo.ContainsKey("AudioFormat"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("音频编码", mediaInfo["AudioFormat"]));
+                    }
+                    catch { }
+                    break;
+
+                case FilePreviewType.Audio:
+                    try
+                    {
+                        // 已移除 MediaInfo 库，改为使用空字典以触发后续的 shell/元数据回退逻辑
+                        var mediaInfo = new Dictionary<string, string>();
+                        var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
+                        var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+
+                        // 时长
+                        var duration = mediaInfo.ContainsKey("Duration") ? mediaInfo["Duration"] : 
+                                      (shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null);
+                        if (string.IsNullOrEmpty(duration))
+                        {
+                            duration = directories.OfType<Mp3Directory>().FirstOrDefault()?.GetDescription(Mp3Directory.TagId)
+                                    ?? directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeMovieHeaderDirectory.TagDuration)
+                                    ?? directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name.Contains("Duration"))?.Description;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(duration))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("时长", duration));
+
+                        // 格式
+                        if (mediaInfo.ContainsKey("Format"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("编码格式", mediaInfo["Format"]));
+
+                        // 比特率
+                        var bitrate = mediaInfo.ContainsKey("AudioBitrate") ? mediaInfo["AudioBitrate"] : 
+                                     (shellInfo.ContainsKey("AudioBitrate") ? shellInfo["AudioBitrate"] : 
+                                     (shellInfo.ContainsKey("TotalBitrate") ? shellInfo["TotalBitrate"] : null));
+                        if (string.IsNullOrEmpty(bitrate))
+                        {
+                            bitrate = directories.OfType<Mp3Directory>().FirstOrDefault()?.GetDescription(Mp3Directory.TagBitrate)
+                                   ?? directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name.Contains("Bit Rate"))?.Description;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(bitrate))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("比特率", bitrate));
+
+                        // 声道与采样率
+                        if (mediaInfo.ContainsKey("AudioChannels"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("声道数", mediaInfo["AudioChannels"]));
+                        if (mediaInfo.ContainsKey("AudioSamplingRate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("采样率", mediaInfo["AudioSamplingRate"]));
+                        if (mediaInfo.ContainsKey("AudioLanguage"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("语言", mediaInfo["AudioLanguage"]));
                     }
                     catch { }
                     break;
@@ -688,6 +894,8 @@ namespace FileSpace.Services
                     PreviewUIHelper.AddPdfPreview(panel);
                     break;
 
+                case FilePreviewType.Video:
+                case FilePreviewType.Audio:
                 case FilePreviewType.General:
                     break;
             }
@@ -757,16 +965,17 @@ namespace FileSpace.Services
                     var drive = new DriveInfo(driveRoot!);
                     if (drive.IsReady)
                     {
-                        ((Grid)sizeRow)?.Children[1]?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
+                        if (sizeRow?.Children.Count > 1)
+                            (sizeRow.Children[1] as TextBlock)?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
                         
                         // Re-purpose rows for drive information
-                        var fileCountLabel = ((Grid)fileCountRow)?.Children[0] as TextBlock;
-                        var fileCountValue = ((Grid)fileCountRow)?.Children[1] as TextBlock;
+                        var fileCountLabel = fileCountRow?.Children[0] as TextBlock;
+                        var fileCountValue = fileCountRow?.Children.Count > 1 ? fileCountRow.Children[1] as TextBlock : null;
                         if (fileCountLabel != null) fileCountLabel.Text = "可用空间";
                         if (fileCountValue != null) fileCountValue.Text = FileUtils.FormatFileSize(drive.AvailableFreeSpace);
 
-                        var dirCountLabel = ((Grid)dirCountRow)?.Children[0] as TextBlock;
-                        var dirCountValue = ((Grid)dirCountRow)?.Children[1] as TextBlock;
+                        var dirCountLabel = dirCountRow?.Children[0] as TextBlock;
+                        var dirCountValue = dirCountRow?.Children.Count > 1 ? dirCountRow.Children[1] as TextBlock : null;
                         if (dirCountLabel != null) dirCountLabel.Text = "已用空间";
                         if (dirCountValue != null) dirCountValue.Text = FileUtils.FormatFileSize(drive.TotalSize - drive.AvailableFreeSpace);
                         
