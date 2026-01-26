@@ -92,7 +92,9 @@ namespace FileSpace.Services
                         ReportProgress(sourcePath, shortcutPath, operation, false, completedFiles, totalFiles, completedFiles, totalFiles, fileName);
                         
                         await Task.Run(() => {
-                            using var link = new Vanara.Windows.Shell.ShellLink(sourcePath);
+                            var dir = Path.GetDirectoryName(sourcePath);
+                            // Use the constructor with 4 arguments as requested
+                            using var link = new Vanara.Windows.Shell.ShellLink(sourcePath, null, dir, null);
                             link.SaveAs(shortcutPath);
                         });
                         
