@@ -36,6 +36,16 @@ namespace FileSpace.Models
         private ObservableCollection<Folder> _folders = new();
 
         /// <summary>
+        /// 保存数据视图的滚动偏移量，确保每个标签页独立
+        /// </summary>
+        public double DataGridScrollOffset { get; set; }
+
+        /// <summary>
+        /// 保存图标视图的滚动偏移量，确保每个标签页独立
+        /// </summary>
+        public double IconViewScrollOffset { get; set; }
+
+        /// <summary>
         /// 标签页的唯一标识符
         /// </summary>
         public Guid Id { get; } = Guid.NewGuid();

@@ -140,10 +140,6 @@ namespace FileSpace.Views
             }
         }
 
-        // Fields to store scroll positions
-        private double _dataGridScrollOffset = 0;
-        private double _iconViewScrollOffset = 0;
-
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
         {
             // 监听GridSplitter的大小变化来保存用户自定义的大小
@@ -230,7 +226,11 @@ namespace FileSpace.Views
                 var scrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
                 if (scrollViewer != null)
                 {
-                    _dataGridScrollOffset = scrollViewer.VerticalOffset;
+                    var activeTab = ViewModel.SelectedTab;
+                    if (activeTab != null)
+                    {
+                        activeTab.DataGridScrollOffset = scrollViewer.VerticalOffset;
+                    }
                 }
             }
         }
@@ -245,7 +245,11 @@ namespace FileSpace.Views
                 var scrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
                 if (scrollViewer != null)
                 {
-                    _iconViewScrollOffset = scrollViewer.VerticalOffset;
+                    var activeTab = ViewModel.SelectedTab;
+                    if (activeTab != null)
+                    {
+                        activeTab.IconViewScrollOffset = scrollViewer.VerticalOffset;
+                    }
                 }
             }
         }
@@ -269,6 +273,58 @@ namespace FileSpace.Views
             return null;
         }
 
+        private void RestoreScrollForTab(TabItemModel? tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (FileDataGrid != null)
+            {
+                var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                if (dataGridScrollViewer != null)
+                {
+                    dataGridScrollViewer.ScrollToVerticalOffset(Math.Max(0, tab.DataGridScrollOffset));
+                }
+            }
+
+            if (FileIconView != null)
+            {
+                var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                if (iconViewScrollViewer != null)
+                {
+                    iconViewScrollViewer.ScrollToVerticalOffset(Math.Max(0, tab.IconViewScrollOffset));
+                }
+            }
+        }
+
+        private void SaveScrollOffsets(TabItemModel? tab)
+        {
+            if (tab == null)
+            {
+                return;
+            }
+
+            if (FileDataGrid != null)
+            {
+                var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
+                if (dataGridScrollViewer != null)
+                {
+                    tab.DataGridScrollOffset = dataGridScrollViewer.VerticalOffset;
+                }
+            }
+
+            if (FileIconView != null)
+            {
+                var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
+                if (iconViewScrollViewer != null)
+                {
+                    tab.IconViewScrollOffset = iconViewScrollViewer.VerticalOffset;
+                }
+            }
+        }
+
         /// <summary>
         /// 处理ViewModel属性变化
         /// </summary>
@@ -285,6 +341,10 @@ namespace FileSpace.Views
             else if (e.PropertyName == nameof(MainViewModel.SortMode) || e.PropertyName == nameof(MainViewModel.SortAscending))
             {
                 UpdateDataGridSortArrows();
+            }
+            else if (e.PropertyName == nameof(MainViewModel.SelectedTab))
+            {
+                Dispatcher.BeginInvoke(new Action(() => RestoreScrollForTab(ViewModel.SelectedTab)), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
 
@@ -320,8 +380,12 @@ namespace FileSpace.Views
 
         private void HandleResetScrollPositions()
         {
-            _dataGridScrollOffset = 0;
-            _iconViewScrollOffset = 0;
+            var activeTab = ViewModel.SelectedTab;
+            if (activeTab != null)
+            {
+                activeTab.DataGridScrollOffset = 0;
+                activeTab.IconViewScrollOffset = 0;
+            }
 
             ResetDataGridToTop();
             ResetIconViewToTop();
@@ -467,49 +531,12 @@ namespace FileSpace.Views
         /// </summary>
         public void RefreshFileListWithScrollPreservation()
         {
-            // Save current scroll positions
-            if (FileDataGrid != null)
-            {
-                var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
-                if (dataGridScrollViewer != null)
-                {
-                    _dataGridScrollOffset = dataGridScrollViewer.VerticalOffset;
-                }
-            }
+            var targetTab = ViewModel.SelectedTab;
+            SaveScrollOffsets(targetTab);
 
-            if (FileIconView != null)
-            {
-                var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
-                if (iconViewScrollViewer != null)
-                {
-                    _iconViewScrollOffset = iconViewScrollViewer.VerticalOffset;
-                }
-            }
-
-            // Trigger the refresh in the ViewModel
             ViewModel.RefreshCommand.Execute(null);
 
-            // Restore scroll positions after a brief delay to allow the UI to update
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (FileDataGrid != null)
-                {
-                    var dataGridScrollViewer = GetScrollViewer(FileDataGrid) as ScrollViewer;
-                    if (dataGridScrollViewer != null)
-                    {
-                        dataGridScrollViewer.ScrollToVerticalOffset(_dataGridScrollOffset);
-                    }
-                }
-
-                if (FileIconView != null)
-                {
-                    var iconViewScrollViewer = GetScrollViewer(FileIconView) as ScrollViewer;
-                    if (iconViewScrollViewer != null)
-                    {
-                        iconViewScrollViewer.ScrollToVerticalOffset(_iconViewScrollOffset);
-                    }
-                }
-            }), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(new Action(() => RestoreScrollForTab(targetTab)), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void UpdateDataGridSortArrows()
