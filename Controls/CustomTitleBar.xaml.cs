@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,6 +17,10 @@ namespace FileSpace.Controls
         private HwndSource? _hwndSource;
         private Point _dragStartPoint;
         private TabDragManager? _tabDragManager;
+        
+        // 文件拖拽切换标签相关
+        private System.Windows.Threading.DispatcherTimer? _tabSwitchTimer;
+        private TabItemModel? _hoveredTab;
 
         public static readonly DependencyProperty IsMaxButtonHoveredProperty =
             DependencyProperty.Register("IsMaxButtonHovered", typeof(bool), typeof(CustomTitleBar), new PropertyMetadata(false));
@@ -207,6 +213,13 @@ namespace FileSpace.Controls
             _tabDragManager = new TabDragManager();
             _tabDragManager.DragCompleted += OnTabDragCompleted;
             _tabDragManager.TabDetached += OnTabDetached;
+
+            // 初始化标签切换定时器
+            _tabSwitchTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(500) // 500ms 悬停后切换
+            };
+            _tabSwitchTimer.Tick += OnTabSwitchTimerTick;
             
             this.Loaded += (s, e) =>
             {
@@ -431,6 +444,93 @@ namespace FileSpace.Controls
                         CloseTabCommand?.Execute(tab);
                     }
                     e.Handled = true;
+                }
+            }
+        }
+
+        private void OnTabSwitchTimerTick(object? sender, EventArgs e)
+        {
+            _tabSwitchTimer?.Stop();
+            if (_hoveredTab != null && SelectedTab != _hoveredTab)
+            {
+                SelectedTab = _hoveredTab;
+                SelectTabCommand?.Execute(_hoveredTab);
+            }
+        }
+
+        private void OnTabDragOver(object sender, DragEventArgs e)
+        {
+            if (sender is Border border && border.DataContext is TabItemModel tab)
+            {
+                // 检查是否是文件拖拽（或者内部的 FileItemModel）
+                bool isFileDrag = e.Data.GetDataPresent("FileItemModel") || 
+                                 e.Data.GetDataPresent("FileItemModels") || 
+                                 e.Data.GetDataPresent(DataFormats.FileDrop);
+
+                if (isFileDrag)
+                {
+                    // 如果悬停在非当前选中的标签上，开始计时器
+                    if (tab != SelectedTab)
+                    {
+                        if (_hoveredTab != tab)
+                        {
+                            _hoveredTab = tab;
+                            _tabSwitchTimer?.Stop();
+                            _tabSwitchTimer?.Start();
+                        }
+                    }
+                    else
+                    {
+                        _tabSwitchTimer?.Stop();
+                        _hoveredTab = null;
+                    }
+
+                    e.Effects = DragDropEffects.Move | DragDropEffects.Copy | DragDropEffects.Link;
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void OnTabDragLeave(object sender, DragEventArgs e)
+        {
+            // 如果鼠标离开标签，停止切换计时器
+            if (_hoveredTab != null)
+            {
+                _tabSwitchTimer?.Stop();
+                _hoveredTab = null;
+            }
+        }
+
+        private void OnTabDrop(object sender, DragEventArgs e)
+        {
+            _tabSwitchTimer?.Stop();
+            _hoveredTab = null;
+
+            if (sender is Border border && border.DataContext is TabItemModel tab)
+            {
+                // 如果用户直接把文件放置在标签上，执行移动/复制到该标签对应目录的操作
+                if (e.Data.GetDataPresent("FileItemModels") || e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    var window = Window.GetWindow(this) as Views.MainWindow;
+                    if (window?.ViewModel != null)
+                    {
+                        IEnumerable<string>? paths = null;
+                        if (e.Data.GetDataPresent("FileItemModels"))
+                        {
+                            var items = e.Data.GetData("FileItemModels") as IEnumerable<FileItemModel>;
+                            paths = items?.Select(i => i.FullPath);
+                        }
+                        else
+                        {
+                            paths = e.Data.GetData(DataFormats.FileDrop) as string[];
+                        }
+
+                        if (paths != null && !string.IsNullOrEmpty(tab.Path))
+                        {
+                            window.ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(paths, tab.Path));
+                            e.Handled = true;
+                        }
+                    }
                 }
             }
         }

@@ -185,7 +185,11 @@
                                 MaxWidth="250"
                                 MouseLeftButtonDown="OnTabMouseLeftButtonDown"
                                 MouseDown="OnTabMouseDown"
-                                MouseMove="OnTabMouseMove">
+                                MouseMove="OnTabMouseMove"
+                                AllowDrop="True"
+                                DragOver="OnTabDragOver"
+                                DragLeave="OnTabDragLeave"
+                                Drop="OnTabDrop">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Background" Value="Transparent"/>
