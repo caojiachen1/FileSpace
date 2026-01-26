@@ -2155,7 +2155,7 @@ namespace FileSpace.ViewModels
                     if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
                         sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
                     {
-                        StatusText = "目标位置无效";
+                        // 如果是拖拽到自己所在的目录，忽略操作，不显示错误
                         return;
                     }
                     await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
@@ -2287,7 +2287,7 @@ namespace FileSpace.ViewModels
                     if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
                         sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
                     {
-                        StatusText = "目标位置无效";
+                        // Ignore move to same location
                         return;
                     }
                     await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
