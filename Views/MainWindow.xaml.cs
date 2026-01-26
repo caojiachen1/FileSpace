@@ -1588,7 +1588,7 @@ namespace FileSpace.Views
                 
                 string tooltipText = "固定到快速访问";
                 bool isFullText = true;
-                bool isMove = false;
+                bool isMoveIntoFolder = false;
                 int insertionIndex = -1;
 
                 if (targetItemContainer != null)
@@ -1597,15 +1597,33 @@ namespace FileSpace.Views
                     Point posInItem = e.GetPosition(targetItemContainer);
                     double height = targetItemContainer.ActualHeight;
                     
-                    // 中间区域触发移动，边缘区域触发固定
+                    // 中间区域触发移动到文件夹，边缘区域触发固定到快速访问
                     if (posInItem.Y > height * 0.25 && posInItem.Y < height * 0.75)
                     {
-                        isMove = true;
+                        isMoveIntoFolder = true;
                         isFullText = false;
                         if (targetItem != null)
                         {
-                            // 忽略拖拽回自身
-                            if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.Path, StringComparison.OrdinalIgnoreCase)))
+                            var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                            bool isSameDrive = true;
+                            bool isSameParent = false;
+                            
+                            if (droppedPaths != null && droppedPaths.Length > 0)
+                            {
+                                var firstPath = droppedPaths[0];
+                                var sourceParent = Path.GetDirectoryName(firstPath);
+                                isSameParent = string.Equals(sourceParent, targetItem.Path, StringComparison.OrdinalIgnoreCase);
+
+                                var sourceDrive = Path.GetPathRoot(firstPath);
+                                var targetDrive = Path.GetPathRoot(targetItem.Path);
+                                isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            }
+
+                            // 忽略拖拽回自身或拖拽到当前父目录 (仅限没有组合键时)
+                            bool isDroppingOnSelf = ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.Path, StringComparison.OrdinalIgnoreCase));
+
+                            if ((isDroppingOnSelf || isSameParent) && 
+                                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                             {
                                 e.Effects = DragDropEffects.None;
                                 RemoveDragTooltip();
@@ -1622,11 +1640,13 @@ namespace FileSpace.Views
                                 _lastDragOverQuickAccessItem = targetItem;
                             }
                             tooltipText = targetItem.Name;
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         }
                         RemoveInsertionAdorner();
                     }
                     else
                     {
+                        // 固定到快速访问（ reorder/pin ）
                         if (_lastDragOverQuickAccessItem != null)
                         {
                             _lastDragOverQuickAccessItem.IsDragOver = false;
@@ -1635,10 +1655,12 @@ namespace FileSpace.Views
                         insertionIndex = listView.ItemContainerGenerator.IndexFromContainer(targetItemContainer);
                         if (posInItem.Y >= height * 0.75) insertionIndex++;
                         UpdateInsertionAdorner(listView, insertionIndex);
+                        e.Effects = DragDropEffects.Move; // Pinning is technically a move/add
                     }
                 }
                 else
                 {
+                    // 拖拽到列表空白处
                     if (_lastDragOverQuickAccessItem != null)
                     {
                         _lastDragOverQuickAccessItem.IsDragOver = false;
@@ -1673,10 +1695,11 @@ namespace FileSpace.Views
                     {
                         RemoveInsertionAdorner();
                     }
+                    e.Effects = DragDropEffects.Move;
                 }
 
-                // 如果不是移动，且选中的项中没有文件夹，则不允许固定
-                if (!isMove && !ViewModel.SelectedFiles.Any(f => f.IsDirectory))
+                // 如果不是移动到文件夹，且选中的项中没有文件夹，则不允许固定（快速访问只能固定文件夹）
+                if (!isMoveIntoFolder && !ViewModel.SelectedFiles.Any(f => f.IsDirectory))
                 {
                     e.Effects = DragDropEffects.None;
                     RemoveDragTooltip();
@@ -1685,7 +1708,6 @@ namespace FileSpace.Views
                     return;
                 }
 
-                e.Effects = DragDropEffects.Move;
                 UpdateDragTooltip(listView, tooltipText, e.GetPosition(listView), e.Effects, isFullText);
                 e.Handled = true;
                 return;
@@ -2113,8 +2135,9 @@ namespace FileSpace.Views
                     FileItemModel? targetItem = targetRow.Item as FileItemModel;
                     if (targetItem != null && targetItem.IsDirectory)
                     {
-                        // 忽略拖拽回自身
-                        if (ViewModel.SelectedFiles.Contains(targetItem))
+                        // 忽略拖拽回自身 (仅限移动)
+                        if (ViewModel.SelectedFiles.Contains(targetItem) && 
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
                             RemoveDragTooltip();
@@ -2146,12 +2169,38 @@ namespace FileSpace.Views
                     }
                     else
                     {
+                        // 不是文件夹（是文件或空行），视为拖拽到当前目录背景
                         if (_lastDragOverFileItem != null)
                         {
                             _lastDragOverFileItem.IsDragOver = false;
                             _lastDragOverFileItem = null;
                         }
-                        e.Effects = DragDropEffects.None;
+                        
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstFile = droppedPaths[0];
+                            var sourceDrive = Path.GetPathRoot(firstFile);
+                            var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            
+                            // 检查是否是移动到原位（同一文件夹）
+                            var sourceParent = Path.GetDirectoryName(firstFile);
+                            if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                            {
+                                // 同文件夹移动无意义
+                                e.Effects = DragDropEffects.None;
+                            }
+                            else
+                            {
+                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            }
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
                     }
                 }
                 else
@@ -2172,7 +2221,18 @@ namespace FileSpace.Views
                         var sourceDrive = Path.GetPathRoot(firstFile);
                         var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
                         bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        
+                        // 检查是否是移动到原位
+                        var sourceParent = Path.GetDirectoryName(firstFile);
+                        if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                        else
+                        {
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        }
                     }
                     else
                     {
@@ -2240,12 +2300,37 @@ namespace FileSpace.Views
                     }
                     else
                     {
+                        // Treat as background
                         if (_lastDragOverFileItem != null)
                         {
                             _lastDragOverFileItem.IsDragOver = false;
                             _lastDragOverFileItem = null;
                         }
-                        e.Effects = DragDropEffects.None;
+                        
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstFile = droppedPaths[0];
+                            var sourceDrive = Path.GetPathRoot(firstFile);
+                            var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            
+                            // 检查是否是移动到原位
+                            var sourceParent = Path.GetDirectoryName(firstFile);
+                            if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                            {
+                                e.Effects = DragDropEffects.None;
+                            }
+                            else
+                            {
+                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            }
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
                     }
                 }
                 else
@@ -2266,7 +2351,18 @@ namespace FileSpace.Views
                         var sourceDrive = Path.GetPathRoot(firstFile);
                         var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
                         bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        
+                        // 检查是否是移动到原位
+                        var sourceParent = Path.GetDirectoryName(firstFile);
+                        if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                        else
+                        {
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        }
                     }
                     else
                     {
@@ -2526,8 +2622,9 @@ namespace FileSpace.Views
                     FileItemModel? targetItem = targetItemContainer.Content as FileItemModel;
                     if (targetItem != null && targetItem.IsDirectory)
                     {
-                        // 忽略拖拽回自身
-                        if (ViewModel.SelectedFiles.Contains(targetItem))
+                        // 忽略拖拽回自身 (仅限移动)
+                        if (ViewModel.SelectedFiles.Contains(targetItem) && 
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
                             RemoveDragTooltip();
@@ -2559,12 +2656,37 @@ namespace FileSpace.Views
                     }
                     else
                     {
+                        // 不是文件夹（是文件或空白），视为背景
                         if (_lastDragOverFileItem != null)
                         {
                             _lastDragOverFileItem.IsDragOver = false;
                             _lastDragOverFileItem = null;
                         }
-                        e.Effects = DragDropEffects.None;
+                        
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstFile = droppedPaths[0];
+                            var sourceDrive = Path.GetPathRoot(firstFile);
+                            var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            
+                            // 检查是否是移动到原位
+                            var sourceParent = Path.GetDirectoryName(firstFile);
+                            if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                            {
+                                e.Effects = DragDropEffects.None;
+                            }
+                            else
+                            {
+                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            }
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
                     }
                 }
                 else
@@ -2585,7 +2707,18 @@ namespace FileSpace.Views
                         var sourceDrive = Path.GetPathRoot(firstFile);
                         var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
                         bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        
+                        // 检查是否是移动到原位
+                        var sourceParent = Path.GetDirectoryName(firstFile);
+                        if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                        else
+                        {
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        }
                     }
                     else
                     {
@@ -2653,12 +2786,37 @@ namespace FileSpace.Views
                     }
                     else
                     {
+                        // Treat as background
                         if (_lastDragOverFileItem != null)
                         {
                             _lastDragOverFileItem.IsDragOver = false;
                             _lastDragOverFileItem = null;
                         }
-                        e.Effects = DragDropEffects.None;
+                        
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstFile = droppedPaths[0];
+                            var sourceDrive = Path.GetPathRoot(firstFile);
+                            var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            
+                            // 检查是否是移动到原位
+                            var sourceParent = Path.GetDirectoryName(firstFile);
+                            if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                            {
+                                e.Effects = DragDropEffects.None;
+                            }
+                            else
+                            {
+                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            }
+                        }
+                        else
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
                     }
                 }
                 else
@@ -2679,7 +2837,18 @@ namespace FileSpace.Views
                         var sourceDrive = Path.GetPathRoot(firstFile);
                         var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
                         bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        
+                        // 检查是否是移动到原位
+                        var sourceParent = Path.GetDirectoryName(firstFile);
+                        if (isSameDrive && string.Equals(sourceParent, ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase) &&
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                        {
+                            e.Effects = DragDropEffects.None;
+                        }
+                        else
+                        {
+                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        }
                     }
                     else
                     {
@@ -2791,8 +2960,25 @@ namespace FileSpace.Views
                     DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
                     if (targetItem != null)
                     {
-                        // 忽略拖拽回自身
-                        if (ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        bool isSameDrive = true;
+                        bool isSameParent = false;
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstPath = droppedPaths[0];
+                            var sourceParent = Path.GetDirectoryName(firstPath);
+                            isSameParent = string.Equals(sourceParent, targetItem.FullPath, StringComparison.OrdinalIgnoreCase);
+
+                            var sourceDrive = Path.GetPathRoot(firstPath);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+
+                        // 忽略拖拽回自身或拖拽到当前父目录 (仅限没有组合键时)
+                        bool isDroppingOnSelf = ViewModel.SelectedFiles.Any(f => string.Equals(f.FullPath, targetItem.FullPath, StringComparison.OrdinalIgnoreCase));
+                        
+                        if ((isDroppingOnSelf || isSameParent) && 
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
                             RemoveDragTooltip();
@@ -2809,16 +2995,6 @@ namespace FileSpace.Views
                             _lastDragOverDirectoryItem = targetItem;
                         }
 
-                        // Determine effects based on source/target drive
-                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
-                        bool isSameDrive = true;
-                        if (droppedPaths != null && droppedPaths.Length > 0)
-                        {
-                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
-                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
-                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-                        }
-                        
                         e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         targetName = targetItem.Name;
                     }
@@ -2855,9 +3031,26 @@ namespace FileSpace.Views
                     DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
                     if (targetItem != null)
                     {
-                        // Check if the dropped files include the target directory itself
                         var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
-                        if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
+                        bool isSameDrive = true;
+                        bool isSameParent = false;
+                        
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var firstPath = droppedPaths[0];
+                            var sourceParent = Path.GetDirectoryName(firstPath);
+                            isSameParent = string.Equals(sourceParent, targetItem.FullPath, StringComparison.OrdinalIgnoreCase);
+
+                            var sourceDrive = Path.GetPathRoot(firstPath);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+
+                        // Check if the dropped files include the target directory itself
+                        bool isDroppingOnSelf = droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase));
+
+                        if ((isDroppingOnSelf || isSameParent) && 
+                            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
                             RemoveDragTooltip();
@@ -2877,10 +3070,6 @@ namespace FileSpace.Views
                         // Determine if this is a copy or move based on source/destination drives
                         if (droppedPaths != null && droppedPaths.Length > 0)
                         {
-                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
-                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
-                            bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
-
                             e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         }
                         else
@@ -3101,17 +3290,21 @@ namespace FileSpace.Views
 
         private void Breadcrumb_DragOver(object sender, DragEventArgs e)
         {
-            string[]? sourcePaths = null;
-            if (e.Data.GetDataPresent("FileItemModel"))
+            string[]? sourcePaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+            
+            if (sourcePaths == null || sourcePaths.Length == 0)
             {
-                sourcePaths = ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray();
-            }
-            else if (e.Data.GetDataPresent("QuickAccessItem"))
-            {
-                var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
-                if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                if (e.Data.GetDataPresent("FileItemModel"))
                 {
-                    sourcePaths = new[] { qaItem.Path };
+                    sourcePaths = ViewModel.SelectedFiles.Select(f => f.FullPath).ToArray();
+                }
+                else if (e.Data.GetDataPresent("QuickAccessItem"))
+                {
+                    var qaItem = e.Data.GetData("QuickAccessItem") as QuickAccessItem;
+                    if (qaItem != null && !string.IsNullOrEmpty(qaItem.Path))
+                    {
+                        sourcePaths = new[] { qaItem.Path };
+                    }
                 }
             }
 
@@ -3125,7 +3318,8 @@ namespace FileSpace.Views
 
                 bool isInvalid = false;
                 // 1. 检查是否拖拽到选中的文件夹自身或其子目录
-                if (sourcePaths.Any(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase)))
+                if (sourcePaths.Any(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase)) &&
+                    (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                 {
                     isInvalid = true;
                 }
@@ -3140,9 +3334,14 @@ namespace FileSpace.Views
                     bool isSameDrive = !string.IsNullOrEmpty(sourceDrive) && !string.IsNullOrEmpty(targetDrive) &&
                                        string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
                     
+                    // 同盘符且是父目录时，只有在普通拖拽（即没有修饰键，默认为移动）时才无效
+                    // 如果按下了 Ctrl (复制) 或其他修饰键，则是有效的操作
                     if (isSameDrive && string.Equals(sourceParent, item.Path, StringComparison.OrdinalIgnoreCase))
                     {
-                        isInvalid = true;
+                        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+                        {
+                            isInvalid = true;
+                        }
                     }
                 }
 
@@ -3173,7 +3372,8 @@ namespace FileSpace.Views
                 
                 e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, sameDrive);
 
-                UpdateDragTooltip(button, item.Name, e.GetPosition(button), e.Effects, false);
+                // 使用 RootGrid 计算位置，避免下拉菜单 Popup 导致的坐标偏移问题
+                UpdateDragTooltip(RootGrid, item.Name, e.GetPosition(RootGrid), e.Effects, false);
 
                 e.Handled = true;
             }

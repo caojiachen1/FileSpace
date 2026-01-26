@@ -2167,18 +2167,19 @@ namespace FileSpace.ViewModels
                 };
                 FileOperationProgress = 0;
 
-                // 如果是移动或复制，检查是否在移动到自身或父目录
-                if (operation == FileOperation.Move || operation == FileOperation.Copy)
+                // 如果是移动，始终拒绝拖拽回自身或原父目录
+                var isDroppingOnSelf = sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase));
+                var isDroppingToSourceParent = sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase));
+
+                if (operation == FileOperation.Move && (isDroppingOnSelf || isDroppingToSourceParent))
                 {
-                    if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
-                        sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        // 如果是拖拽到自己所在的目录，且不是快捷方式，忽略操作，不显示错误
-                        if (operation != FileOperation.Link)
-                        {
-                            return;
-                        }
-                    }
+                    return;
+                }
+
+                // 复制操作仅在未明确强制时拒绝重复目录（Ctrl 拖拽可强制）
+                if (operation == FileOperation.Copy && forceOperation == null && (isDroppingOnSelf || isDroppingToSourceParent))
+                {
+                    return;
                 }
 
                 switch (operation)

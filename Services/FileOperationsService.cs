@@ -49,7 +49,9 @@ namespace FileSpace.Services
                     try
                     {
                         var showShellDialog = SettingsService.Instance.Settings.FileOperationSettings.ShowProgressDialog;
-                        if (showShellDialog)
+                        bool isSameDirectoryCopy = operation == FileOperation.Copy &&
+                            sourcePaths.Any(p => string.Equals(Path.GetDirectoryName(p) ?? string.Empty, destinationDirectory, StringComparison.OrdinalIgnoreCase));
+                        if (showShellDialog && !isSameDirectoryCopy)
                         {
                             var list = sourcePaths.ToList();
                             return await Task.Run(() => ShellPerformOperation(list, destinationDirectory, operation));
@@ -340,17 +342,23 @@ namespace FileSpace.Services
             var directory = Path.GetDirectoryName(filePath)!;
             var fileName = Path.GetFileNameWithoutExtension(filePath);
             var extension = Path.GetExtension(filePath);
-            
-            int counter = 1;
-            string newPath;
-            
-            do
+
+            var candidate = Path.Combine(directory, $"{fileName} - 副本{extension}");
+            if (!File.Exists(candidate))
             {
-                newPath = Path.Combine(directory, $"{fileName} ({counter}){extension}");
+                return candidate;
+            }
+
+            int counter = 2;
+            while (true)
+            {
+                var numbered = Path.Combine(directory, $"{fileName} - 副本 ({counter}){extension}");
+                if (!File.Exists(numbered))
+                {
+                    return numbered;
+                }
                 counter++;
-            } while (File.Exists(newPath));
-            
-            return newPath;
+            }
         }
 
         private static string GetUniqueDirectoryName(string dirPath)
@@ -360,17 +368,23 @@ namespace FileSpace.Services
 
             var parentDir = Path.GetDirectoryName(dirPath)!;
             var dirName = Path.GetFileName(dirPath);
-            
-            int counter = 1;
-            string newPath;
-            
-            do
+
+            var candidate = Path.Combine(parentDir, $"{dirName} - 副本");
+            if (!Directory.Exists(candidate))
             {
-                newPath = Path.Combine(parentDir, $"{dirName} ({counter})");
+                return candidate;
+            }
+
+            int counter = 2;
+            while (true)
+            {
+                var numbered = Path.Combine(parentDir, $"{dirName} - 副本 ({counter})");
+                if (!Directory.Exists(numbered))
+                {
+                    return numbered;
+                }
                 counter++;
-            } while (Directory.Exists(newPath));
-            
-            return newPath;
+            }
         }
 
         private void ReportProgress(string sourcePath, string destPath, FileOperation operation, bool isDirectory, 
