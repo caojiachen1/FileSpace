@@ -100,7 +100,8 @@ namespace FileSpace.Models
     {
         Copy,
         Move,
-        Delete
+        Delete,
+        Link
     }
 
     public class FileOperationEventArgs : EventArgs

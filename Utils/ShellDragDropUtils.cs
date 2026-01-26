@@ -227,6 +227,14 @@ namespace FileSpace.Utils
         /// </summary>
         /// <param name="data">The IDataObject from the drop event</param>
         /// <returns>Array of file paths, or null if no file paths were found</returns>
+        public static Models.FileOperation? GetOperationFromEffect(DragDropEffects effect)
+        {
+            if (effect.HasFlag(DragDropEffects.Link)) return Models.FileOperation.Link;
+            if (effect.HasFlag(DragDropEffects.Move)) return Models.FileOperation.Move;
+            if (effect.HasFlag(DragDropEffects.Copy)) return Models.FileOperation.Copy;
+            return null;
+        }
+
         public static string[]? GetDroppedFilePaths(IDataObject data)
         {
             if (data == null) return null;
@@ -311,18 +319,28 @@ namespace FileSpace.Utils
             var effects = e.AllowedEffects;
 
             // Check modifier keys to determine the intended operation
+            // Ctrl + Shift -> Link (Shortcut)
+            if ((effects & DragDropEffects.Link) != 0 && 
+                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                return DragDropEffects.Link;
+            }
+
+            // Ctrl -> Copy
             if ((effects & DragDropEffects.Copy) != 0 && 
                 (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 return DragDropEffects.Copy;
             }
 
+            // Shift -> Move
             if ((effects & DragDropEffects.Move) != 0 && 
                 (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
             {
                 return DragDropEffects.Move;
             }
 
+            // Alt -> Link (Shortcut)
             if ((effects & DragDropEffects.Link) != 0 && 
                 (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
             {

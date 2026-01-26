@@ -28,6 +28,11 @@ namespace FileSpace.Services
             return await PerformFileOperationAsync(sourcePaths, destinationDirectory, FileOperation.Move, cancellationToken);
         }
 
+        public async Task<bool> CreateShortcutsAsync(IEnumerable<string> sourcePaths, string destinationDirectory, CancellationToken cancellationToken = default)
+        {
+            return await PerformFileOperationAsync(sourcePaths, destinationDirectory, FileOperation.Link, cancellationToken);
+        }
+
         private async Task<bool> PerformFileOperationAsync(IEnumerable<string> sourcePaths, string destinationDirectory, FileOperation operation, CancellationToken cancellationToken)
         {
             try
@@ -38,23 +43,33 @@ namespace FileSpace.Services
                 }
 
                 // If user wants native progress/dialogs, delegate to shell to get Explorer-native UI
-                try
+                // Only for Copy and Move, SHFileOperation doesn't handle Link the same way
+                if (operation == FileOperation.Copy || operation == FileOperation.Move)
                 {
-                    var showShellDialog = SettingsService.Instance.Settings.FileOperationSettings.ShowProgressDialog;
-                    if (showShellDialog)
+                    try
                     {
-                        var list = sourcePaths.ToList();
-                        return await Task.Run(() => ShellPerformOperation(list, destinationDirectory, operation));
+                        var showShellDialog = SettingsService.Instance.Settings.FileOperationSettings.ShowProgressDialog;
+                        if (showShellDialog)
+                        {
+                            var list = sourcePaths.ToList();
+                            return await Task.Run(() => ShellPerformOperation(list, destinationDirectory, operation));
+                        }
                     }
-                }
-                catch
-                {
-                    // If settings service unavailable or shell operation fails, fall back to managed implementation
+                    catch
+                    {
+                        // Fallback to managed implementation
+                    }
                 }
 
                 var sourceList = sourcePaths.ToList();
-                var totalFiles = await CountFilesAsync(sourceList);
-                var totalBytes = await CalculateTotalSizeAsync(sourceList);
+                var totalFiles = sourceList.Count; // For shortcuts, we just count the entries
+                
+                if (operation != FileOperation.Link)
+                {
+                    totalFiles = await CountFilesAsync(sourceList);
+                }
+
+                var totalBytes = operation == FileOperation.Link ? totalFiles : await CalculateTotalSizeAsync(sourceList);
                 
                 int completedFiles = 0;
                 long transferredBytes = 0;
@@ -64,9 +79,27 @@ namespace FileSpace.Services
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var fileName = Path.GetFileName(sourcePath);
+                    if (string.IsNullOrEmpty(fileName)) fileName = sourcePath; // Drive root handle
+
                     var destinationPath = Path.Combine(destinationDirectory, fileName);
 
-                    if (File.Exists(sourcePath))
+                    if (operation == FileOperation.Link)
+                    {
+                        var shortcutName = fileName + " - 快捷方式.lnk";
+                        var shortcutPath = Path.Combine(destinationDirectory, shortcutName);
+                        shortcutPath = GetUniqueFileName(shortcutPath);
+
+                        ReportProgress(sourcePath, shortcutPath, operation, false, completedFiles, totalFiles, completedFiles, totalFiles, fileName);
+                        
+                        await Task.Run(() => {
+                            using var link = new Vanara.Windows.Shell.ShellLink(sourcePath);
+                            link.SaveAs(shortcutPath);
+                        });
+                        
+                        completedFiles++;
+                        transferredBytes++;
+                    }
+                    else if (File.Exists(sourcePath))
                     {
                         destinationPath = GetUniqueFileName(destinationPath);
                         
@@ -97,7 +130,6 @@ namespace FileSpace.Services
                         {
                             Directory.Delete(sourcePath, true);
                         }
-
                         completedFiles++;
                     }
                 }

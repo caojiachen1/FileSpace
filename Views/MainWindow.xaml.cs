@@ -45,6 +45,7 @@ namespace FileSpace.Views
         private DirectoryItemModel? _lastDragOverDirectoryItem;
         private QuickAccessItem? _lastDragOverQuickAccessItem;
         private BreadcrumbItem? _lastDragOverBreadcrumbItem;
+        private bool _isRightButtonDrag;
 
         public MainWindow() : this(null) { }
 
@@ -1826,7 +1827,25 @@ namespace FileSpace.Views
                         QuickAccessItem? targetItem = targetItemContainer.Content as QuickAccessItem;
                         if (targetItem != null && !string.IsNullOrEmpty(targetItem.Path))
                         {
-                            ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.Path));
+                            if (_isRightButtonDrag)
+                            {
+                                ShowDragDropContextMenu(droppedPaths, targetItem.Path);
+                            }
+                            else
+                            {
+                                bool isSameDrive = true;
+                                try
+                                {
+                                    var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                                    var targetDrive = Path.GetPathRoot(targetItem.Path);
+                                    isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                                }
+                                catch { }
+
+                                var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                                var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
+                                ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetItem.Path, operation));
+                            }
                         }
                         return;
                     }
@@ -1992,6 +2011,12 @@ namespace FileSpace.Views
             }
         }
 
+        private void FileDataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+            _isRightButtonDrag = false;
+        }
+
         private void FileDataGrid_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (_isSelecting)
@@ -2009,14 +2034,14 @@ namespace FileSpace.Views
                 }
 
                 // 如果在重命名但不在编辑器内，拦截任何拖拽尝试
-                if (e.LeftButton == MouseButtonState.Pressed)
+                if (e.LeftButton == MouseButtonState.Pressed || e.RightButton == MouseButtonState.Pressed)
                 {
                     e.Handled = true;
                 }
                 return;
             }
 
-            if (e.LeftButton == MouseButtonState.Pressed)
+            if (e.LeftButton == MouseButtonState.Pressed || e.RightButton == MouseButtonState.Pressed)
             {
                 Point mousePos = e.GetPosition(null);
                 Vector diff = _dragStartPoint - mousePos;
@@ -2024,6 +2049,7 @@ namespace FileSpace.Views
                 if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                     Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
+                    _isRightButtonDrag = e.RightButton == MouseButtonState.Pressed;
                     _expectingPossibleMultiDrag = false;
                     System.Windows.Controls.DataGrid dataGrid = (System.Windows.Controls.DataGrid)sender;
                     var row = FindAncestor<System.Windows.Controls.DataGridRow>(e.OriginalSource as DependencyObject);
@@ -2066,7 +2092,8 @@ namespace FileSpace.Views
                                 }
                             }
 
-                            DragDropEffects result = DragDrop.DoDragDrop(row, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+                            DragDropEffects allowedEffects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
+                            DragDropEffects result = DragDrop.DoDragDrop(row, dragData, allowedEffects);
                         }
                     }
                 }
@@ -2301,8 +2328,50 @@ namespace FileSpace.Views
                 }
 
                 // 执行移动/复制逻辑
-                ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                if (_isRightButtonDrag)
+                {
+                    ShowDragDropContextMenu(droppedPaths, targetPath);
+                }
+                else
+                {
+                    bool isSameDrive = true;
+                    try
+                    {
+                        var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                        var targetDrive = Path.GetPathRoot(targetPath);
+                        isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch { }
+
+                    var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                    var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
+                    ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetPath, operation));
+                }
             }
+        }
+
+        private void ShowDragDropContextMenu(IEnumerable<string> sourcePaths, string targetPath)
+        {
+            var menu = new System.Windows.Controls.ContextMenu();
+
+            var copyItem = new System.Windows.Controls.MenuItem { Header = "复制到此处", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Copy24) };
+            copyItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Copy));
+
+            var moveItem = new System.Windows.Controls.MenuItem { Header = "移动到此处", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.ArrowRight24) };
+            moveItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Move));
+
+            var linkItem = new System.Windows.Controls.MenuItem { Header = "在当前位置创建快捷方式", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Link24) };
+            linkItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Link));
+
+            menu.Items.Add(copyItem);
+            menu.Items.Add(moveItem);
+            menu.Items.Add(linkItem);
+            menu.Items.Add(new System.Windows.Controls.Separator());
+
+            var cancelItem = new System.Windows.Controls.MenuItem { Header = "取消" };
+            menu.Items.Add(cancelItem);
+
+            menu.IsOpen = true;
         }
 
         private void FileDataGrid_GiveFeedback(object sender, GiveFeedbackEventArgs e)
@@ -2345,6 +2414,12 @@ namespace FileSpace.Views
             }
         }
 
+        private void FileIconView_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+            _isRightButtonDrag = false;
+        }
+
         private void FileIconView_PreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (_isSelecting)
@@ -2362,14 +2437,14 @@ namespace FileSpace.Views
                 }
 
                 // 如果在重命名但不在编辑器内，拦截任何拖拽尝试
-                if (e.LeftButton == MouseButtonState.Pressed)
+                if (e.LeftButton == MouseButtonState.Pressed || e.RightButton == MouseButtonState.Pressed)
                 {
                     e.Handled = true;
                 }
                 return;
             }
 
-            if (e.LeftButton == MouseButtonState.Pressed)
+            if (e.LeftButton == MouseButtonState.Pressed || e.RightButton == MouseButtonState.Pressed)
             {
                 Point mousePos = e.GetPosition(null);
                 Vector diff = _dragStartPoint - mousePos;
@@ -2377,6 +2452,7 @@ namespace FileSpace.Views
                 if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                     Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
                 {
+                    _isRightButtonDrag = e.RightButton == MouseButtonState.Pressed;
                     _expectingPossibleMultiDrag = false;
                     System.Windows.Controls.ListView listView = (System.Windows.Controls.ListView)sender;
                     var item = FindAncestor<System.Windows.Controls.ListViewItem>(e.OriginalSource as DependencyObject);
@@ -2419,7 +2495,8 @@ namespace FileSpace.Views
                                 }
                             }
 
-                            DragDropEffects result = DragDrop.DoDragDrop(item, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+                            DragDropEffects allowedEffects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
+                            DragDropEffects result = DragDrop.DoDragDrop(item, dragData, allowedEffects);
                         }
                     }
                 }
@@ -2651,7 +2728,26 @@ namespace FileSpace.Views
                     targetPath = ViewModel.CurrentPath;
                 }
 
-                ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));
+                // 执行移动/复制逻辑
+                if (_isRightButtonDrag)
+                {
+                    ShowDragDropContextMenu(droppedPaths, targetPath);
+                }
+                else
+                {
+                    bool isSameDrive = true;
+                    try
+                    {
+                        var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                        var targetDrive = Path.GetPathRoot(targetPath);
+                        isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch { }
+
+                    var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                    var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
+                    ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetPath, operation));
+                }
             }
         }
 
@@ -2822,7 +2918,25 @@ namespace FileSpace.Views
                     DirectoryItemModel? targetItem = targetItemContainer.DataContext as DirectoryItemModel;
                     if (targetItem != null && !string.IsNullOrEmpty(targetItem.FullPath))
                     {
-                        ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetItem.FullPath));
+                        if (_isRightButtonDrag)
+                        {
+                            ShowDragDropContextMenu(droppedPaths, targetItem.FullPath);
+                        }
+                        else
+                        {
+                            bool isSameDrive = true;
+                            try
+                            {
+                                var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                                var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                                isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                            }
+                            catch { }
+
+                            var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                            var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
+                            ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetItem.FullPath, operation));
+                        }
                     }
                 }
             }
@@ -3078,7 +3192,25 @@ namespace FileSpace.Views
                 var item = button?.DataContext as BreadcrumbItem;
                 if (item != null && !string.IsNullOrEmpty(item.Path))
                 {
-                    ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(sourcePaths, item.Path));
+                    if (_isRightButtonDrag)
+                    {
+                        ShowDragDropContextMenu(sourcePaths, item.Path);
+                    }
+                    else
+                    {
+                        bool isSameDrive = true;
+                        try
+                        {
+                            var sourceDrive = Path.GetPathRoot(sourcePaths[0]);
+                            var targetDrive = Path.GetPathRoot(item.Path);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+                        catch { }
+
+                        var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                        var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
+                        ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, item.Path, operation));
+                    }
                 }
             }
         }

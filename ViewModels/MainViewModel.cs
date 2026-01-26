@@ -2125,16 +2125,17 @@ namespace FileSpace.ViewModels
             if (string.IsNullOrEmpty(targetPath)) return;
             if (SelectedFiles.Count == 0) return;
 
-            await ProcessPathsDropToPathAsync(new Tuple<IEnumerable<string>, string>(
+            await ProcessPathsDropToPathAsync(new Tuple<IEnumerable<string>, string, FileOperation?>(
                 SelectedFiles.Select(f => f.FullPath).ToList(), 
-                targetPath));
+                targetPath, null));
         }
 
         [RelayCommand]
-        private async Task ProcessPathsDropToPathAsync(Tuple<IEnumerable<string>, string> parameter)
+        private async Task ProcessPathsDropToPathAsync(Tuple<IEnumerable<string>, string, FileOperation?> parameter)
         {
             var sourcePaths = parameter.Item1.ToList();
             var targetPath = parameter.Item2;
+            var forceOperation = parameter.Item3;
 
             if (sourcePaths.Count == 0 || string.IsNullOrEmpty(targetPath)) return;
 
@@ -2142,40 +2143,70 @@ namespace FileSpace.ViewModels
             var targetDrive = Path.GetPathRoot(targetPath);
 
             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+            
+            // Determine operation: Use forced operation if provided, otherwise default to same-drive logic
+            FileOperation operation;
+            if (forceOperation.HasValue)
+            {
+                operation = forceOperation.Value;
+            }
+            else
+            {
+                operation = isSameDrive ? FileOperation.Move : FileOperation.Copy;
+            }
 
             try
             {
                 IsFileOperationInProgress = true;
-                FileOperationStatus = isSameDrive ? "正在移动文件..." : "正在复制文件...";
+                FileOperationStatus = operation switch
+                {
+                    FileOperation.Move => "正在移动文件...",
+                    FileOperation.Copy => "正在复制文件...",
+                    FileOperation.Link => "正在创建快捷方式...",
+                    _ => "正在处理文件..."
+                };
                 FileOperationProgress = 0;
 
-                if (isSameDrive)
+                // 如果是移动或复制，检查是否在移动到自身或父目录
+                if (operation == FileOperation.Move || operation == FileOperation.Copy)
                 {
-                    // 检查是否在移动到自身或父目录
                     if (sourcePaths.Any(f => string.Equals(f, targetPath, StringComparison.OrdinalIgnoreCase)) ||
                         sourcePaths.Any(f => string.Equals(Path.GetDirectoryName(f), targetPath, StringComparison.OrdinalIgnoreCase)))
                     {
-                        // 如果是拖拽到自己所在的目录，忽略操作，不显示错误
-                        return;
+                        // 如果是拖拽到自己所在的目录，且不是快捷方式，忽略操作，不显示错误
+                        if (operation != FileOperation.Link)
+                        {
+                            return;
+                        }
                     }
-                    await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
                 }
-                else
+
+                switch (operation)
                 {
-                    await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
+                    case FileOperation.Move:
+                        await FileOperationsService.Instance.MoveFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
+                        break;
+                    case FileOperation.Copy:
+                        await FileOperationsService.Instance.CopyFilesAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
+                        break;
+                    case FileOperation.Link:
+                        await FileOperationsService.Instance.CreateShortcutsAsync(sourcePaths, targetPath, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
+                        break;
                 }
             }
             catch (OperationCanceledException)
             {
-                StatusText = isSameDrive ? "移动操作已取消" : "复制操作已取消";
+                StatusText = "操作已取消";
             }
             catch (Exception ex)
             {
-                StatusText = (isSameDrive ? "移动失败: " : "复制失败: ") + ex.Message;
+                StatusText = "操作失败: " + ex.Message;
             }
             finally
             {
                 IsFileOperationInProgress = false;
+                FileOperationStatus = string.Empty;
+                FileOperationProgress = 0;
             }
         }
 
