@@ -2124,15 +2124,22 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
-                    // 拖拽到空白区域（当前目录），同盘移动是无效的
-                    e.Effects = DragDropEffects.Move;
-                    if (ViewModel.SelectedFiles.Count > 0)
+                    
+                    // 拖拽到空白区域（当前目录）
+                    var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                    if (droppedPaths != null && droppedPaths.Length > 0)
                     {
-                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
-                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            e.Effects = DragDropEffects.None;
-                        }
+                        var firstFile = droppedPaths[0];
+                        
+                        // 跨目录或跨标签拖拽，根据磁盘决定效果
+                        var sourceDrive = Path.GetPathRoot(firstFile);
+                        var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                        bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.None;
                     }
                 }
 
@@ -2211,15 +2218,22 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
-                    // External files dragged to empty area (current directory)
-                    e.Effects = DragDropEffects.Copy; // External files are always copied
-                    if (ViewModel.SelectedFiles.Count > 0)
+                    
+                    // 外部文件拖拽到空白区域
+                    var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                    if (droppedPaths != null && droppedPaths.Length > 0)
                     {
-                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
-                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            e.Effects = DragDropEffects.Copy; // Still allow copying
-                        }
+                        var firstFile = droppedPaths[0];
+
+                        // 根据目标路径决定效果
+                        var sourceDrive = Path.GetPathRoot(firstFile);
+                        var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                        bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.None;
                     }
                 }
 
@@ -2284,16 +2298,6 @@ namespace FileSpace.Views
                 if (string.IsNullOrEmpty(targetPath))
                 {
                     targetPath = ViewModel.CurrentPath;
-                    
-                    // 如果源路径就在当前目录，且是内部拖拽，则忽略
-                    if (e.Data.GetDataPresent("FileItemModel"))
-                    {
-                        var firstSourceDir = Path.GetDirectoryName(droppedPaths[0]);
-                        if (string.Equals(firstSourceDir, targetPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return; 
-                        }
-                    }
                 }
 
                 // 执行移动/复制逻辑
@@ -2473,15 +2477,22 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
-                    // 拖拽到空白区域（当前目录），同盘移动是无效的
-                    e.Effects = DragDropEffects.Move;
-                    if (ViewModel.SelectedFiles.Count > 0)
+
+                    // 拖拽到空白区域（当前目录）
+                    var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                    if (droppedPaths != null && droppedPaths.Length > 0)
                     {
-                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
-                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            e.Effects = DragDropEffects.None;
-                        }
+                        var firstFile = droppedPaths[0];
+
+                        // 跨目录或跨窗口拖拽，根据磁盘决定效果
+                        var sourceDrive = Path.GetPathRoot(firstFile);
+                        var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                        bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.None;
                     }
                 }
 
@@ -2560,15 +2571,22 @@ namespace FileSpace.Views
                         _lastDragOverFileItem.IsDragOver = false;
                         _lastDragOverFileItem = null;
                     }
-                    // External files dragged to empty area (current directory)
-                    e.Effects = DragDropEffects.Copy; // External files are always copied
-                    if (ViewModel.SelectedFiles.Count > 0)
+
+                    // 外部文件拖拽到空白区域
+                    var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                    if (droppedPaths != null && droppedPaths.Length > 0)
                     {
-                        var firstFile = ViewModel.SelectedFiles[0].FullPath;
-                        if (string.Equals(Path.GetDirectoryName(firstFile), ViewModel.CurrentPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            e.Effects = DragDropEffects.Copy; // Still allow copying
-                        }
+                        var firstFile = droppedPaths[0];
+                        
+                        // 根据目标路径决定效果
+                        var sourceDrive = Path.GetPathRoot(firstFile);
+                        var targetDrive = Path.GetPathRoot(ViewModel.CurrentPath);
+                        bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.None;
                     }
                 }
 
@@ -2631,15 +2649,6 @@ namespace FileSpace.Views
                 if (string.IsNullOrEmpty(targetPath))
                 {
                     targetPath = ViewModel.CurrentPath;
-                    
-                    if (e.Data.GetDataPresent("FileItemModel"))
-                    {
-                        var firstSourceDir = Path.GetDirectoryName(droppedPaths[0]);
-                        if (string.Equals(firstSourceDir, targetPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return;
-                        }
-                    }
                 }
 
                 ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, targetPath));

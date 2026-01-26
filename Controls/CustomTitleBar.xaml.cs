@@ -462,12 +462,8 @@ namespace FileSpace.Controls
         {
             if (sender is Border border && border.DataContext is TabItemModel tab)
             {
-                // 检查是否是文件拖拽（或者内部的 FileItemModel）
-                bool isFileDrag = e.Data.GetDataPresent("FileItemModel") || 
-                                 e.Data.GetDataPresent("FileItemModels") || 
-                                 e.Data.GetDataPresent(DataFormats.FileDrop);
-
-                if (isFileDrag)
+                // 使用 ShellDragDropUtils 检查是否包含文件数据
+                if (Utils.ShellDragDropUtils.ContainsFileData(e.Data))
                 {
                     // 如果悬停在非当前选中的标签上，开始计时器
                     if (tab != SelectedTab)
@@ -508,28 +504,15 @@ namespace FileSpace.Controls
 
             if (sender is Border border && border.DataContext is TabItemModel tab)
             {
-                // 如果用户直接把文件放置在标签上，执行移动/复制到该标签对应目录的操作
-                if (e.Data.GetDataPresent("FileItemModels") || e.Data.GetDataPresent(DataFormats.FileDrop))
+                // 使用 ShellDragDropUtils 获取拖拽的文件路径
+                var droppedPaths = Utils.ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                if (droppedPaths != null && droppedPaths.Length > 0 && !string.IsNullOrEmpty(tab.Path))
                 {
                     var window = Window.GetWindow(this) as Views.MainWindow;
                     if (window?.ViewModel != null)
                     {
-                        IEnumerable<string>? paths = null;
-                        if (e.Data.GetDataPresent("FileItemModels"))
-                        {
-                            var items = e.Data.GetData("FileItemModels") as IEnumerable<FileItemModel>;
-                            paths = items?.Select(i => i.FullPath);
-                        }
-                        else
-                        {
-                            paths = e.Data.GetData(DataFormats.FileDrop) as string[];
-                        }
-
-                        if (paths != null && !string.IsNullOrEmpty(tab.Path))
-                        {
-                            window.ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(paths, tab.Path));
-                            e.Handled = true;
-                        }
+                        window.ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string>(droppedPaths, tab.Path));
+                        e.Handled = true;
                     }
                 }
             }
