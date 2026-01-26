@@ -217,7 +217,7 @@ namespace FileSpace.Controls
             // 初始化标签切换定时器
             _tabSwitchTimer = new System.Windows.Threading.DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(500) // 500ms 悬停后切换
+                Interval = TimeSpan.FromMilliseconds(50) // 50ms 悬停后切换
             };
             _tabSwitchTimer.Tick += OnTabSwitchTimerTick;
             

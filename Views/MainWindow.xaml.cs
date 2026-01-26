@@ -1686,7 +1686,7 @@ namespace FileSpace.Views
                 }
 
                 e.Effects = DragDropEffects.Move;
-                UpdateDragTooltip(listView, tooltipText, e.GetPosition(listView), isFullText);
+                UpdateDragTooltip(listView, tooltipText, e.GetPosition(listView), e.Effects, isFullText);
                 e.Handled = true;
                 return;
             }
@@ -2131,7 +2131,17 @@ namespace FileSpace.Views
                             _lastDragOverFileItem = targetItem;
                         }
 
-                        e.Effects = DragDropEffects.Move;
+                        // Determine effects based on source/target drive
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        bool isSameDrive = true;
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+                        
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         targetName = targetItem.Name;
                     }
                     else
@@ -2172,7 +2182,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
+                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid), e.Effects);
                 }
                 else
                 {
@@ -2266,7 +2276,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid));
+                    UpdateDragTooltip(dataGrid, targetName, e.GetPosition(dataGrid), e.Effects);
                 }
                 else
                 {
@@ -2534,7 +2544,17 @@ namespace FileSpace.Views
                             _lastDragOverFileItem = targetItem;
                         }
 
-                        e.Effects = DragDropEffects.Move;
+                        // Determine effects based on source/target drive
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        bool isSameDrive = true;
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+                        
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         targetName = targetItem.Name;
                     }
                     else
@@ -2575,7 +2595,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView), e.Effects);
                 }
                 else
                 {
@@ -2669,7 +2689,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView));
+                    UpdateDragTooltip(listView, targetName, e.GetPosition(listView), e.Effects);
                 }
                 else
                 {
@@ -2789,7 +2809,17 @@ namespace FileSpace.Views
                             _lastDragOverDirectoryItem = targetItem;
                         }
 
-                        e.Effects = DragDropEffects.Move;
+                        // Determine effects based on source/target drive
+                        var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
+                        bool isSameDrive = true;
+                        if (droppedPaths != null && droppedPaths.Length > 0)
+                        {
+                            var sourceDrive = Path.GetPathRoot(droppedPaths[0]);
+                            var targetDrive = Path.GetPathRoot(targetItem.FullPath);
+                            isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
+                        }
+                        
+                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
                         targetName = targetItem.Name;
                     }
                 }
@@ -2805,7 +2835,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView), e.Effects);
                 }
                 else
                 {
@@ -2873,7 +2903,7 @@ namespace FileSpace.Views
 
                 if (e.Effects != DragDropEffects.None)
                 {
-                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView));
+                    UpdateDragTooltip(treeView, targetName, e.GetPosition(treeView), e.Effects);
                 }
                 else
                 {
@@ -2996,7 +3026,7 @@ namespace FileSpace.Views
             }
         }
 
-        private void UpdateDragTooltip(UIElement container, string folderName, Point position, bool isFullText = false)
+        private void UpdateDragTooltip(UIElement container, string folderName, Point position, DragDropEffects effects = DragDropEffects.Move, bool isFullText = false)
         {
             var layer = AdornerLayer.GetAdornerLayer(RootGrid);
             if (layer == null) return;
@@ -3011,7 +3041,7 @@ namespace FileSpace.Views
                 layer.Add(_dragTooltipAdorner);
             }
 
-            _dragTooltipAdorner.Update(folderName, rootPosition, isFullText);
+            _dragTooltipAdorner.Update(folderName, rootPosition, effects, isFullText);
         }
 
         private string GetDragTargetName()
@@ -3133,17 +3163,17 @@ namespace FileSpace.Views
                     _lastDragOverBreadcrumbItem = item;
                 }
 
-                // 判定是移动还是复制：同盘移动，异盘复制
+                // 判定效果：同盘移动，异盘复制，支持组合键
                 var firstSourcePath = sourcePaths[0];
                 var sDrive = string.IsNullOrEmpty(firstSourcePath) ? "" : Path.GetPathRoot(firstSourcePath);
                 var tDrive = Path.GetPathRoot(item.Path);
 
                 bool sameDrive = !string.IsNullOrEmpty(sDrive) && !string.IsNullOrEmpty(tDrive) &&
                                    string.Equals(sDrive, tDrive, StringComparison.OrdinalIgnoreCase);
-                e.Effects = sameDrive ? DragDropEffects.Move : DragDropEffects.Copy;
+                
+                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, sameDrive);
 
-                string action = sameDrive ? "移动到" : "复制到";
-                UpdateDragTooltip(button, $"{action} {item.Name}", e.GetPosition(button), true);
+                UpdateDragTooltip(button, item.Name, e.GetPosition(button), e.Effects, false);
 
                 e.Handled = true;
             }

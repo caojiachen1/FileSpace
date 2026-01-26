@@ -23,9 +23,31 @@ namespace FileSpace.Utils
             _typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
         }
 
-        public void Update(string text, Point cursorLocation, bool isFullText = false)
+        public void Update(string text, Point cursorLocation, DragDropEffects effects = DragDropEffects.Move, bool isFullText = false)
         {
-            _text = isFullText ? text : $"移动到 {text}";
+            if (isFullText)
+            {
+                _text = text;
+            }
+            else
+            {
+                if (effects.HasFlag(DragDropEffects.Move))
+                {
+                    _text = $"移动到 {text}";
+                }
+                else if (effects.HasFlag(DragDropEffects.Copy))
+                {
+                    _text = $"复制到 {text}";
+                }
+                else if (effects.HasFlag(DragDropEffects.Link))
+                {
+                    _text = $"在 {text} 中创建快捷方式";
+                }
+                else
+                {
+                    _text = $"移动到 {text}";
+                }
+            }
             _cursorLocation = cursorLocation;
             InvalidateVisual();
         }

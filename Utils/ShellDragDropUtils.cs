@@ -74,8 +74,8 @@ namespace FileSpace.Utils
                 }
 
                 // Add additional formats for better shell compatibility
-                var effectBytes = BitConverter.GetBytes((int)DragDropEffects.Copy | (int)DragDropEffects.Move | (int)DragDropEffects.Link);
-                dataObject.SetData("Preferred DropEffect", new MemoryStream(effectBytes));
+                // We don't set a "Preferred DropEffect" here to let the destination 
+                // decide based on its own logic (e.g. same-drive move, diff-drive copy).
 
                 // Add additional standard formats that Windows Shell expects
                 var singlePath = filePathsList.FirstOrDefault();
@@ -421,8 +421,12 @@ namespace FileSpace.Utils
             if (preferred.HasValue)
             {
                 var p = preferred.Value;
-                if ((e.AllowedEffects & p) != 0)
-                    return p;
+                // If the preferred effect is a single bit, use it if allowed
+                if (p == DragDropEffects.Copy || p == DragDropEffects.Move || p == DragDropEffects.Link)
+                {
+                    if ((e.AllowedEffects & p) != 0)
+                        return p;
+                }
             }
 
             // Fallback to default determination (same-drive -> move, else copy)
