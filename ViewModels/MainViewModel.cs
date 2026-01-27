@@ -172,6 +172,8 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private bool _isSortModeMenuOpen;
 
+        private bool _isViewModeLoading;
+
         [ObservableProperty]
         private bool _isViewModeMenuOpen;
 
@@ -277,6 +279,13 @@ namespace FileSpace.ViewModels
             OnPropertyChanged(nameof(IconItemWidth));
             OnPropertyChanged(nameof(IconItemHeight));
             OnPropertyChanged(nameof(IconColumns));
+
+            // 保存用户手动修改或自动加载的视图模式到 SQLite
+            bool isSpecialView = CurrentPath == ThisPCPath || CurrentPath == LinuxPath;
+            if (!_isViewModeLoading && !isSpecialView && !string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath))
+            {
+                FolderViewService.Instance.SetViewMode(CurrentPath, value);
+            }
 
             _ = LoadThumbnailsAsync();
         }
@@ -807,18 +816,30 @@ namespace FileSpace.ViewModels
         {
             EvaluatePendingFolderFocus(value);
 
-            // 加载该文件夹的排序设置
-            var savedSort = _settingsService.GetFolderSortSettings(value);
-            _sortMode = savedSort.SortMode;
-            _sortAscending = savedSort.SortAscending;
-            OnPropertyChanged(nameof(SortMode));
-            OnPropertyChanged(nameof(SortAscending));
-
-            // 获取该文件夹在资源管理器中的视图模式并应用（严格：仅接受 Shell 返回的值，获取不到则报错并且不回退）
-            if (!IsThisPCView && !IsLinuxView && !string.IsNullOrEmpty(value) && Directory.Exists(value))
+            // 从 SQLite 获取该文件夹的视图模式和排序设置
+            bool isSpecialView = value == ThisPCPath || value == LinuxPath;
+            if (!isSpecialView && !string.IsNullOrEmpty(value) && Directory.Exists(value))
             {
-                var mode = ShellViewHelper.GetFolderViewMode(value);
-                ViewMode = mode;
+                var folderSettings = FolderViewService.Instance.GetFolderSettings(value);
+                
+                // 视图模式
+                _isViewModeLoading = true;
+                ViewMode = folderSettings.ViewMode ?? "详细信息";
+                _isViewModeLoading = false;
+
+                // 排序设置
+                _sortMode = folderSettings.SortMode ?? "Name";
+                _sortAscending = folderSettings.SortAscending ?? true;
+                OnPropertyChanged(nameof(SortMode));
+                OnPropertyChanged(nameof(SortAscending));
+            }
+            else
+            {
+                // 默认设置或特殊视图
+                _sortMode = "Name";
+                _sortAscending = true;
+                OnPropertyChanged(nameof(SortMode));
+                OnPropertyChanged(nameof(SortAscending));
             }
 
             LoadFiles();
@@ -2472,7 +2493,7 @@ namespace FileSpace.ViewModels
                 // 保存该文件夹的排序设置
                 if (!IsThisPCView && !IsLinuxView)
                 {
-                    _settingsService.SaveFolderSortSettings(CurrentPath, SortMode, SortAscending);
+                    FolderViewService.Instance.SetSortSettings(CurrentPath, SortMode, SortAscending);
                 }
             }
             // TODO: Implement actual view mode changes in UI
@@ -2509,7 +2530,7 @@ namespace FileSpace.ViewModels
             // 保存该文件夹的排序设置
             if (!IsThisPCView && !IsLinuxView)
             {
-                _settingsService.SaveFolderSortSettings(CurrentPath, SortMode, SortAscending);
+                FolderViewService.Instance.SetSortSettings(CurrentPath, SortMode, SortAscending);
             }
             
             var direction = SortAscending ? "升序" : "降序";

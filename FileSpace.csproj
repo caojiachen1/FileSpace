@@ -24,6 +24,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Magika.CSharp" Version="0.5.1" />
     <PackageReference Include="MetadataExtractor" Version="2.9.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     <PackageReference Include="WPF-UI" Version="4.2.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />

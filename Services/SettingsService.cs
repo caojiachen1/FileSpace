@@ -204,45 +204,8 @@ namespace FileSpace.Services
             return _settings.PinnedQuickAccessPaths.Contains(path);
         }
 
-        /// <summary>        /// 获取存储的文件夹排序设置
-        /// </summary>
-        public FolderSortSettings GetFolderSortSettings(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return new FolderSortSettings();
-            
-            if (_settings.FolderSortHistory.TryGetValue(path, out var settings))
-            {
-                return settings;
-            }
-            
-            return new FolderSortSettings();
-        }
-
         /// <summary>
-        /// 保存文件夹排序设置
-        /// </summary>
-        public void SaveFolderSortSettings(string path, string mode, bool ascending)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return;
-            
-            _settings.FolderSortHistory[path] = new FolderSortSettings
-            {
-                SortMode = mode,
-                SortAscending = ascending
-            };
-            
-            // 限制存储数量，避免设置文件无限增长
-            if (_settings.FolderSortHistory.Count > 1000)
-            {
-                // 简单地移除第一个项
-                var firstKey = _settings.FolderSortHistory.Keys.First();
-                _settings.FolderSortHistory.Remove(firstKey);
-            }
-            
-            SaveSettings();
-        }
-
-        /// <summary>        /// 验证设置的有效性
+        /// 验证设置的有效性
         /// </summary>
         public bool ValidateSettings()
         {
@@ -366,11 +329,6 @@ namespace FileSpace.Services
         /// 快速访问路径列表（保存用户排序）
         /// </summary>
         public List<string> QuickAccessPaths { get; set; } = new();
-
-        /// <summary>
-        /// 文件夹排序历史
-        /// </summary>
-        public Dictionary<string, FolderSortSettings> FolderSortHistory { get; set; } = new();
 
         /// <summary>
         /// 快捷键设置
@@ -568,14 +526,5 @@ namespace FileSpace.Services
         /// 默认复制缓冲区大小 (KB)
         /// </summary>
         public int CopyBufferSize { get; set; } = 1024;
-    }
-
-    /// <summary>
-    /// 文件夹排序设置
-    /// </summary>
-    public class FolderSortSettings
-    {
-        public string SortMode { get; set; } = "Name";
-        public bool SortAscending { get; set; } = true;
     }
 }
