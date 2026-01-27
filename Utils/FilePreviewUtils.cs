@@ -118,11 +118,11 @@ namespace FileSpace.Utils
                 if (heightValue != null) result["Height"] = heightValue.ToString() ?? "";
 
                 // 数据速率 (System.Video.DataRate in bps)
-                var dataRateValue = shellItem.Properties["System.Video.DataRate"];
+                var dataRateValue = shellItem.Properties["System.Video.EncodingBitrate"];
                 if (dataRateValue != null)
                 {
                     double kbps = Convert.ToDouble(dataRateValue) / 1000.0;
-                    if (kbps > 0) result["DataRate"] = kbps.ToString("F0") + " kbps";
+                    if (kbps > 0) result["DataBitrate"] = kbps.ToString("F0") + " kbps";
                 }
 
                 // 总比特率 (System.Video.TotalBitrate in bps)

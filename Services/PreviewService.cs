@@ -724,13 +724,11 @@ namespace FileSpace.Services
                 case FilePreviewType.Video:
                     try
                     {
-                        var mediaInfo = new Dictionary<string, string>();
                         var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
                         var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
                         
                         // 时长
-                        var duration = mediaInfo.ContainsKey("Duration") ? mediaInfo["Duration"] : 
-                                      (shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null);
+                        var duration = shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null;
                         if (string.IsNullOrEmpty(duration))
                         {
                             duration = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeMovieHeaderDirectory.TagDuration)
@@ -740,24 +738,22 @@ namespace FileSpace.Services
                             panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("时长", duration));
 
                         // 格式 (容器)
-                        if (mediaInfo.ContainsKey("Format"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("容器格式", mediaInfo["Format"]));
+                        if (shellInfo.ContainsKey("Format"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("容器格式", shellInfo["Format"]));
 
                         // 视频轨道详情
-                        if (mediaInfo.ContainsKey("VideoFormat"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频编码", mediaInfo["VideoFormat"]));
+                        if (shellInfo.ContainsKey("VideoFormat"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频编码", shellInfo["VideoFormat"]));
 
                         // 帧宽度/高度
-                        var width = mediaInfo.ContainsKey("Width") ? mediaInfo["Width"] : 
-                                   (shellInfo.ContainsKey("Width") ? shellInfo["Width"] : null);
+                        var width = shellInfo.ContainsKey("Width") ? shellInfo["Width"] : null;
                         if (string.IsNullOrEmpty(width))
                         {
                             width = directories.OfType<QuickTimeTrackHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeTrackHeaderDirectory.TagWidth)
                                  ?? directories.OfType<AviDirectory>().FirstOrDefault()?.GetDescription(AviDirectory.TagWidth);
                         }
                         
-                        var height = mediaInfo.ContainsKey("Height") ? mediaInfo["Height"] : 
-                                    (shellInfo.ContainsKey("Height") ? shellInfo["Height"] : null);
+                        var height = shellInfo.ContainsKey("Height") ? shellInfo["Height"] : null;
                         if (string.IsNullOrEmpty(height))
                         {
                             height = directories.OfType<QuickTimeTrackHeaderDirectory>().FirstOrDefault()?.GetDescription(QuickTimeTrackHeaderDirectory.TagHeight)
@@ -768,12 +764,11 @@ namespace FileSpace.Services
                         if (!string.IsNullOrEmpty(height)) panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("帧高度", height + " 像素"));
 
                         // 宽高比
-                        if (mediaInfo.ContainsKey("AspectRatio"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("宽高比", mediaInfo["AspectRatio"]));
+                        if (shellInfo.ContainsKey("AspectRatio"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("宽高比", shellInfo["AspectRatio"]));
 
                         // 帧速率
-                        var frameRate = mediaInfo.ContainsKey("FrameRate") ? mediaInfo["FrameRate"] : 
-                                       (shellInfo.ContainsKey("FrameRate") ? shellInfo["FrameRate"] : null);
+                        var frameRate = shellInfo.ContainsKey("FrameRate") ? shellInfo["FrameRate"] : null;
                         if (string.IsNullOrEmpty(frameRate))
                         {
                             frameRate = directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name.Contains("Frame Rate") || t.Name.Contains("FPS"))?.Description
@@ -783,25 +778,15 @@ namespace FileSpace.Services
                             panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("帧速率", frameRate + (frameRate.Contains("帧/秒") ? "" : " 帧/秒")));
 
                         // 比特率
-                        if (mediaInfo.ContainsKey("VideoBitrate"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频比特率", mediaInfo["VideoBitrate"]));
+                        if (shellInfo.ContainsKey("DataBitrate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("视频比特率", shellInfo["DataBitrate"]));
                         
-                        if (mediaInfo.ContainsKey("OverallBitrate"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总比特率", mediaInfo["OverallBitrate"]));
-                        else
-                        {
-                            var totalBitrate = shellInfo.ContainsKey("TotalBitrate") ? shellInfo["TotalBitrate"] : null;
-                            if (string.IsNullOrEmpty(totalBitrate))
-                            {
-                                totalBitrate = directories.SelectMany(d => d.Tags).FirstOrDefault(t => t.Name == "Bit Rate")?.Description;
-                            }
-                            if (!string.IsNullOrEmpty(totalBitrate))
-                                panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总比特率", totalBitrate));
-                        }
+                        if (shellInfo.ContainsKey("TotalBitrate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总比特率", shellInfo["TotalBitrate"]));
 
                         // 音频简要信息 (在播放视频时很有用)
-                        if (mediaInfo.ContainsKey("AudioFormat"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("音频编码", mediaInfo["AudioFormat"]));
+                        if (shellInfo.ContainsKey("AudioFormat"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("音频编码", shellInfo["AudioFormat"]));
                     }
                     catch { }
                     break;
@@ -809,14 +794,11 @@ namespace FileSpace.Services
                 case FilePreviewType.Audio:
                     try
                     {
-                        // 已移除 MediaInfo 库，改为使用空字典以触发后续的 shell/元数据回退逻辑
-                        var mediaInfo = new Dictionary<string, string>();
                         var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
                         var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
 
                         // 时长
-                        var duration = mediaInfo.ContainsKey("Duration") ? mediaInfo["Duration"] : 
-                                      (shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null);
+                        var duration = shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null;
                         if (string.IsNullOrEmpty(duration))
                         {
                             duration = directories.OfType<Mp3Directory>().FirstOrDefault()?.GetDescription(Mp3Directory.TagId)
@@ -828,11 +810,11 @@ namespace FileSpace.Services
                             panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("时长", duration));
 
                         // 格式
-                        if (mediaInfo.ContainsKey("Format"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("编码格式", mediaInfo["Format"]));
+                        if (shellInfo.ContainsKey("Format"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("编码格式", shellInfo["Format"]));
 
                         // 比特率
-                        var bitrate = mediaInfo.ContainsKey("AudioBitrate") ? mediaInfo["AudioBitrate"] : 
+                        var bitrate = shellInfo.ContainsKey("AudioBitrate") ? shellInfo["AudioBitrate"] : 
                                      (shellInfo.ContainsKey("AudioBitrate") ? shellInfo["AudioBitrate"] : 
                                      (shellInfo.ContainsKey("TotalBitrate") ? shellInfo["TotalBitrate"] : null));
                         if (string.IsNullOrEmpty(bitrate))
@@ -845,12 +827,12 @@ namespace FileSpace.Services
                             panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("比特率", bitrate));
 
                         // 声道与采样率
-                        if (mediaInfo.ContainsKey("AudioChannels"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("声道数", mediaInfo["AudioChannels"]));
-                        if (mediaInfo.ContainsKey("AudioSamplingRate"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("采样率", mediaInfo["AudioSamplingRate"]));
-                        if (mediaInfo.ContainsKey("AudioLanguage"))
-                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("语言", mediaInfo["AudioLanguage"]));
+                        if (shellInfo.ContainsKey("AudioChannels"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("声道数", shellInfo["AudioChannels"]));
+                        if (shellInfo.ContainsKey("AudioSamplingRate"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("采样率", shellInfo["AudioSamplingRate"]));
+                        if (shellInfo.ContainsKey("AudioLanguage"))
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("语言", shellInfo["AudioLanguage"]));
                     }
                     catch { }
                     break;

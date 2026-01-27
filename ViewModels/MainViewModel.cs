@@ -211,7 +211,7 @@ namespace FileSpace.ViewModels
         // View mode helper properties
         public bool IsDetailsView => ViewMode == "详细信息";
         public bool IsIconView => ViewMode != "详细信息";
-        public bool IsSmallIconView => ViewMode == "小图标";
+        public bool IsSmallIconView => ViewMode == "小图标" || ViewMode == "列表" || ViewMode == "平铺" || ViewMode == "内容";
         public bool IsLargeOrMediumIconView => ViewMode == "大图标" || ViewMode == "中等图标" || ViewMode == "超大图标";
         
         // Icon size for different view modes
@@ -221,6 +221,9 @@ namespace FileSpace.ViewModels
             "大图标" => 64,
             "中等图标" => 48,
             "小图标" => 24,
+            "列表" => 18,
+            "平铺" => 48,
+            "内容" => 40,
             _ => 16
         };
 
@@ -231,6 +234,9 @@ namespace FileSpace.ViewModels
             "大图标" => 110,
             "中等图标" => 90,
             "小图标" => 180,
+            "列表" => 220,
+            "平铺" => 260,
+            "内容" => 300,
             _ => 200
         };
 
@@ -241,6 +247,9 @@ namespace FileSpace.ViewModels
             "大图标" => 100,
             "中等图标" => 80,
             "小图标" => 32,
+            "列表" => 28,
+            "平铺" => 60,
+            "内容" => 64,
             _ => 28
         };
 
@@ -251,6 +260,9 @@ namespace FileSpace.ViewModels
             "大图标" => 8,
             "中等图标" => 10,
             "小图标" => 5,
+            "列表" => 4,
+            "平铺" => 3,
+            "内容" => 2,
             _ => 4
         };
 
@@ -801,6 +813,13 @@ namespace FileSpace.ViewModels
             _sortAscending = savedSort.SortAscending;
             OnPropertyChanged(nameof(SortMode));
             OnPropertyChanged(nameof(SortAscending));
+
+            // 获取该文件夹在资源管理器中的视图模式并应用（严格：仅接受 Shell 返回的值，获取不到则报错并且不回退）
+            if (!IsThisPCView && !IsLinuxView && !string.IsNullOrEmpty(value) && Directory.Exists(value))
+            {
+                var mode = ShellViewHelper.GetFolderViewMode(value);
+                ViewMode = mode;
+            }
 
             LoadFiles();
             UpdateBreadcrumbFolders();
