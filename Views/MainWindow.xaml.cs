@@ -1600,6 +1600,7 @@ namespace FileSpace.Views
                             }
 
                             DragDropEffects result = DragDrop.DoDragDrop(listViewItem, dragData, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
+                            ClearDragStates();
                         }
                     }
                 }
@@ -1653,9 +1654,7 @@ namespace FileSpace.Views
                                 (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                             {
                                 e.Effects = DragDropEffects.None;
-                                RemoveDragTooltip();
-                                if (_lastDragOverQuickAccessItem != null) _lastDragOverQuickAccessItem.IsDragOver = false;
-                                _lastDragOverQuickAccessItem = null;
+                                ClearDragStates();
                                 e.Handled = true;
                                 return;
                             }
@@ -1729,8 +1728,7 @@ namespace FileSpace.Views
                 if (!isMoveIntoFolder && !ViewModel.SelectedFiles.Any(f => f.IsDirectory))
                 {
                     e.Effects = DragDropEffects.None;
-                    RemoveDragTooltip();
-                    RemoveInsertionAdorner();
+                    ClearDragStates();
                     e.Handled = true;
                     return;
                 }
@@ -1795,27 +1793,13 @@ namespace FileSpace.Views
             Point pos = e.GetPosition(listView);
             if (pos.X < 0 || pos.Y < 0 || pos.X > listView.ActualWidth || pos.Y > listView.ActualHeight)
             {
-                RemoveInsertionAdorner();
-                RemoveDragTooltip();
-
-                if (_lastDragOverQuickAccessItem != null)
-                {
-                    _lastDragOverQuickAccessItem.IsDragOver = false;
-                    _lastDragOverQuickAccessItem = null;
-                }
+                ClearDragStates();
             }
         }
 
         private void QuickAccessListView_Drop(object sender, DragEventArgs e)
         {
-            RemoveInsertionAdorner();
-            RemoveDragTooltip();
-
-            if (_lastDragOverQuickAccessItem != null)
-            {
-                _lastDragOverQuickAccessItem.IsDragOver = false;
-                _lastDragOverQuickAccessItem = null;
-            }
+            ClearDragStates();
 
             if (e.Data.GetDataPresent("QuickAccessItem"))
             {
@@ -2143,6 +2127,7 @@ namespace FileSpace.Views
 
                             DragDropEffects allowedEffects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
                             DragDropEffects result = DragDrop.DoDragDrop(row, dragData, allowedEffects);
+                            ClearDragStates();
                         }
                     }
                 }
@@ -2167,9 +2152,7 @@ namespace FileSpace.Views
                             (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
-                            _lastDragOverFileItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -2295,9 +2278,7 @@ namespace FileSpace.Views
                         if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
-                            _lastDragOverFileItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -2417,27 +2398,13 @@ namespace FileSpace.Views
             Point pos = e.GetPosition(dataGrid);
             if (pos.X < 0 || pos.Y < 0 || pos.X > dataGrid.ActualWidth || pos.Y > dataGrid.ActualHeight)
             {
-                RemoveInsertionAdorner();
-                RemoveDragTooltip();
-
-                if (_lastDragOverFileItem != null)
-                {
-                    _lastDragOverFileItem.IsDragOver = false;
-                    _lastDragOverFileItem = null;
-                }
+                ClearDragStates();
             }
         }
 
         private void FileDataGrid_Drop(object sender, DragEventArgs e)
         {
-            RemoveInsertionAdorner();
-            RemoveDragTooltip();
-
-            if (_lastDragOverFileItem != null)
-            {
-                _lastDragOverFileItem.IsDragOver = false;
-                _lastDragOverFileItem = null;
-            }
+            ClearDragStates();
 
             var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
             if (droppedPaths != null && droppedPaths.Length > 0)
@@ -2630,6 +2597,7 @@ namespace FileSpace.Views
 
                             DragDropEffects allowedEffects = DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link;
                             DragDropEffects result = DragDrop.DoDragDrop(item, dragData, allowedEffects);
+                            ClearDragStates();
                         }
                     }
                 }
@@ -2654,9 +2622,7 @@ namespace FileSpace.Views
                             (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
-                            _lastDragOverFileItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -2781,9 +2747,7 @@ namespace FileSpace.Views
                         if (droppedPaths != null && droppedPaths.Any(p => string.Equals(p, targetItem.FullPath, StringComparison.OrdinalIgnoreCase)))
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverFileItem != null) _lastDragOverFileItem.IsDragOver = false;
-                            _lastDragOverFileItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -2902,27 +2866,13 @@ namespace FileSpace.Views
             Point pos = e.GetPosition(listView);
             if (pos.X < 0 || pos.Y < 0 || pos.X > listView.ActualWidth || pos.Y > listView.ActualHeight)
             {
-                RemoveInsertionAdorner();
-                RemoveDragTooltip();
-
-                if (_lastDragOverFileItem != null)
-                {
-                    _lastDragOverFileItem.IsDragOver = false;
-                    _lastDragOverFileItem = null;
-                }
+                ClearDragStates();
             }
         }
 
         private void FileIconView_Drop(object sender, DragEventArgs e)
         {
-            RemoveInsertionAdorner();
-            RemoveDragTooltip();
-
-            if (_lastDragOverFileItem != null)
-            {
-                _lastDragOverFileItem.IsDragOver = false;
-                _lastDragOverFileItem = null;
-            }
+            ClearDragStates();
 
             var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
             if (droppedPaths != null && droppedPaths.Length > 0)
@@ -3008,9 +2958,7 @@ namespace FileSpace.Views
                             (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
-                            _lastDragOverDirectoryItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -3080,9 +3028,7 @@ namespace FileSpace.Views
                             (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
                         {
                             e.Effects = DragDropEffects.None;
-                            RemoveDragTooltip();
-                            if (_lastDragOverDirectoryItem != null) _lastDragOverDirectoryItem.IsDragOver = false;
-                            _lastDragOverDirectoryItem = null;
+                            ClearDragStates();
                             e.Handled = true;
                             return;
                         }
@@ -3135,25 +3081,13 @@ namespace FileSpace.Views
             Point pos = e.GetPosition(treeView);
             if (pos.X < 0 || pos.Y < 0 || pos.X > treeView.ActualWidth || pos.Y > treeView.ActualHeight)
             {
-                RemoveDragTooltip();
-
-                if (_lastDragOverDirectoryItem != null)
-                {
-                    _lastDragOverDirectoryItem.IsDragOver = false;
-                    _lastDragOverDirectoryItem = null;
-                }
+                ClearDragStates();
             }
         }
 
         private void DirectoryTreeView_Drop(object sender, DragEventArgs e)
         {
-            RemoveDragTooltip();
-
-            if (_lastDragOverDirectoryItem != null)
-            {
-                _lastDragOverDirectoryItem.IsDragOver = false;
-                _lastDragOverDirectoryItem = null;
-            }
+            ClearDragStates();
 
             var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
             if (droppedPaths != null && droppedPaths.Length > 0)
@@ -3185,6 +3119,36 @@ namespace FileSpace.Views
                         }
                     }
                 }
+            }
+        }
+
+        private void ClearDragStates()
+        {
+            RemoveInsertionAdorner();
+            RemoveDragTooltip();
+
+            if (_lastDragOverFileItem != null)
+            {
+                _lastDragOverFileItem.IsDragOver = false;
+                _lastDragOverFileItem = null;
+            }
+
+            if (_lastDragOverDirectoryItem != null)
+            {
+                _lastDragOverDirectoryItem.IsDragOver = false;
+                _lastDragOverDirectoryItem = null;
+            }
+
+            if (_lastDragOverQuickAccessItem != null)
+            {
+                _lastDragOverQuickAccessItem.IsDragOver = false;
+                _lastDragOverQuickAccessItem = null;
+            }
+
+            if (_lastDragOverBreadcrumbItem != null)
+            {
+                _lastDragOverBreadcrumbItem.IsDragOver = false;
+                _lastDragOverBreadcrumbItem = null;
             }
         }
 
@@ -3375,9 +3339,7 @@ namespace FileSpace.Views
                 if (isInvalid)
                 {
                     e.Effects = DragDropEffects.None;
-                    RemoveDragTooltip();
-                    if (_lastDragOverBreadcrumbItem != null) _lastDragOverBreadcrumbItem.IsDragOver = false;
-                    _lastDragOverBreadcrumbItem = null;
+                    ClearDragStates();
                     e.Handled = true;
                     return;
                 }
@@ -3417,17 +3379,12 @@ namespace FileSpace.Views
                     _lastDragOverBreadcrumbItem = null;
                 }
             }
-            RemoveDragTooltip();
+            ClearDragStates();
         }
 
         private void Breadcrumb_Drop(object sender, DragEventArgs e)
         {
-            if (_lastDragOverBreadcrumbItem != null)
-            {
-                _lastDragOverBreadcrumbItem.IsDragOver = false;
-                _lastDragOverBreadcrumbItem = null;
-            }
-            RemoveDragTooltip();
+            ClearDragStates();
 
             var sourcePaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
             
