@@ -1259,7 +1259,19 @@
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontWeight="Normal" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="6" Margin="0,3,0,3" Background="{DynamicResource ControlStrokeColorSecondaryBrush}"/>
+                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="14" Margin="0,3,0,3" Background="{DynamicResource ControlStrokeColorSecondaryBrush}" BorderThickness="0" Foreground="{DynamicResource SystemAccentColorPrimaryBrush}">
+                                            <ProgressBar.Template>
+                                                <ControlTemplate TargetType="ProgressBar">
+                                                    <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True">
+                                                        <Rectangle Fill="{TemplateBinding Background}"/>
+                                                        <Rectangle x:Name="PART_Track" Fill="{TemplateBinding Background}"/>
+                                                        <Decorator x:Name="PART_Indicator" HorizontalAlignment="Left">
+                                                            <Rectangle Fill="{TemplateBinding Foreground}"/>
+                                                        </Decorator>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </ProgressBar.Template>
+                                        </ProgressBar>
                                         <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                 </Grid>
@@ -1332,7 +1344,19 @@
                                     
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="6" Margin="0,6,0,6" Background="{DynamicResource ControlStrokeColorSecondaryBrush}" Visibility="Collapsed"/>
+                                        <ProgressBar Value="{Binding PercentUsed}" Maximum="100" Height="14" Margin="0,6,0,6" Background="{DynamicResource ControlStrokeColorSecondaryBrush}" Visibility="Collapsed" BorderThickness="0" Foreground="{DynamicResource SystemAccentColorPrimaryBrush}">
+                                            <ProgressBar.Template>
+                                                <ControlTemplate TargetType="ProgressBar">
+                                                    <Grid x:Name="TemplateRoot" SnapsToDevicePixels="True">
+                                                        <Rectangle Fill="{TemplateBinding Background}"/>
+                                                        <Rectangle x:Name="PART_Track" Fill="{TemplateBinding Background}"/>
+                                                        <Decorator x:Name="PART_Indicator" HorizontalAlignment="Left">
+                                                            <Rectangle Fill="{TemplateBinding Foreground}"/>
+                                                        </Decorator>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </ProgressBar.Template>
+                                        </ProgressBar>
                                         <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                 </Grid>
