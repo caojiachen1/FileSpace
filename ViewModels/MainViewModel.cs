@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using FileSpace.Services;
 using FileSpace.Views;
 using FileSpace.Utils;
@@ -562,6 +563,9 @@ namespace FileSpace.ViewModels
             FileOperationsService.Instance.OperationProgress += _fileOperationEventHandler.OnFileOperationProgress;
             FileOperationsService.Instance.OperationCompleted += _fileOperationEventHandler.OnFileOperationCompleted;
             FileOperationsService.Instance.OperationFailed += _fileOperationEventHandler.OnFileOperationFailed;
+
+            // 加载默认文件夹图标缓存
+            _ = EnsureDefaultFolderIconAsync();
 
             // Subscribe to selection changes to update command states
             SelectedFiles.CollectionChanged += (s, e) =>
@@ -1242,6 +1246,11 @@ namespace FileSpace.ViewModels
 
         private CancellationTokenSource? _loadFilesCancellationTokenSource;
 
+        // 默认文件夹图标缓存
+        private ImageSource? _defaultFolderIcon;
+        private readonly string _iconCacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileSpace", "IconCache");
+        private readonly string _defaultFolderIconPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileSpace", "IconCache", "default_folder_icon.png");
+
         // Helper to safely cancel and dispose existing CTS and create a new one
         private CancellationTokenSource CreateOrResetCancellationTokenSource(ref CancellationTokenSource? cts)
         {
@@ -1540,6 +1549,87 @@ namespace FileSpace.ViewModels
             return SortListOptimized(unsortedFiles.ToList());
         }
 
+        /// <summary>
+        /// 确保默认文件夹图标已加载（从缓存或新生成）
+        /// </summary>
+        private async Task EnsureDefaultFolderIconAsync()
+        {
+            try
+            {
+                // 如果已经加载，直接返回
+                if (_defaultFolderIcon != null) return;
+
+                // 尝试从缓存加载
+                if (File.Exists(_defaultFolderIconPath))
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            var bitmap = new BitmapImage();
+                            bitmap.BeginInit();
+                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmap.UriSource = new Uri(_defaultFolderIconPath, UriKind.Absolute);
+                            bitmap.EndInit();
+                            bitmap.Freeze();
+                            _defaultFolderIcon = bitmap;
+                        }
+                        catch
+                        {
+                            // 缓存损坏，删除并重新生成
+                            File.Delete(_defaultFolderIconPath);
+                        }
+                    });
+                }
+
+                // 如果缓存不存在或加载失败，生成新的
+                if (_defaultFolderIcon == null)
+                {
+                    await Task.Run(() =>
+                    {
+                        try
+                        {
+                            // 创建临时空文件夹
+                            string tempFolder = Path.Combine(Path.GetTempPath(), "FileSpace_EmptyFolder_" + Guid.NewGuid().ToString());
+                            Directory.CreateDirectory(tempFolder);
+
+                            try
+                            {
+                                // 获取空文件夹的系统缩略图
+                                var thumbnail = ThumbnailUtils.GetThumbnail(tempFolder, 64, 64);
+                                if (thumbnail != null)
+                                {
+                                    _defaultFolderIcon = thumbnail;
+
+                                    // 保存到缓存
+                                    Directory.CreateDirectory(_iconCacheFolder);
+                                    var encoder = new PngBitmapEncoder();
+                                    encoder.Frames.Add(BitmapFrame.Create((BitmapSource)thumbnail));
+                                    using (var stream = File.Create(_defaultFolderIconPath))
+                                    {
+                                        encoder.Save(stream);
+                                    }
+                                }
+                            }
+                            finally
+                            {
+                                // 清理临时文件夹
+                                try { Directory.Delete(tempFolder); } catch { }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"生成默认文件夹图标失败: {ex.Message}");
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载默认文件夹图标失败: {ex.Message}");
+            }
+        }
+
         private async Task LoadThumbnailsAsync()
         {
             try
@@ -1617,6 +1707,13 @@ namespace FileSpace.ViewModels
                     }
                 }, token);
 
+                // 确保默认文件夹图标已加载
+                bool isDetailsView = ViewMode == "详细信息";
+                if (isDetailsView)
+                {
+                    await EnsureDefaultFolderIconAsync();
+                }
+
                 // 生产者任务
                 await Parallel.ForEachAsync(filesSnapshot, new ParallelOptions 
                 { 
@@ -1629,7 +1726,19 @@ namespace FileSpace.ViewModels
 
                     try
                     {
-                        var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, targetSizeInt, ct).ConfigureAwait(false);
+                        ImageSource? thumbnail = null;
+
+                        // 详细信息模式下，文件夹使用统一的默认图标
+                        if (isDetailsView && file.IsDirectory && _defaultFolderIcon != null)
+                        {
+                            thumbnail = _defaultFolderIcon;
+                        }
+                        else
+                        {
+                            // 其他情况正常获取缩略图
+                            thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, targetSizeInt, ct).ConfigureAwait(false);
+                        }
+
                         if (thumbnail != null)
                         {
                             await updateChannel.Writer.WriteAsync((file, thumbnail), ct).ConfigureAwait(false);
