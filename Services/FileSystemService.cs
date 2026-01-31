@@ -24,25 +24,28 @@ namespace FileSpace.Services
 
         public async IAsyncEnumerable<FileItemModel> EnumerateFilesAsync(string currentPath, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            if (!Directory.Exists(currentPath))
+            if (string.IsNullOrEmpty(currentPath) || !Directory.Exists(currentPath))
             {
                 yield break;
             }
 
-            // 使用无界 Channel 以最大化吞吐量
-            var channel = Channel.CreateUnbounded<FileItemModel>(new UnboundedChannelOptions
+            // 使用有界 Channel 控制内存使用，同时保持高吞吐量
+            var channel = Channel.CreateBounded<FileItemModel>(new BoundedChannelOptions(2048)
             {
                 SingleReader = true,
                 SingleWriter = true,
-                AllowSynchronousContinuations = true
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait
             });
 
+            // 预计算不变的值以减少循环内开销
+            string searchPath = Path.Combine(currentPath, "*");
+            
             // Start background producer
-            _ = Task.Run(() =>
+            var producerTask = Task.Run(async () =>
             {
                 try
                 {
-                    string searchPath = Path.Combine(currentPath, "*");
                     var handle = Win32Api.FindFirstFileExW(
                         searchPath,
                         Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
@@ -51,61 +54,80 @@ namespace FileSpace.Services
                         IntPtr.Zero,
                         Win32Api.FIND_FIRST_EX_LARGE_FETCH);
 
-                    if (!handle.IsInvalid)
+                    if (handle.IsInvalid)
                     {
-                        try
+                        return;
+                    }
+
+                    try
+                    {
+                        int batchCounter = 0;
+                        do
                         {
-                            do
+                            // 每处理 100 个文件检查一次取消，平衡响应性和性能
+                            if (++batchCounter % 100 == 0 && cancellationToken.IsCancellationRequested)
                             {
-                                if (cancellationToken.IsCancellationRequested) break;
-                                
-                                string fileName = findData.cFileName;
-                                if (fileName == "." || fileName == "..") continue;
+                                break;
+                            }
+                            
+                            string fileName = findData.cFileName;
+                            if (fileName == "." || fileName == ".." || string.IsNullOrEmpty(fileName))
+                            {
+                                continue;
+                            }
 
-                                var attributes = (FileAttributes)findData.dwFileAttributes;
-                                if (!ShouldShowItem(attributes))
-                                    continue;
+                            var attributes = (FileAttributes)findData.dwFileAttributes;
+                            if (!ShouldShowItem(attributes))
+                            {
+                                continue;
+                            }
 
-                                bool isDirectory = attributes.HasFlag(FileAttributes.Directory);
-                                string fullPath = Path.Combine(currentPath, fileName);
-                                string extension = isDirectory ? string.Empty : Path.GetExtension(fileName);
-                                DateTime lastWrite = Win32Api.ToDateTime(findData.ftLastWriteTime);
-                                
-                                FileItemModel item = new FileItemModel
-                                {
-                                    Name = fileName,
-                                    FullPath = fullPath,
-                                    IsDirectory = isDirectory,
-                                    ModifiedDateTime = lastWrite,
-                                    ModifiedTime = lastWrite.ToString("yyyy-MM-dd HH:mm")
-                                };
+                            bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+                            string fullPath = Path.Combine(currentPath, fileName);
+                            DateTime lastWrite = Win32Api.ToDateTime(findData.ftLastWriteTime);
+                            
+                            var item = new FileItemModel
+                            {
+                                Name = fileName,
+                                FullPath = fullPath,
+                                IsDirectory = isDirectory,
+                                ModifiedDateTime = lastWrite,
+                                ModifiedTime = lastWrite.ToString("yyyy-MM-dd HH:mm")
+                            };
 
-                                if (isDirectory)
-                                {
-                                    item.Icon = SymbolRegular.Folder24;
-                                    item.IconColor = "#FFE6A23C";
-                                    item.Type = "文件夹";
-                                }
-                                else
-                                {
-                                    item.Size = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
-                                    item.Icon = GetFileIcon(extension);
-                                    item.IconColor = GetFileIconColor(extension);
-                                    item.Type = GetFileType(extension);
-                                }
+                            if (isDirectory)
+                            {
+                                item.Icon = SymbolRegular.Folder24;
+                                item.IconColor = "#FFE6A23C";
+                                item.Type = "文件夹";
+                            }
+                            else
+                            {
+                                string extension = Path.GetExtension(fileName);
+                                item.Size = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
+                                item.Icon = GetFileIcon(extension);
+                                item.IconColor = GetFileIconColor(extension);
+                                item.Type = GetFileType(extension);
+                            }
 
-                                // TryWrite 在无界 Channel 中不会阻塞
-                                channel.Writer.TryWrite(item);
+                            // 使用 WriteAsync 以支持背压
+                            await channel.Writer.WriteAsync(item, cancellationToken).ConfigureAwait(false);
 
-                            } while (Win32Api.FindNextFileW(handle, out findData));
-                        }
-                        finally
-                        {
-                            handle.Close();
-                        }
+                        } while (Win32Api.FindNextFileW(handle, out findData));
+                    }
+                    finally
+                    {
+                        handle.Close();
                     }
                 }
-                catch { }
+                catch (OperationCanceledException)
+                {
+                    // 正常取消，不记录错误
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"EnumerateFilesAsync error: {ex.Message}");
+                }
                 finally
                 {
                     channel.Writer.Complete();
@@ -113,11 +135,23 @@ namespace FileSpace.Services
             }, cancellationToken);
 
             // Return items as they arrive
-            while (await channel.Reader.WaitToReadAsync(cancellationToken))
+            try
             {
-                while (channel.Reader.TryRead(out var item))
+                await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
                     yield return item;
+                }
+            }
+            finally
+            {
+                // 确保生产者任务完成
+                try
+                {
+                    await producerTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // 忽略取消异常
                 }
             }
         }

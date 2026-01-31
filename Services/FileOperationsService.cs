@@ -195,12 +195,27 @@ namespace FileSpace.Services
 
         private static async Task CopyFileAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
         {
-            const int bufferSize = 1024 * 1024; // 1MB buffer
+            // 使用更大的缓冲区以提升大文件复制性能
+            const int bufferSize = 4 * 1024 * 1024; // 4MB buffer
             
-            using var sourceStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, true);
-            using var destinationStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, true);
+            // 使用 FileOptions 优化 I/O
+            using var sourceStream = new FileStream(
+                sourcePath, 
+                FileMode.Open, 
+                FileAccess.Read, 
+                FileShare.Read, 
+                bufferSize, 
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
             
-            await sourceStream.CopyToAsync(destinationStream, bufferSize, cancellationToken);
+            using var destinationStream = new FileStream(
+                destinationPath, 
+                FileMode.Create, 
+                FileAccess.Write, 
+                FileShare.None, 
+                bufferSize, 
+                FileOptions.Asynchronous | FileOptions.WriteThrough);
+            
+            await sourceStream.CopyToAsync(destinationStream, bufferSize, cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<int> CountFilesAsync(List<string> paths)
@@ -208,6 +223,8 @@ namespace FileSpace.Services
             return await Task.Run(() =>
             {
                 int count = 0;
+                var stack = new Stack<string>(128);
+                
                 foreach (var path in paths)
                 {
                     if (File.Exists(path))
@@ -216,8 +233,9 @@ namespace FileSpace.Services
                     }
                     else if (Directory.Exists(path))
                     {
-                        Stack<string> stack = new Stack<string>();
+                        stack.Clear();
                         stack.Push(path);
+                        
                         while (stack.Count > 0)
                         {
                             string current = stack.Pop();
@@ -231,9 +249,9 @@ namespace FileSpace.Services
                                 do
                                 {
                                     string name = findData.cFileName;
-                                    if (name == "." || name == "..") continue;
+                                    if (name == "." || name == ".." || string.IsNullOrEmpty(name)) continue;
                                     
-                                    if (((FileAttributes)findData.dwFileAttributes).HasFlag(FileAttributes.Directory))
+                                    if (((FileAttributes)findData.dwFileAttributes & FileAttributes.Directory) != 0)
                                         stack.Push(Path.Combine(current, name));
                                     else
                                         count++;
@@ -244,7 +262,7 @@ namespace FileSpace.Services
                     }
                 }
                 return count;
-            });
+            }).ConfigureAwait(false);
         }
 
         /// <summary>

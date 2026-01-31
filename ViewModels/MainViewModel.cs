@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Windows;
 using System.Windows.Media;
 using FileSpace.Services;
@@ -523,6 +524,8 @@ namespace FileSpace.ViewModels
         // File system watcher for automatic refresh
         private FileSystemWatcher? _fileSystemWatcher;
         private readonly object _watcherLock = new object();
+        private CancellationTokenSource? _watcherDebounceCts;
+        private const int FileWatcherDebounceMs = 300; // 去抖时间增加到 300ms
 
         public MainViewModel() : this(null) { }
 
@@ -759,28 +762,7 @@ namespace FileSpace.ViewModels
         /// </summary>
         private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
         {
-            // Debounce rapid changes to prevent too many refreshes
-            await Task.Delay(100); // Wait 100ms to allow for batch operations
-
-            // Only refresh if we're still in the same directory
-            if (string.Equals(Path.GetDirectoryName(e.FullPath), CurrentPath, StringComparison.OrdinalIgnoreCase))
-            {
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    // Refresh the file list with scroll position preservation
-                    // We need to access the main window to call the enhanced refresh method
-                    var mainWindow = Application.Current.MainWindow as MainWindow;
-                    if (mainWindow != null)
-                    {
-                        mainWindow.RefreshFileListWithScrollPreservation();
-                    }
-                    else
-                    {
-                        // Fallback to regular load if we can't access the main window
-                        LoadFiles();
-                    }
-                });
-            }
+            await DebounceFileSystemRefreshAsync(e.FullPath).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -788,27 +770,61 @@ namespace FileSpace.ViewModels
         /// </summary>
         private async void OnFileSystemRenamed(object sender, RenamedEventArgs e)
         {
-            // Debounce rapid changes to prevent too many refreshes
-            await Task.Delay(100); // Wait 100ms to allow for batch operations
+            await DebounceFileSystemRefreshAsync(e.FullPath).ConfigureAwait(false);
+        }
 
-            // Only refresh if we're still in the same directory
-            if (string.Equals(Path.GetDirectoryName(e.FullPath), CurrentPath, StringComparison.OrdinalIgnoreCase))
+        /// <summary>
+        /// 统一的去抖刷新方法
+        /// </summary>
+        private async Task DebounceFileSystemRefreshAsync(string changedPath)
+        {
+            try
             {
+                // 取消之前的去抖任务
+                var oldCts = Interlocked.Exchange(ref _watcherDebounceCts, null);
+                oldCts?.Cancel();
+                oldCts?.Dispose();
+
+                var newCts = new CancellationTokenSource();
+                Interlocked.Exchange(ref _watcherDebounceCts, newCts);
+
+                // 等待去抖时间
+                await Task.Delay(FileWatcherDebounceMs, newCts.Token).ConfigureAwait(false);
+
+                // 检查是否仍在相同目录
+                var changedDir = Path.GetDirectoryName(changedPath);
+                if (!string.Equals(changedDir, CurrentPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
                 await Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    // Refresh the file list with scroll position preservation
-                    // We need to access the main window to call the enhanced refresh method
-                    var mainWindow = Application.Current.MainWindow as MainWindow;
-                    if (mainWindow != null)
+                    try
                     {
-                        mainWindow.RefreshFileListWithScrollPreservation();
+                        var mainWindow = Application.Current.MainWindow as MainWindow;
+                        if (mainWindow != null)
+                        {
+                            mainWindow.RefreshFileListWithScrollPreservation();
+                        }
+                        else
+                        {
+                            LoadFiles();
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        // Fallback to regular load if we can't access the main window
-                        LoadFiles();
+                        System.Diagnostics.Debug.WriteLine($"FileSystemWatcher refresh error: {ex.Message}");
                     }
                 });
+            }
+            catch (OperationCanceledException)
+            {
+                // 去抖被取消，正常情况
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DebounceFileSystemRefreshAsync error: {ex.Message}");
             }
         }
 
@@ -1193,18 +1209,28 @@ namespace FileSpace.ViewModels
         // Helper to safely cancel and dispose existing CTS and create a new one
         private CancellationTokenSource CreateOrResetCancellationTokenSource(ref CancellationTokenSource? cts)
         {
-            try
+            var oldCts = Interlocked.Exchange(ref cts, null);
+            if (oldCts != null)
             {
-                if (cts != null)
-                {
-                    try { cts.Cancel(); } catch { }
-                    try { cts.Dispose(); } catch { }
-                }
+                try 
+                { 
+                    if (!oldCts.IsCancellationRequested)
+                    {
+                        oldCts.Cancel(); 
+                    }
+                } 
+                catch (ObjectDisposedException) { }
+                
+                try 
+                { 
+                    oldCts.Dispose(); 
+                } 
+                catch (ObjectDisposedException) { }
             }
-            catch { }
 
-            cts = new CancellationTokenSource();
-            return cts;
+            var newCts = new CancellationTokenSource();
+            Interlocked.Exchange(ref cts, newCts);
+            return newCts;
         }
 
         private async void LoadFiles()
@@ -1387,64 +1413,81 @@ namespace FileSpace.ViewModels
 
         /// <summary>
         /// 使用高性能排序算法对文件列表排序（在后台线程执行）
+        /// 优化点：原地排序、预先缓存比较器、减少内存分配
         /// </summary>
         private List<FileItemModel> SortListOptimized(List<FileItemModel> unsortedFiles)
         {
-            // 使用 Span-based 排序，减少内存分配
-            var files = unsortedFiles.ToArray();
-            
-            // 定义比较器避免重复创建
-            Comparison<FileItemModel> comparison = SortMode switch
+            if (unsortedFiles == null || unsortedFiles.Count <= 1)
             {
-                "Name" => SortAscending
-                    ? (a, b) => {
-                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
+                return unsortedFiles ?? new List<FileItemModel>();
+            }
+
+            // 直接在列表上排序以避免额外的数组分配
+            var files = unsortedFiles;
+            
+            // 缓存排序设置以避免属性访问开销
+            var sortMode = SortMode;
+            var sortAscending = SortAscending;
+            
+            // 定义比较器避免重复创建，使用本地函数减少委托分配
+            Comparison<FileItemModel> comparison = sortMode switch
+            {
+                "Name" => sortAscending
+                    ? static (a, b) => {
+                        // 使用位运算优化布尔比较
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        return dirDiff != 0 ? dirDiff : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
-                    : (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        return dirCompare != 0 ? dirCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
+                    : static (a, b) => {
+                        int dirDiff = (a.IsDirectory ? 1 : 0) - (b.IsDirectory ? 1 : 0);
+                        return dirDiff != 0 ? dirDiff : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
-                "Size" => SortAscending
-                    ? (a, b) => {
-                        int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
+                "Size" => sortAscending
+                    ? static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
                         int sizeCompare = a.Size.CompareTo(b.Size);
                         return sizeCompare != 0 ? sizeCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
                     }
-                    : (a, b) => {
-                        int dirCompare = a.IsDirectory.CompareTo(b.IsDirectory);
-                        if (dirCompare != 0) return dirCompare;
+                    : static (a, b) => {
+                        int dirDiff = (a.IsDirectory ? 1 : 0) - (b.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
                         int sizeCompare = b.Size.CompareTo(a.Size);
                         return sizeCompare != 0 ? sizeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
-                "Type" => (a, b) => {
-                    // 对于类型排序，文件夹始终置顶
-                    int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                    if (dirCompare != 0) return dirCompare;
-                    
-                    int typeCompare = SortAscending
-                        ? string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase)
-                        : string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
-                    return typeCompare != 0 ? typeCompare : (SortAscending ? Win32Api.StrCmpLogicalW(a.Name, b.Name) : Win32Api.StrCmpLogicalW(b.Name, a.Name));
-                },
-                "Date" => (a, b) => {
-                    // 对于日期排序，文件夹始终置顶
-                    int dirCompare = b.IsDirectory.CompareTo(a.IsDirectory);
-                    if (dirCompare != 0) return dirCompare;
-
-                    int dateCompare = SortAscending
-                        ? a.ModifiedDateTime.CompareTo(b.ModifiedDateTime)
-                        : b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
-                    return dateCompare != 0 ? dateCompare : (SortAscending ? Win32Api.StrCmpLogicalW(a.Name, b.Name) : Win32Api.StrCmpLogicalW(b.Name, a.Name));
-                },
-                _ => (a, b) => 0
+                "Type" => sortAscending
+                    ? static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int typeCompare = string.Compare(a.Type, b.Type, StringComparison.OrdinalIgnoreCase);
+                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
+                    }
+                    : static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int typeCompare = string.Compare(b.Type, a.Type, StringComparison.OrdinalIgnoreCase);
+                        return typeCompare != 0 ? typeCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
+                    },
+                "Date" => sortAscending
+                    ? static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int dateCompare = a.ModifiedDateTime.CompareTo(b.ModifiedDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
+                    }
+                    : static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int dateCompare = b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
+                    },
+                _ => static (a, b) => 0
             };
 
-            // 使用 Array.Sort 的内省排序算法（比 LINQ OrderBy 更快）
-            Array.Sort(files, comparison);
+            // 使用 List.Sort 的内省排序算法，直接原地排序
+            files.Sort(comparison);
             
-            return new List<FileItemModel>(files);
+            return files;
         }
 
         /// <summary>
@@ -1461,60 +1504,101 @@ namespace FileSpace.ViewModels
             {
                 var token = CreateOrResetCancellationTokenSource(ref _thumbnailCancellationTokenSource).Token;
 
+                // 取快照以避免并发修改
                 var filesSnapshot = Files.ToList();
+                if (filesSnapshot.Count == 0) return;
+                
                 double targetSize = IconSize;
                 if (targetSize <= 16) targetSize = 32;
+                int targetSizeInt = (int)targetSize;
 
-                await Task.Run(async () =>
-                {
-                    var updates = new ConcurrentBag<(FileItemModel model, ImageSource thumbnail)>();
-                    int processedCount = 0;
-                    
-                    // Degree of parallelism for thumbnail generation
-                    int dop = Math.Max(2, Environment.ProcessorCount / 2);
-
-                    await Parallel.ForEachAsync(filesSnapshot, new ParallelOptions 
+                // Degree of parallelism for thumbnail generation
+                int dop = Math.Max(2, Math.Min(Environment.ProcessorCount, 8));
+                
+                // 使用 Channel 批量更新 UI
+                var updateChannel = Channel.CreateBounded<(FileItemModel model, ImageSource thumbnail)>(
+                    new BoundedChannelOptions(100) 
                     { 
-                        MaxDegreeOfParallelism = dop,
-                        CancellationToken = token 
-                    }, async (file, ct) =>
-                    {
-                        if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) return;
+                        FullMode = BoundedChannelFullMode.Wait,
+                        SingleReader = true,
+                        SingleWriter = false 
+                    });
 
-                        try
+                // UI 更新任务
+                var uiUpdateTask = Task.Run(async () =>
+                {
+                    var batch = new List<(FileItemModel model, ImageSource thumbnail)>(32);
+                    var lastUpdate = DateTime.UtcNow;
+                    const int batchInterval = 50; // ms
+
+                    await foreach (var item in updateChannel.Reader.ReadAllAsync(token).ConfigureAwait(false))
+                    {
+                        batch.Add(item);
+                        var now = DateTime.UtcNow;
+                        
+                        // 每 50ms 或收集到28个项目时批量更新
+                        if (batch.Count >= 28 || (now - lastUpdate).TotalMilliseconds >= batchInterval)
                         {
-                            var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, (int)targetSize, ct);
-                            if (thumbnail != null)
+                            var currentBatch = batch.ToList();
+                            batch.Clear();
+                            lastUpdate = now;
+                            
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                updates.Add((file, thumbnail));
-                                
-                                var current = Interlocked.Increment(ref processedCount);
-                                // Batch update UI every 20 items or for last few items
-                                if (current % 20 == 0 || current >= filesSnapshot.Count - dop)
+                                foreach (var (model, thumbnail) in currentBatch)
                                 {
-                                    var currentUpdates = new List<(FileItemModel model, ImageSource thumbnail)>();
-                                    while (updates.TryTake(out var update)) currentUpdates.Add(update);
-                                    
-                                    if (currentUpdates.Count > 0)
+                                    if (!token.IsCancellationRequested)
                                     {
-                                        await Application.Current.Dispatcher.InvokeAsync(() =>
-                                        {
-                                            foreach (var up in currentUpdates)
-                                            {
-                                                if (!token.IsCancellationRequested)
-                                                {
-                                                    up.model.Thumbnail = up.thumbnail;
-                                                    up.model.LoadedThumbnailSize = targetSize;
-                                                }
-                                            }
-                                        }, System.Windows.Threading.DispatcherPriority.Background);
+                                        model.Thumbnail = thumbnail;
+                                        model.LoadedThumbnailSize = targetSize;
                                     }
                                 }
-                            }
+                            }, System.Windows.Threading.DispatcherPriority.Background);
                         }
-                        catch { }
-                    });
+                    }
+                    
+                    // 处理剩余的批次
+                    if (batch.Count > 0 && !token.IsCancellationRequested)
+                    {
+                        var finalBatch = batch.ToList();
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            foreach (var (model, thumbnail) in finalBatch)
+                            {
+                                if (!token.IsCancellationRequested)
+                                {
+                                    model.Thumbnail = thumbnail;
+                                    model.LoadedThumbnailSize = targetSize;
+                                }
+                            }
+                        }, System.Windows.Threading.DispatcherPriority.Background);
+                    }
                 }, token);
+
+                // 生产者任务
+                await Parallel.ForEachAsync(filesSnapshot, new ParallelOptions 
+                { 
+                    MaxDegreeOfParallelism = dop,
+                    CancellationToken = token 
+                }, async (file, ct) =>
+                {
+                    // 跳过已经加载的缩略图
+                    if (file.Thumbnail != null && file.LoadedThumbnailSize >= targetSize) return;
+
+                    try
+                    {
+                        var thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(file.FullPath, targetSizeInt, ct).ConfigureAwait(false);
+                        if (thumbnail != null)
+                        {
+                            await updateChannel.Writer.WriteAsync((file, thumbnail), ct).ConfigureAwait(false);
+                        }
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch { /* 忽略单个文件的错误 */ }
+                });
+                
+                updateChannel.Writer.Complete();
+                await uiUpdateTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -2988,34 +3072,65 @@ namespace FileSpace.ViewModels
         public void Dispose()
         {
             // Unsubscribe from events to prevent memory leaks and null reference exceptions
-            BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted -= OnSizeCalculationCompleted;
-            BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress -= OnSizeCalculationProgress;
+            try
+            {
+                BackgroundFolderSizeCalculator.Instance.SizeCalculationCompleted -= OnSizeCalculationCompleted;
+                BackgroundFolderSizeCalculator.Instance.SizeCalculationProgress -= OnSizeCalculationProgress;
 
-            FileOperationsService.Instance.OperationProgress -= _fileOperationEventHandler.OnFileOperationProgress;
-            FileOperationsService.Instance.OperationCompleted -= _fileOperationEventHandler.OnFileOperationCompleted;
-            FileOperationsService.Instance.OperationFailed -= _fileOperationEventHandler.OnFileOperationFailed;
+                FileOperationsService.Instance.OperationProgress -= _fileOperationEventHandler.OnFileOperationProgress;
+                FileOperationsService.Instance.OperationCompleted -= _fileOperationEventHandler.OnFileOperationCompleted;
+                FileOperationsService.Instance.OperationFailed -= _fileOperationEventHandler.OnFileOperationFailed;
+            }
+            catch { /* 忽略取消订阅时的错误 */ }
 
             // Stop and dispose file system watcher
             lock (_watcherLock)
             {
-                _fileSystemWatcher?.Dispose();
+                try
+                {
+                    _fileSystemWatcher?.Dispose();
+                }
+                catch { }
                 _fileSystemWatcher = null;
             }
 
-            // Cancel any ongoing operations
-            _previewCancellationTokenSource?.Cancel();
-            _fileOperationCancellationTokenSource?.Cancel();
+            // Cancel any ongoing operations - 使用安全的取消方式
+            SafeCancelAndDispose(ref _previewCancellationTokenSource);
+            SafeCancelAndDispose(ref _fileOperationCancellationTokenSource);
+            SafeCancelAndDispose(ref _thumbnailCancellationTokenSource);
+            SafeCancelAndDispose(ref _loadFilesCancellationTokenSource);
+            SafeCancelAndDispose(ref _watcherDebounceCts);
 
-            // Cancel thumbnail and load operations as well
-            _thumbnailCancellationTokenSource?.Cancel();
-            _loadFilesCancellationTokenSource?.Cancel();
+            // Dispose semaphore
+            try
+            {
+                _previewSemaphore?.Dispose();
+            }
+            catch { }
+        }
 
-            // Dispose resources
-            _previewSemaphore?.Dispose();
-            _previewCancellationTokenSource?.Dispose();
-            _thumbnailCancellationTokenSource?.Dispose();
-            _loadFilesCancellationTokenSource?.Dispose();
-            _fileOperationCancellationTokenSource?.Dispose();
+        /// <summary>
+        /// 安全地取消和释放 CancellationTokenSource
+        /// </summary>
+        private static void SafeCancelAndDispose(ref CancellationTokenSource? cts)
+        {
+            var localCts = Interlocked.Exchange(ref cts, null);
+            if (localCts == null) return;
+            
+            try
+            {
+                if (!localCts.IsCancellationRequested)
+                {
+                    localCts.Cancel();
+                }
+            }
+            catch (ObjectDisposedException) { }
+            
+            try
+            {
+                localCts.Dispose();
+            }
+            catch (ObjectDisposedException) { }
         }
 
         public bool CanBack => _navigationService.CanBack;

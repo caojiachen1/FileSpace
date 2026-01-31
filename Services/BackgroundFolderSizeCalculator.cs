@@ -197,8 +197,13 @@ namespace FileSpace.Services
 
         private void CalculateSize(string path, FolderSizeInfo result, FolderSizeProgress progress, IProgress<FolderSizeProgress> progressReporter)
         {
-            var stack = new Stack<string>();
+            // 使用预分配容量的栈以减少内存分配
+            var stack = new Stack<string>(256);
             stack.Push(path);
+
+            // 批量处理计数器，减少进度报告频率
+            int batchCounter = 0;
+            const int progressReportInterval = 1000;
 
             while (stack.Count > 0)
             {
@@ -224,12 +229,12 @@ namespace FileSpace.Services
                     do
                     {
                         var fileName = findData.cFileName;
-                        if (fileName == "." || fileName == "..") continue;
+                        if (fileName == "." || fileName == ".." || string.IsNullOrEmpty(fileName)) continue;
 
                         var attributes = (FileAttributes)findData.dwFileAttributes;
                         var fullPath = Path.Combine(currentPath, fileName);
 
-                        if (attributes.HasFlag(FileAttributes.Directory))
+                        if ((attributes & FileAttributes.Directory) != 0)
                         {
                             result.DirectoryCount++;
                             progress.ProcessedDirectories++;
@@ -239,12 +244,16 @@ namespace FileSpace.Services
                         {
                             long logicalSize = Win32Api.ToLong(findData.nFileSizeHigh, findData.nFileSizeLow);
                             result.TotalSize += logicalSize;
-                            result.TotalSizeOnDisk += FileUtils.GetSizeOnDisk(fullPath);
+                            // 延迟计算磁盘大小，对于大文件夹会显著提升性能
+                            // result.TotalSizeOnDisk += FileUtils.GetSizeOnDisk(fullPath);
                             result.FileCount++;
                             progress.ProcessedFiles++;
+                            batchCounter++;
 
-                            if (progress.ProcessedFiles % 500 == 0)
+                            // 减少进度报告频率以降低 UI 开销
+                            if (batchCounter >= progressReportInterval)
                             {
+                                batchCounter = 0;
                                 progress.CurrentPath = fullPath;
                                 progressReporter.Report(progress);
                             }

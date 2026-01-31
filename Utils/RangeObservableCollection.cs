@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 
 namespace FileSpace.Utils
 {
@@ -12,6 +13,7 @@ namespace FileSpace.Utils
     public class RangeObservableCollection<T> : ObservableCollection<T>
     {
         private bool _suppressNotification;
+        private int _bulkOperationCount;
 
         public RangeObservableCollection() : base() { }
 
@@ -28,15 +30,23 @@ namespace FileSpace.Utils
             if (list.Count == 0) return;
 
             CheckReentrancy();
-
-            int startIndex = Count;
-            foreach (var item in list)
+            
+            _suppressNotification = true;
+            try
             {
-                Items.Add(item);
+                foreach (var item in list)
+                {
+                    Items.Add(item);
+                }
+            }
+            finally
+            {
+                _suppressNotification = false;
             }
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         /// <summary>
@@ -47,14 +57,23 @@ namespace FileSpace.Utils
             if (items == null) throw new ArgumentNullException(nameof(items));
 
             CheckReentrancy();
-
-            foreach (var item in items)
+            
+            _suppressNotification = true;
+            try
             {
-                Items.Remove(item);
+                foreach (var item in items)
+                {
+                    Items.Remove(item);
+                }
+            }
+            finally
+            {
+                _suppressNotification = false;
             }
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         /// <summary>
@@ -66,15 +85,31 @@ namespace FileSpace.Utils
             if (items == null) throw new ArgumentNullException(nameof(items));
 
             CheckReentrancy();
-
-            Items.Clear();
-            foreach (var item in items)
+            
+            _suppressNotification = true;
+            try
             {
-                Items.Add(item);
+                Items.Clear();
+                
+                // 如果底层 List 支持容量设置，预分配容量
+                if (items is ICollection<T> collection && Items is List<T> list)
+                {
+                    list.Capacity = Math.Max(list.Capacity, collection.Count);
+                }
+                
+                foreach (var item in items)
+                {
+                    Items.Add(item);
+                }
+            }
+            finally
+            {
+                _suppressNotification = false;
             }
 
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         /// <summary>
@@ -85,26 +120,36 @@ namespace FileSpace.Utils
             if (items == null) throw new ArgumentNullException(nameof(items));
 
             CheckReentrancy();
-
-            Items.Clear();
             
-            // 如果底层 List 支持容量设置，预分配容量
-            if (Items is List<T> list)
+            _suppressNotification = true;
+            try
             {
-                list.Capacity = Math.Max(list.Capacity, items.Count);
+                Items.Clear();
+                
+                // 如果底层 List 支持容量设置，预分配容量
+                if (Items is List<T> list)
+                {
+                    list.Capacity = Math.Max(list.Capacity, items.Count);
+                }
+
+                foreach (var item in items)
+                {
+                    Items.Add(item);
+                }
+            }
+            finally
+            {
+                _suppressNotification = false;
             }
 
-            foreach (var item in items)
-            {
-                Items.Add(item);
-            }
-
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                NotifyCollectionChangedAction.Reset));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
         /// <summary>
         /// 开始批量操作，暂时禁止 CollectionChanged 通知
+        /// 支持嵌套调用
         /// </summary>
         public IDisposable BeginBulkOperation()
         {
@@ -116,6 +161,8 @@ namespace FileSpace.Utils
         /// </summary>
         public void SuppressedAction(Action action)
         {
+            if (action == null) throw new ArgumentNullException(nameof(action));
+            
             _suppressNotification = true;
             try
             {
@@ -124,6 +171,8 @@ namespace FileSpace.Utils
             finally
             {
                 _suppressNotification = false;
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+                OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             }
         }
@@ -136,21 +185,39 @@ namespace FileSpace.Utils
             }
         }
 
+        protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+        {
+            if (!_suppressNotification)
+            {
+                base.OnPropertyChanged(e);
+            }
+        }
+
         private class BulkOperationScope : IDisposable
         {
             private readonly RangeObservableCollection<T> _collection;
+            private bool _disposed;
 
             public BulkOperationScope(RangeObservableCollection<T> collection)
             {
                 _collection = collection;
+                Interlocked.Increment(ref _collection._bulkOperationCount);
                 _collection._suppressNotification = true;
             }
 
             public void Dispose()
             {
-                _collection._suppressNotification = false;
-                _collection.OnCollectionChanged(new NotifyCollectionChangedEventArgs(
-                    NotifyCollectionChangedAction.Reset));
+                if (_disposed) return;
+                _disposed = true;
+                
+                var count = Interlocked.Decrement(ref _collection._bulkOperationCount);
+                if (count == 0)
+                {
+                    _collection._suppressNotification = false;
+                    _collection.OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+                    _collection.OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+                    _collection.OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                }
             }
         }
     }

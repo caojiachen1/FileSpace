@@ -50,34 +50,70 @@ namespace FileSpace.Services
         /// <returns>缩略图图像源</returns>
         public async Task<ImageSource?> GetThumbnailAsync(string filePath, int thumbnailSize = 128, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(filePath) || (!File.Exists(filePath) && !Directory.Exists(filePath)))
-                return null;
-
-            var cacheKey = GenerateCacheKey(filePath, thumbnailSize);
-
-            // 检查内存缓存
-            if (_memoryCache.TryGetValue(cacheKey, out var weakRef) && weakRef.Target is ImageSource cachedImage)
+            if (string.IsNullOrEmpty(filePath))
             {
-                return cachedImage;
+                return null;
+            }
+
+            // 快速路径：先检查内存缓存
+            var cacheKey = GenerateCacheKey(filePath, thumbnailSize);
+            
+            if (_memoryCache.TryGetValue(cacheKey, out var weakRef))
+            {
+                if (weakRef.Target is ImageSource cachedImage && weakRef.IsAlive)
+                {
+                    return cachedImage;
+                }
+                // 清除死引用
+                _memoryCache.TryRemove(cacheKey, out _);
+            }
+
+            // 检查文件/目录是否存在（开销较大，放在内存缓存检查之后）
+            bool exists;
+            try
+            {
+                exists = File.Exists(filePath) || Directory.Exists(filePath);
+            }
+            catch
+            {
+                return null;
+            }
+
+            if (!exists)
+            {
+                return null;
             }
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // 检查磁盘缓存
-                var diskCachedImage = await LoadFromDiskCacheAsync(cacheKey, cancellationToken);
+                var diskCachedImage = await LoadFromDiskCacheAsync(cacheKey, cancellationToken).ConfigureAwait(false);
                 if (diskCachedImage != null)
                 {
                     _memoryCache[cacheKey] = new WeakReference(diskCachedImage);
                     return diskCachedImage;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // 生成新的缩略图
-                var thumbnail = await GenerateThumbnailAsync(filePath, thumbnailSize, cancellationToken);
+                var thumbnail = await GenerateThumbnailAsync(filePath, thumbnailSize, cancellationToken).ConfigureAwait(false);
                 if (thumbnail != null)
                 {
-                    // 保存到内存和磁盘缓存
+                    // 保存到内存缓存
                     _memoryCache[cacheKey] = new WeakReference(thumbnail);
-                    _ = Task.Run(() => SaveToDiskCacheAsync(cacheKey, thumbnail, cancellationToken), cancellationToken);
+                    
+                    // 异步保存到磁盘缓存（不等待）
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await SaveToDiskCacheAsync(cacheKey, thumbnail, CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch { /* 忽略磁盘缓存错误 */ }
+                    });
                 }
 
                 return thumbnail;
