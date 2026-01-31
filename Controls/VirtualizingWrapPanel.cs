@@ -57,11 +57,6 @@ namespace FileSpace.Controls
 
         public VirtualizingWrapPanel()
         {
-            // 启用虚拟化
-            if (!DesignerProperties.GetIsInDesignMode(this))
-            {
-                RenderTransform = new TranslateTransform();
-            }
         }
 
         #endregion
@@ -76,24 +71,38 @@ namespace FileSpace.Controls
             var itemCount = itemsControl.Items.Count;
             if (itemCount == 0)
             {
-                CleanupContainers();
+                _firstVisibleIndex = 0;
+                _lastVisibleIndex = -1;
+                CleanupAllContainers();
                 _extent = new Size(0, 0);
                 _viewport = availableSize;
                 UpdateScrollInfo(availableSize);
                 return new Size(0, 0);
             }
 
+            // 计算该面板可以使用的完整宽度
+            double panelWidth = double.IsInfinity(availableSize.Width) ? SystemParameters.PrimaryScreenWidth : availableSize.Width;
+            
+            // 确保 ItemWidth 和 ItemHeight 不为 0
+            double itemWidth = ItemWidth > 0 ? ItemWidth : 100;
+            double itemHeight = ItemHeight > 0 ? ItemHeight : 100;
+
             // 计算每行可以容纳的项目数
-            var panelWidth = double.IsInfinity(availableSize.Width) ? SystemParameters.PrimaryScreenWidth : availableSize.Width;
-            _itemsPerRow = Math.Max(1, (int)(panelWidth / ItemWidth));
+            _itemsPerRow = Math.Max(1, (int)(panelWidth / itemWidth));
 
             // 计算总行数和高度
             var totalRows = (int)Math.Ceiling((double)itemCount / _itemsPerRow);
-            var totalHeight = totalRows * ItemHeight;
+            var totalHeight = totalRows * itemHeight;
 
             // 更新视口和范围
             _extent = new Size(panelWidth, totalHeight);
             _viewport = availableSize;
+
+            // 如果偏移量超出范围（例如在项目减少后），强制重置偏移量
+            if (_offset.Y >= totalHeight && totalHeight > 0)
+            {
+                _offset.Y = 0;
+            }
 
             // 计算可见项目范围
             CalculateVisibleRange(availableSize, itemCount);
@@ -107,10 +116,11 @@ namespace FileSpace.Controls
 
             // 为可见项目生成容器
             var startPos = generator.GeneratorPositionFromIndex(_firstVisibleIndex);
-            int childIndex = (startPos.Offset == 0) ? startPos.Index : startPos.Index + 1;
             
             using (generator.StartAt(startPos, GeneratorDirection.Forward, true))
             {
+                int currentInternalIndex = 0;
+
                 for (int i = _firstVisibleIndex; i <= _lastVisibleIndex && i < itemCount; i++)
                 {
                     bool newlyRealized;
@@ -118,70 +128,65 @@ namespace FileSpace.Controls
                     
                     if (child == null) continue;
 
-                    if (newlyRealized)
+                    if (newlyRealized || !InternalChildren.Contains(child))
                     {
-                        // 新生成的容器
-                        if (childIndex >= InternalChildren.Count)
+                        // 新生成的容器或不在可视树中的容器
+                        if (currentInternalIndex >= InternalChildren.Count)
                         {
                             AddInternalChild(child);
                         }
                         else
                         {
-                            InsertInternalChild(childIndex, child);
+                            InsertInternalChild(currentInternalIndex, child);
                         }
-                        generator.PrepareItemContainer(child);
-                        childIndex++;
+                        
+                        if (newlyRealized)
+                        {
+                            generator.PrepareItemContainer(child);
+                        }
                     }
                     else
                     {
-                        // 已存在的容器，确保它在可视树中
-                        int oldIndex = InternalChildren.IndexOf(child);
-                        if (oldIndex < 0)
+                        // 容器已在树中，确保它在正确的位置
+                        if (InternalChildren[currentInternalIndex] != child)
                         {
-                            // 容器不在可视树中，添加它
-                            if (childIndex >= InternalChildren.Count)
+                            int oldIndex = InternalChildren.IndexOf(child);
+                            if (oldIndex >= 0)
                             {
-                                AddInternalChild(child);
+                                RemoveInternalChildRange(oldIndex, 1);
                             }
-                            else
-                            {
-                                InsertInternalChild(childIndex, child);
-                            }
-                            childIndex++;
-                        }
-                        else if (oldIndex != childIndex)
-                        {
-                            // 容器在错误的位置，移动它
-                            RemoveInternalChildRange(oldIndex, 1);
-                            if (oldIndex < childIndex) childIndex--;
                             
-                            if (childIndex >= InternalChildren.Count)
+                            if (currentInternalIndex >= InternalChildren.Count)
                             {
                                 AddInternalChild(child);
                             }
                             else
                             {
-                                InsertInternalChild(childIndex, child);
+                                InsertInternalChild(currentInternalIndex, child);
                             }
-                            childIndex++;
-                        }
-                        else
-                        {
-                            // 容器已在正确位置
-                            childIndex++;
                         }
                     }
 
                     // 测量子元素
-                    child.Measure(new Size(ItemWidth, ItemHeight));
+                    child.Measure(new Size(itemWidth, itemHeight));
                     
                     // 记录已实现的容器
                     _realizedContainers[i] = child;
+                    currentInternalIndex++;
                 }
             }
 
             UpdateScrollInfo(availableSize);
-            return new Size(panelWidth, Math.Min(totalHeight, availableSize.Height));
+            
+            // 如果在 ScrollViewer 中，返回能填满可见区域的大小
+            double height = double.IsInfinity(availableSize.Height) ? totalHeight : availableSize.Height;
+            return new Size(panelWidth, height);
+        }
+
+        private void CleanupAllContainers()
+        {
+            _realizedContainers.Clear();
+            RemoveInternalChildRange(0, InternalChildren.Count);
         }
 
         protected override Size ArrangeOverride(Size finalSize)
@@ -232,16 +237,33 @@ namespace FileSpace.Controls
                 return;
             }
 
+            // 确保 ItemHeight 不为 0
+            double itemHeight = ItemHeight > 0 ? ItemHeight : 100;
+
             var viewportHeight = double.IsInfinity(availableSize.Height) ? SystemParameters.PrimaryScreenHeight : availableSize.Height;
 
             // 计算第一个可见行（向下取整）
-            var firstVisibleRow = Math.Max(0, (int)(_offset.Y / ItemHeight));
+            var firstVisibleRow = Math.Max(0, (int)(_offset.Y / itemHeight));
             _firstVisibleIndex = Math.Max(0, firstVisibleRow * _itemsPerRow);
+            
+            // 安全检查：如果 itemCount 变小了，确保不会越界，并重置偏移
+            if (_firstVisibleIndex >= itemCount && itemCount > 0)
+            {
+                _firstVisibleIndex = 0;
+                _offset.Y = 0;
+                firstVisibleRow = 0;
+            }
 
             // 计算最后一个可见行（向上取整，并额外增加缓冲行）
-            var visibleRows = (int)Math.Ceiling(viewportHeight / ItemHeight);
+            var visibleRows = (int)Math.Ceiling(viewportHeight / itemHeight);
             var lastVisibleRow = firstVisibleRow + visibleRows + 1; // 增加一行缓冲
             _lastVisibleIndex = Math.Min(itemCount - 1, (lastVisibleRow + 1) * _itemsPerRow - 1);
+            
+            // 确保最后一项索引不小于第一项
+            if (_lastVisibleIndex < _firstVisibleIndex && itemCount > 0)
+            {
+                _lastVisibleIndex = _firstVisibleIndex;
+            }
         }
 
         private void CleanupContainers()
@@ -285,16 +307,17 @@ namespace FileSpace.Controls
             {
                 case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
                     _offset = new Point(0, 0);
-                    _realizedContainers.Clear();
-                    break;
-                    
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Remove:
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Replace:
-                    // 清理可能受影响的容器
-                    _realizedContainers.Clear();
                     break;
             }
+
+            // 批量操作时，清理现有容器并强制重新生成，避免索引错位
+            _realizedContainers.Clear();
+            RemoveInternalChildRange(0, InternalChildren.Count);
+
             base.OnItemsChanged(sender, args);
+            
+            // 重要：通知布局系统重新测量
+            InvalidateMeasure();
         }
 
         #endregion
