@@ -832,44 +832,14 @@ namespace FileSpace.ViewModels
         {
             EvaluatePendingFolderFocus(value);
 
-            // 从 SQLite 获取该文件夹的视图模式和排序设置
-            bool isSpecialView = value == ThisPCPath || value == LinuxPath;
-            if (!isSpecialView && !string.IsNullOrEmpty(value) && Directory.Exists(value))
-            {
-                var folderSettings = FolderViewService.Instance.GetFolderSettings(value);
-                
-                // 视图模式
-                _isViewModeLoading = true;
-                string? viewMode = folderSettings.ViewMode;
-                if (viewMode == null)
-                {
-                    // 快速探测是否是图片文件夹，避免先显示详细信息再跳到超大图标
-                    if (FileSystemService.Instance.IsImageFolderQuickCheck(value))
-                    {
-                        viewMode = "超大图标";
-                        // 自动检测到图片文件夹后，直接写入数据库，以后不再重复检查
-                        FolderViewService.Instance.SetViewMode(value, "超大图标");
-                    }
-                }
-                ViewMode = viewMode ?? "详细信息";
-                _isViewModeLoading = false;
+            // 立即清空文件列表和更新状态，让 UI 立即响应
+            Files.Clear();
+            SelectedFile = null;
+            SelectedFiles.Clear();
+            StatusText = "正在加载...";
 
-                // 排序设置
-                _sortMode = folderSettings.SortMode ?? "Name";
-                _sortAscending = folderSettings.SortAscending ?? true;
-                OnPropertyChanged(nameof(SortMode));
-                OnPropertyChanged(nameof(SortAscending));
-            }
-            else
-            {
-                // 默认设置或特殊视图
-                _sortMode = "Name";
-                _sortAscending = true;
-                OnPropertyChanged(nameof(SortMode));
-                OnPropertyChanged(nameof(SortAscending));
-            }
-
-            LoadFiles();
+            // 异步加载文件和设置（不阻塞 UI）
+            _ = LoadFilesAndSettingsAsync(value);
             UpdateBreadcrumbFolders();
 
             // Set up file system watcher for the current directory
@@ -911,6 +881,72 @@ namespace FileSpace.ViewModels
             if (SelectedFile == null)
             {
                 _ = ShowPreviewAsync();
+            }
+        }
+
+        /// <summary>
+        /// 异步加载文件夹设置和文件列表，完全不阻塞 UI 线程
+        /// </summary>
+        private async Task LoadFilesAndSettingsAsync(string path)
+        {
+            try
+            {
+                var token = CreateOrResetCancellationTokenSource(ref _loadFilesCancellationTokenSource).Token;
+
+                // 特殊视图（此电脑、Linux）直接加载
+                bool isSpecialView = path == ThisPCPath || path == LinuxPath;
+                if (isSpecialView)
+                {
+                    SortMode = "Name";
+                    SortAscending = true;
+                    LoadFilesCore(token);
+                    return;
+                }
+
+                // 在后台线程获取文件夹设置和检查目录
+                var (folderSettings, exists, isImageFolder) = await Task.Run(() =>
+                {
+                    if (token.IsCancellationRequested) return (default, false, false);
+                    
+                    bool dirExists = Directory.Exists(path);
+                    if (!dirExists) return (default, false, false);
+
+                    var settings = FolderViewService.Instance.GetFolderSettings(path);
+                    bool isImage = settings.ViewMode == null && FileSystemService.Instance.IsImageFolderQuickCheck(path);
+                    
+                    return (settings, dirExists, isImage);
+                }, token);
+
+                if (token.IsCancellationRequested) return;
+
+                if (!exists)
+                {
+                    StatusText = "目录不存在";
+                    return;
+                }
+
+                // 在 UI 线程更新视图模式和排序设置
+                _isViewModeLoading = true;
+                string? viewMode = folderSettings.ViewMode;
+                if (viewMode == null && isImageFolder)
+                {
+                    viewMode = "超大图标";
+                    // 异步写入数据库
+                    _ = Task.Run(() => FolderViewService.Instance.SetViewMode(path, "超大图标"));
+                }
+                ViewMode = viewMode ?? "详细信息";
+                _isViewModeLoading = false;
+
+                SortMode = folderSettings.SortMode ?? "Name";
+                SortAscending = folderSettings.SortAscending ?? true;
+
+                // 加载文件
+                LoadFilesCore(token);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                StatusText = $"加载错误: {ex.Message}";
             }
         }
 
@@ -1233,16 +1269,24 @@ namespace FileSpace.ViewModels
             return newCts;
         }
 
-        private async void LoadFiles()
+        /// <summary>
+        /// 兼容性方法：供文件系统监视器等外部调用
+        /// </summary>
+        private void LoadFiles()
+        {
+            Files.Clear();
+            SelectedFile = null;
+            SelectedFiles.Clear();
+            StatusText = "正在加载...";
+            var token = CreateOrResetCancellationTokenSource(ref _loadFilesCancellationTokenSource).Token;
+            LoadFilesCore(token);
+        }
+
+        private async void LoadFilesCore(CancellationToken token)
         {
             try
             {
-                var token = CreateOrResetCancellationTokenSource(ref _loadFilesCancellationTokenSource).Token;
-
-                // Clear selection when changing directory
-                SelectedFile = null;
                 SelectedDrive = null;
-                SelectedFiles.Clear();
 
                 if (CurrentPath == ThisPCPath)
                 {
@@ -1255,7 +1299,6 @@ namespace FileSpace.ViewModels
                     {
                         Drives.Add(drive);
                     }
-                    Files.Clear();
                     StatusText = $"共 {drives.Count} 个设备";
                     _ = ShowPreviewAsync();
                     return; 
@@ -1292,7 +1335,6 @@ namespace FileSpace.ViewModels
                         }
                     }
                     
-                    Files.Clear();
                     StatusText = $"共 {LinuxDistros.Count} 个发行版";
                     return;
                 }
