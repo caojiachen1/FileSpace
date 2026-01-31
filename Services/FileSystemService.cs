@@ -322,6 +322,58 @@ namespace FileSpace.Services
             return false;
         }
 
+        /// <summary>
+        /// 快速检查文件夹是否可能全是图片，用于减少视图切换闪烁
+        /// </summary>
+        public bool IsImageFolderQuickCheck(string path)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return false;
+
+                string searchPath = Path.Combine(path, "*");
+                var handle = Win32Api.FindFirstFileExW(
+                    searchPath,
+                    Win32Api.FINDEX_INFO_LEVELS.FindExInfoBasic,
+                    out var findData,
+                    Win32Api.FINDEX_SEARCH_OPS.FindExSearchNameMatch,
+                    IntPtr.Zero,
+                    Win32Api.FIND_FIRST_EX_LARGE_FETCH);
+
+                if (!handle.IsInvalid)
+                {
+                    try
+                    {
+                        int count = 0;
+                        do
+                        {
+                            string fileName = findData.cFileName;
+                            if (fileName == "." || fileName == "..") continue;
+
+                            var attributes = (FileAttributes)findData.dwFileAttributes;
+                            // 如果有子文件夹，就不按照纯图片文件夹处理
+                            if (attributes.HasFlag(FileAttributes.Directory)) return false;
+                            
+                            if (!FileUtils.IsImageFile(Path.GetExtension(fileName))) return false;
+                            
+                            count++;
+                            // 检查前 10 个文件即可，快速给出预判
+                            if (count >= 10) return true;
+
+                        } while (Win32Api.FindNextFileW(handle, out findData));
+                        
+                        return count > 0;
+                    }
+                    finally
+                    {
+                        handle.Close();
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
         private static string GetFileType(string extension)
         {
             if (string.IsNullOrEmpty(extension)) return "文件";

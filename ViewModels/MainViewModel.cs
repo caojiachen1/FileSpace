@@ -824,7 +824,16 @@ namespace FileSpace.ViewModels
                 
                 // 视图模式
                 _isViewModeLoading = true;
-                ViewMode = folderSettings.ViewMode ?? "详细信息";
+                string? viewMode = folderSettings.ViewMode;
+                if (viewMode == null)
+                {
+                    // 快速探测是否是图片文件夹，避免先显示详细信息再跳到超大图标
+                    if (FileSystemService.Instance.IsImageFolderQuickCheck(value))
+                    {
+                        viewMode = "超大图标";
+                    }
+                }
+                ViewMode = viewMode ?? "详细信息";
                 _isViewModeLoading = false;
 
                 // 排序设置
@@ -1308,6 +1317,24 @@ namespace FileSpace.ViewModels
                 else
                 {
                     StatusText = $"{sortedList.Count} 个项目 (扫描 {enumerationWatch.ElapsedMilliseconds}ms，排序 {sortDurationMs}ms)";
+                }
+
+                // 自动检查图片文件夹：如果全是图片且未设置过视图模式，默认使用超大图标
+                if (allLoadedFiles.Count > 0 && CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                {
+                    if (FolderViewService.Instance.GetViewMode(CurrentPath) == null)
+                    {
+                        bool allImages = allLoadedFiles.All(f => !f.IsDirectory && FileUtils.IsImageFile(Path.GetExtension(f.Name)));
+                        if (allImages && ViewMode != "超大图标")
+                        {
+                            ViewMode = "超大图标";
+                        }
+                        else if (!allImages && ViewMode == "超大图标")
+                        {
+                            // 如果 QuickCheck 阶段误判了（例如前几个是图片但后续有非图片项目），则恢复为详细信息
+                            ViewMode = "详细信息";
+                        }
+                    }
                 }
 
                 Files.ReplaceAll(sortedList);
