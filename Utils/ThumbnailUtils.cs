@@ -61,6 +61,46 @@ namespace FileSpace.Utils
 
         private static readonly Guid IShellItemImageFactoryGuid = new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
 
+        /// <summary>
+        /// 获取文件夹的纯图标（不是缩略图）
+        /// </summary>
+        public static BitmapSource? GetFolderIcon(string folderPath, int width, int height)
+        {
+            try
+            {
+                SHCreateItemFromParsingName(folderPath, IntPtr.Zero, IShellItemImageFactoryGuid, out var factory);
+                
+                var size = new SIZE(width, height);
+                // 使用 IconOnly 标志获取纯图标，而不是缩略图
+                int hr = factory.GetImage(size, SIIGBF.IconOnly | SIIGBF.BiggerSizeOk, out var hBitmap);
+
+                if (hr == 0 && hBitmap != IntPtr.Zero)
+                {
+                    try
+                    {
+                        var bitmapSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+                            hBitmap,
+                            IntPtr.Zero,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromEmptyOptions());
+                        
+                        bitmapSource.Freeze();
+                        return bitmapSource;
+                    }
+                    finally
+                    {
+                        DeleteObject(hBitmap);
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors and return null
+            }
+
+            return null;
+        }
+
         public static BitmapSource? GetThumbnail(string filePath, int width, int height)
         {
             try

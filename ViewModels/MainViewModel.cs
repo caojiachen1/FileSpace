@@ -1595,16 +1595,16 @@ namespace FileSpace.ViewModels
 
                             try
                             {
-                                // 获取空文件夹的系统缩略图
-                                var thumbnail = ThumbnailUtils.GetThumbnail(tempFolder, 64, 64);
-                                if (thumbnail != null)
+                                // 获取文件夹的系统图标（而不是缩略图）
+                                var icon = ThumbnailUtils.GetFolderIcon(tempFolder, 64, 64);
+                                if (icon != null)
                                 {
-                                    _defaultFolderIcon = thumbnail;
+                                    _defaultFolderIcon = icon;
 
                                     // 保存到缓存
                                     Directory.CreateDirectory(_iconCacheFolder);
                                     var encoder = new PngBitmapEncoder();
-                                    encoder.Frames.Add(BitmapFrame.Create((BitmapSource)thumbnail));
+                                    encoder.Frames.Add(BitmapFrame.Create((BitmapSource)icon));
                                     using (var stream = File.Create(_defaultFolderIconPath))
                                     {
                                         encoder.Save(stream);
