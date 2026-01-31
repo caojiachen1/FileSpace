@@ -831,6 +831,8 @@ namespace FileSpace.ViewModels
                     if (FileSystemService.Instance.IsImageFolderQuickCheck(value))
                     {
                         viewMode = "超大图标";
+                        // 自动检测到图片文件夹后，直接写入数据库，以后不再重复检查
+                        FolderViewService.Instance.SetViewMode(value, "超大图标");
                     }
                 }
                 ViewMode = viewMode ?? "详细信息";
@@ -1325,13 +1327,19 @@ namespace FileSpace.ViewModels
                     if (FolderViewService.Instance.GetViewMode(CurrentPath) == null)
                     {
                         bool allImages = allLoadedFiles.All(f => !f.IsDirectory && FileUtils.IsImageFile(Path.GetExtension(f.Name)));
-                        if (allImages && ViewMode != "超大图标")
+                        if (allImages)
                         {
-                            ViewMode = "超大图标";
+                            if (ViewMode != "超大图标")
+                            {
+                                ViewMode = "超大图标";
+                            }
+                            // 确认是图片文件夹，写入数据库永久生效
+                            FolderViewService.Instance.SetViewMode(CurrentPath, "超大图标");
                         }
                         else if (!allImages && ViewMode == "超大图标")
                         {
                             // 如果 QuickCheck 阶段误判了（例如前几个是图片但后续有非图片项目），则恢复为详细信息
+                            // 并且不需要写入数据库，让它保持 null 以便未来可能的重新评估
                             ViewMode = "详细信息";
                         }
                     }
