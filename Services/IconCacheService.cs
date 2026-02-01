@@ -103,6 +103,13 @@ namespace FileSpace.Services
             string extension = Path.GetExtension(path).ToLower();
             if (string.IsNullOrEmpty(extension)) return _defaultFileIcon!;
 
+            // 多媒体文件（图片、视频）不进行图标缓存，直接返回默认图标
+            // 真实的缩略图将通过 ThumbnailCacheService 异步加载
+            if (FileUtils.IsImageFile(extension) || FileUtils.IsVideoFile(extension))
+            {
+                return _defaultFileIcon!;
+            }
+
             // 检查内存缓存
             if (_memoryCache.TryGetValue(extension, out var cached)) return cached;
 
