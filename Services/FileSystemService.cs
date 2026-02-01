@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
+using System.Windows.Media;
 using FileSpace.Models;
 using FileSpace.Utils;
 using Wpf.Ui.Controls;
@@ -100,6 +101,7 @@ namespace FileSpace.Services
                                 item.Icon = SymbolRegular.Folder24;
                                 item.IconColor = "#FFE6A23C";
                                 item.Type = "文件夹";
+                                try { item.Thumbnail = IconCacheService.Instance.GetFolderIcon(); } catch { }
                             }
                             else
                             {
@@ -108,6 +110,7 @@ namespace FileSpace.Services
                                 item.Icon = GetFileIcon(extension);
                                 item.IconColor = GetFileIconColor(extension);
                                 item.Type = GetFileType(extension);
+                                try { item.Thumbnail = IconCacheService.Instance.GetIcon(fullPath, false); } catch { }
                             }
 
                             // 使用 WriteAsync 以支持背压

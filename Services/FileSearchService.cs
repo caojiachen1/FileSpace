@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Windows.Media;
 using FileSpace.Models;
 using FileSpace.Utils;
 
@@ -193,7 +194,8 @@ namespace FileSpace.Services
                                         ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm"),
                                         Type = "文件夹",
                                         Icon = Wpf.Ui.Controls.SymbolRegular.Folder24,
-                                        IconColor = "#FFE6A23C"
+                                        IconColor = "#FFE6A23C",
+                                        Thumbnail = IconCacheService.Instance.GetFolderIcon()
                                     };
                                     lock (results) { results.Add(dirItem); }
                                 }
@@ -217,7 +219,8 @@ namespace FileSpace.Services
                                         ModifiedTime = Win32Api.ToDateTime(findData.ftLastWriteTime).ToString("yyyy-MM-dd HH:mm"),
                                         Type = FileSystemService.GetFileTypePublic(ext),
                                         Icon = FileSystemService.GetFileIconPublic(ext),
-                                        IconColor = FileSystemService.GetFileIconColorPublic(ext)
+                                        IconColor = FileSystemService.GetFileIconColorPublic(ext),
+                                        Thumbnail = IconCacheService.Instance.GetIcon(fullPath, false)
                                     };
                                     lock (results) { results.Add(fileItem); }
                                 }
@@ -342,7 +345,8 @@ namespace FileSpace.Services
                 Size = file.Length,
                 ModifiedTime = file.LastWriteTime.ToString("yyyy-MM-dd HH:mm"),
                 IsDirectory = false,
-                Type = Path.GetExtension(file.Name)
+                Type = Path.GetExtension(file.Name),
+                Thumbnail = IconCacheService.Instance.GetIcon(file.FullName, false)
             };
         }
 
@@ -355,7 +359,8 @@ namespace FileSpace.Services
                 Size = 0,
                 ModifiedTime = directory.LastWriteTime.ToString("yyyy-MM-dd HH:mm"),
                 IsDirectory = true,
-                Type = string.Empty
+                Type = string.Empty,
+                Thumbnail = IconCacheService.Instance.GetFolderIcon()
             };
         }
     }

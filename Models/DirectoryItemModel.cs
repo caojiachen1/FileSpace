@@ -128,9 +128,14 @@ namespace FileSpace.Models
                          ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
                          ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
             }
+            else if ((FullPath.Length <= 3 && FullPath.EndsWith(":\\")) || FullPath.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
+            {
+                // 对于磁盘和 WSL 发行版，保留使用 ThumbnailUtils 直接获取原生图标
+                Thumbnail = ThumbnailUtils.GetThumbnail(FullPath, 32, 32);
+            }
             else
             {
-                Thumbnail = ThumbnailUtils.GetThumbnail(FullPath, 32, 32);
+                Thumbnail = IconCacheService.Instance.GetIcon(FullPath, true);
             }
         }
 

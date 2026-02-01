@@ -447,7 +447,14 @@ namespace FileSpace.ViewModels
             var color = isDir ? "#FFE6A23C" : "#FF607D8B";
 
             var newItem = new QuickAccessItem(name, path, icon, color, false);
-            newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+            if (isDir && IsSpecialFolder(path))
+            {
+                newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+            }
+            else
+            {
+                newItem.Thumbnail = IconCacheService.Instance.GetIcon(path, isDir);
+            }
 
             if (index >= 0 && index <= QuickAccessItems.Count)
                 QuickAccessItems.Insert(index, newItem);
@@ -564,9 +571,6 @@ namespace FileSpace.ViewModels
             FileOperationsService.Instance.OperationCompleted += _fileOperationEventHandler.OnFileOperationCompleted;
             FileOperationsService.Instance.OperationFailed += _fileOperationEventHandler.OnFileOperationFailed;
 
-            // 加载默认文件夹图标缓存
-            _ = EnsureDefaultFolderIconAsync();
-
             // Subscribe to selection changes to update command states
             SelectedFiles.CollectionChanged += (s, e) =>
             {
@@ -591,6 +595,20 @@ namespace FileSpace.ViewModels
             var uiSettings = _settingsService.Settings.UISettings;
             uiSettings.IsLeftPanelVisible = true;
             uiSettings.IsRightPanelVisible = true;
+        }
+
+        private bool IsSpecialFolder(string path)
+        {
+            var specialPaths = new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+            };
+            return specialPaths.Contains(path);
         }
 
         /// <summary>
@@ -642,21 +660,32 @@ namespace FileSpace.ViewModels
                         SymbolRegular icon = isDir ? SymbolRegular.Folder24 : SymbolRegular.Document24;
                         string color = isDir ? "#FFE6A23C" : "#FF607D8B";
                         bool isPinned = pinnedPaths.Contains(path);
+                        ImageSource? thumbnail = null;
 
                         // Special icons for default folders
+                        bool isSpecialFolder = false;
                         if (isDir)
                         {
-                            if (path == defaultFolderPaths[0]) { name = "桌面"; icon = SymbolRegular.Desktop24; color = "#FF4CAF50"; }
-                            else if (path == defaultFolderPaths[1]) { name = "文档"; icon = SymbolRegular.Document24; color = "#FF2196F3"; }
-                            else if (path == defaultFolderPaths[2]) { name = "下载"; icon = SymbolRegular.ArrowDownload24; color = "#FFFF9800"; }
-                            else if (path == defaultFolderPaths[3]) { name = "图片"; icon = SymbolRegular.Image24; color = "#FFE91E63"; }
-                            else if (path == defaultFolderPaths[4]) { name = "音乐"; icon = SymbolRegular.MusicNote124; color = "#FF9C27B0"; }
-                            else if (path == defaultFolderPaths[5]) { name = "视频"; icon = SymbolRegular.Video24; color = "#FFFF5722"; }
+                            if (path == defaultFolderPaths[0]) { name = "桌面"; icon = SymbolRegular.Desktop24; color = "#FF4CAF50"; isSpecialFolder = true; }
+                            else if (path == defaultFolderPaths[1]) { name = "文档"; icon = SymbolRegular.Document24; color = "#FF2196F3"; isSpecialFolder = true; }
+                            else if (path == defaultFolderPaths[2]) { name = "下载"; icon = SymbolRegular.ArrowDownload24; color = "#FFFF9800"; isSpecialFolder = true; }
+                            else if (path == defaultFolderPaths[3]) { name = "图片"; icon = SymbolRegular.Image24; color = "#FFE91E63"; isSpecialFolder = true; }
+                            else if (path == defaultFolderPaths[4]) { name = "音乐"; icon = SymbolRegular.MusicNote124; color = "#FF9C27B0"; isSpecialFolder = true; }
+                            else if (path == defaultFolderPaths[5]) { name = "视频"; icon = SymbolRegular.Video24; color = "#FFFF5722"; isSpecialFolder = true; }
                             else if (!isPinned) { icon = SymbolRegular.FolderOpen24; }
                         }
 
+                        if (isSpecialFolder)
+                        {
+                            thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+                        }
+                        else
+                        {
+                            thumbnail = IconCacheService.Instance.GetIcon(path, isDir);
+                        }
+
                         var item = new QuickAccessItem(name, path, icon, color, isPinned);
-                        item.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+                        item.Thumbnail = thumbnail;
                         candidates.Add(item);
                     }
                     
@@ -700,7 +729,14 @@ namespace FileSpace.ViewModels
             var color = isDir ? "#FFE6A23C" : "#FF607D8B";
 
             var newItem = new QuickAccessItem(name, path, icon, color, false);
-            newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+            if (isDir && IsSpecialFolder(path))
+            {
+                newItem.Thumbnail = ThumbnailUtils.GetThumbnail(path, 32, 32);
+            }
+            else
+            {
+                newItem.Thumbnail = IconCacheService.Instance.GetIcon(path, isDir);
+            }
 
             if (QuickAccessItems.Count < 15)
             {
@@ -1096,7 +1132,7 @@ namespace FileSpace.ViewModels
                         Size = 0,
                         ModifiedTime = d.LastWriteTime.ToString("yyyy/M/d HH:mm"),
                         Type = "文件夹",
-                        Icon = SymbolRegular.Folder24,
+                        Thumbnail = IconCacheService.Instance.GetFolderIcon(),
                         IconColor = "#FFE6A23C"
                     });
 
@@ -1111,7 +1147,7 @@ namespace FileSpace.ViewModels
                         Size = f.Length,
                         ModifiedTime = f.LastWriteTime.ToString("yyyy/M/d HH:mm"),
                         Type = FileSystemService.GetFileTypePublic(f.Extension),
-                        Icon = FileSystemService.GetFileIconPublic(f.Extension),
+                        Thumbnail = IconCacheService.Instance.GetIcon(f.FullName, false),
                         IconColor = FileSystemService.GetFileIconColorPublic(f.Extension)
                     });
 
@@ -1245,11 +1281,6 @@ namespace FileSpace.ViewModels
         }
 
         private CancellationTokenSource? _loadFilesCancellationTokenSource;
-
-        // 默认文件夹图标缓存
-        private ImageSource? _defaultFolderIcon;
-        private readonly string _iconCacheFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileSpace", "IconCache");
-        private readonly string _defaultFolderIconPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileSpace", "IconCache", "default_folder_icon.png");
 
         // Helper to safely cancel and dispose existing CTS and create a new one
         private CancellationTokenSource CreateOrResetCancellationTokenSource(ref CancellationTokenSource? cts)
@@ -1549,87 +1580,6 @@ namespace FileSpace.ViewModels
             return SortListOptimized(unsortedFiles.ToList());
         }
 
-        /// <summary>
-        /// 确保默认文件夹图标已加载（从缓存或新生成）
-        /// </summary>
-        private async Task EnsureDefaultFolderIconAsync()
-        {
-            try
-            {
-                // 如果已经加载，直接返回
-                if (_defaultFolderIcon != null) return;
-
-                // 尝试从缓存加载
-                if (File.Exists(_defaultFolderIconPath))
-                {
-                    await Task.Run(() =>
-                    {
-                        try
-                        {
-                            var bitmap = new BitmapImage();
-                            bitmap.BeginInit();
-                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                            bitmap.UriSource = new Uri(_defaultFolderIconPath, UriKind.Absolute);
-                            bitmap.EndInit();
-                            bitmap.Freeze();
-                            _defaultFolderIcon = bitmap;
-                        }
-                        catch
-                        {
-                            // 缓存损坏，删除并重新生成
-                            File.Delete(_defaultFolderIconPath);
-                        }
-                    });
-                }
-
-                // 如果缓存不存在或加载失败，生成新的
-                if (_defaultFolderIcon == null)
-                {
-                    await Task.Run(() =>
-                    {
-                        try
-                        {
-                            // 创建临时空文件夹
-                            string tempFolder = Path.Combine(Path.GetTempPath(), "FileSpace_EmptyFolder_" + Guid.NewGuid().ToString());
-                            Directory.CreateDirectory(tempFolder);
-
-                            try
-                            {
-                                // 获取文件夹的系统图标（而不是缩略图）
-                                var icon = ThumbnailUtils.GetFolderIcon(tempFolder, 64, 64);
-                                if (icon != null)
-                                {
-                                    _defaultFolderIcon = icon;
-
-                                    // 保存到缓存
-                                    Directory.CreateDirectory(_iconCacheFolder);
-                                    var encoder = new PngBitmapEncoder();
-                                    encoder.Frames.Add(BitmapFrame.Create((BitmapSource)icon));
-                                    using (var stream = File.Create(_defaultFolderIconPath))
-                                    {
-                                        encoder.Save(stream);
-                                    }
-                                }
-                            }
-                            finally
-                            {
-                                // 清理临时文件夹
-                                try { Directory.Delete(tempFolder); } catch { }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"生成默认文件夹图标失败: {ex.Message}");
-                        }
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"加载默认文件夹图标失败: {ex.Message}");
-            }
-        }
-
         private async Task LoadThumbnailsAsync()
         {
             try
@@ -1709,10 +1659,6 @@ namespace FileSpace.ViewModels
 
                 // 确保默认文件夹图标已加载
                 bool isDetailsView = ViewMode == "详细信息";
-                if (isDetailsView)
-                {
-                    await EnsureDefaultFolderIconAsync();
-                }
 
                 // 生产者任务
                 await Parallel.ForEachAsync(filesSnapshot, new ParallelOptions 
@@ -1729,9 +1675,9 @@ namespace FileSpace.ViewModels
                         ImageSource? thumbnail = null;
 
                         // 详细信息模式下，文件夹使用统一的默认图标
-                        if (isDetailsView && file.IsDirectory && _defaultFolderIcon != null)
+                        if (isDetailsView && file.IsDirectory)
                         {
-                            thumbnail = _defaultFolderIcon;
+                            thumbnail = IconCacheService.Instance.GetFolderIcon();
                         }
                         else
                         {
@@ -1914,6 +1860,7 @@ namespace FileSpace.ViewModels
                             Icon = SymbolRegular.Folder24,
                             IconColor = "#FFE6A23C",
                             Type = "文件夹",
+                            Thumbnail = IconCacheService.Instance.GetFolderIcon(),
                             ModifiedDateTime = dirInfo.LastWriteTime,
                             ModifiedTime = dirInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
                         };
