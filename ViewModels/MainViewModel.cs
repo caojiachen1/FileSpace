@@ -1813,7 +1813,7 @@ namespace FileSpace.ViewModels
                     {
                         IsPreviewLoading = true;
                         PreviewStatus = "正在加载系统信息...";
-                        PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
+                        PreviewContent = null;
                         
                         using var tCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                         using var combinedTCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, tCts.Token);
@@ -1869,7 +1869,7 @@ namespace FileSpace.ViewModels
 
                 IsPreviewLoading = true;
                 PreviewStatus = "正在加载预览...";
-                PreviewContent = PreviewUIHelper.CreateLoadingIndicator();
+                PreviewContent = null;
 
                 // Add timeout for previews
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
