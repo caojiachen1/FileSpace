@@ -485,8 +485,26 @@ namespace FileSpace.Services
 
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
+            var fileInfo = new FileInfo(file.FullPath);
+            
+            // Empty files shouldn\'t show a text preview
+            if (fileInfo.Exists && fileInfo.Length == 0)
+            {
+                return await GenerateFileInfoOnlyAsync(file, FilePreviewType.General, "该文件为空", cancellationToken);
+            }
+
             string extension = Path.GetExtension(file.FullPath).ToLower();
             var fileType = FilePreviewUtils.DetermineFileType(extension);
+
+            // If extension doesn\'t give a specific type, try AI detection
+            if (fileType == FilePreviewType.General)
+            {
+                var aiType = await MagikaDetector.GetFilePreviewTypeAsync(file.FullPath, cancellationToken);
+                if (aiType != FilePreviewType.General)
+                {
+                    fileType = aiType;
+                }
+            }
 
             return await GenerateFileInfoAndPreviewAsync(file, fileType, cancellationToken);
         }
@@ -543,30 +561,35 @@ namespace FileSpace.Services
             // 1. Visual Preview (Fixed Height Part) - No Margin to stick to borders
             var previewContainer = CreatePreviewContainer(null, true);
 
-            var previewContentPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            await AddPreviewContentAsync(previewContentPanel, fileInfo, fileType, cancellationToken);
+            // Use a Grid instead of StackPanel to allow children to stretch and respect constraints
+            var previewContentGrid = new Grid 
+            { 
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            await AddPreviewContentAsync(previewContentGrid, fileInfo, fileType, cancellationToken);
             
-            // If the preview is an image, make sure it's centered and detached from previous parent
-            if (fileType == FilePreviewType.Image && previewContentPanel.Children.Count > 0)
+            // If the preview is an image, make sure it\'s centered and detached from previous parent
+            if (fileType == FilePreviewType.Image && previewContentGrid.Children.Count > 0)
             {
-                var img = previewContentPanel.Children[0] as Image;
+                var img = previewContentGrid.Children[0] as Image;
                 if (img != null)
                 {
-                    // Detach from stack panel to avoid logical child error
-                    previewContentPanel.Children.Remove(img);
+                    // Detach from grid to avoid logical child error
+                    previewContentGrid.Children.Remove(img);
                     img.MaxHeight = PREVIEW_CONTAINER_HEIGHT;
                     img.VerticalAlignment = VerticalAlignment.Center;
                     previewContainer.Child = img;
                 }
                 else
                 {
-                    previewContainer.Child = previewContentPanel;
+                    previewContainer.Child = previewContentGrid;
                 }
             }
-            else if (previewContentPanel.Children.Count > 0)
+            else if (previewContentGrid.Children.Count > 0)
             {
-                // For text or other previews, wrap in a container that allows specific styling if needed
-                previewContainer.Child = previewContentPanel;
+                // Directly use the panel, let children handle their own scrolling if needed
+                previewContainer.Child = previewContentGrid;
             }
             else
             {
@@ -852,7 +875,7 @@ namespace FileSpace.Services
             }
         }
 
-        private async Task AddPreviewContentAsync(StackPanel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
+        private async Task AddPreviewContentAsync(Panel panel, FileInfo fileInfo, FilePreviewType fileType, CancellationToken cancellationToken)
         {
             switch (fileType)
             {

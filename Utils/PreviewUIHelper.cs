@@ -163,7 +163,7 @@ namespace FileSpace.Utils
             return panel;
         }
 
-        public static async Task AddTextPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        public static async Task AddTextPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             var sizeCategory = FileUtils.GetPreviewSizeCategory(fileInfo, FilePreviewType.Text);
             
@@ -181,10 +181,12 @@ namespace FileSpace.Utils
             }
         }
 
-        private static async Task AddFullTextPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        private static async Task AddFullTextPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
             var content = await File.ReadAllTextAsync(fileInfo.FullName, encoding, cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(content)) return;
 
             var textBox = new TextBox
             {
@@ -192,22 +194,27 @@ namespace FileSpace.Utils
                 IsReadOnly = true,
                 TextWrapping = TextWrapping.Wrap,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 FontFamily = new FontFamily("Consolas, Courier New"),
-                MinHeight = 200
+                Padding = new Thickness(10, 5, 10, 5),
+                VerticalAlignment = VerticalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Top,
+                HorizontalContentAlignment = HorizontalAlignment.Left
             };
 
             panel.Children.Add(textBox);
         }
 
-        private static async Task AddChunkedTextPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        private static async Task AddChunkedTextPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             try
             {
                 var encoding = FileUtils.DetectEncoding(fileInfo.FullName);
                 var content = await ReadTextChunkAsync(fileInfo.FullName, encoding, FileUtils.TEXT_PREVIEW_CHUNK_SIZE, cancellationToken);
+
+                if (string.IsNullOrWhiteSpace(content.Content)) return;
 
                 var textBox = new TextBox
                 {
@@ -215,11 +222,14 @@ namespace FileSpace.Utils
                     IsReadOnly = true,
                     TextWrapping = TextWrapping.Wrap,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     FontFamily = new FontFamily("Consolas, Courier New"),
-                    MinHeight = 200
+                    Padding = new Thickness(10, 5, 10, 5),
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Top,
+                    HorizontalContentAlignment = HorizontalAlignment.Left
                 };
 
                 panel.Children.Add(textBox);
@@ -228,6 +238,8 @@ namespace FileSpace.Utils
                 {
                     var infoBlock = CreateInfoTextBlock($"显示了 {content.LinesRead} 行，总文件大小: {FileUtils.FormatFileSize(fileInfo.Length)}");
                     infoBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+                    infoBlock.Margin = new Thickness(10, 0, 10, 5);
+                    infoBlock.VerticalAlignment = VerticalAlignment.Bottom;
                     panel.Children.Add(infoBlock);
                 }
             }
@@ -237,7 +249,7 @@ namespace FileSpace.Utils
             }
         }
 
-        private static void AddLargeFileWarning(StackPanel panel, FileInfo fileInfo)
+        private static void AddLargeFileWarning(Panel panel, FileInfo fileInfo)
         {
             var warningPanel = new StackPanel
             {
@@ -309,7 +321,7 @@ namespace FileSpace.Utils
             return (content.ToString(), isTruncated, linesRead);
         }
 
-        public static async Task AddCsvPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        public static async Task AddCsvPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             var sizeCategory = FileUtils.GetPreviewSizeCategory(fileInfo, FilePreviewType.Csv);
             
@@ -333,7 +345,7 @@ namespace FileSpace.Utils
                 bool hasMoreLines = lineCount >= maxLines;
 
                 // Update the header to show line count
-                var lastChild = panel.Children[panel.Children.Count - 1] as TextBlock;
+                var lastChild = panel.Children.Count > 0 ? panel.Children[panel.Children.Count - 1] as TextBlock : null;
                 if (lastChild != null)
                 {
                     var totalLinesText = hasMoreLines ? "超过" : "";
@@ -360,7 +372,7 @@ namespace FileSpace.Utils
                     Content = contentPanel,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    MaxHeight = 300
+                    VerticalAlignment = VerticalAlignment.Stretch
                 };
 
                 panel.Children.Add(scrollViewer);
@@ -371,7 +383,7 @@ namespace FileSpace.Utils
             }
         }
 
-        public static async Task AddImagePreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        public static async Task AddImagePreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             try
             {
@@ -426,19 +438,23 @@ namespace FileSpace.Utils
             }
         }
 
-        public static void AddPdfPreview(StackPanel panel)
+        public static void AddPdfPreview(Panel panel)
         {
-            panel.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
-            panel.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(CreateInfoTextBlock("无法在此预览PDF文件内容"));
+            stack.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
+            panel.Children.Add(stack);
         }
 
-        public static async Task AddHtmlPreviewAsync(StackPanel panel, FileInfo fileInfo, CancellationToken cancellationToken)
+        public static async Task AddHtmlPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
             try
             {
                 const int maxDisplayLength = 5000;
                 string content = await File.ReadAllTextAsync(fileInfo.FullName, cancellationToken);
                 
+                if (string.IsNullOrWhiteSpace(content)) return;
+
                 if (content.Length > maxDisplayLength)
                 {
                     content = content.Substring(0, maxDisplayLength) + "...\n\n[内容过长，已截断]";
@@ -451,13 +467,15 @@ namespace FileSpace.Utils
                     TextWrapping = TextWrapping.Wrap,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    MaxHeight = 300,
-                    FontFamily = new FontFamily("Consolas, Monaco, 'Courier New', monospace"),
+                    FontFamily = new FontFamily("Consolas, Monaco, \'Courier New\', monospace"),
                     FontSize = 12,
                     Background = new SolidColorBrush(Color.FromRgb(45, 45, 45)),
                     Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
                     Padding = new Thickness(10),
-                    Margin = new Thickness(0, 5, 0, 0)
+                    Margin = new Thickness(0),
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Top,
+                    HorizontalContentAlignment = HorizontalAlignment.Left
                 };
 
                 panel.Children.Add(textBox);
@@ -466,6 +484,8 @@ namespace FileSpace.Utils
                 var noteBlock = CreateInfoTextBlock("注意: 显示HTML源代码，双击文件在浏览器中查看效果");
                 noteBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
                 noteBlock.FontStyle = FontStyles.Italic;
+                noteBlock.VerticalAlignment = VerticalAlignment.Bottom;
+                noteBlock.Margin = new Thickness(10, 0, 10, 5);
                 panel.Children.Add(noteBlock);
             }
             catch (Exception ex)
