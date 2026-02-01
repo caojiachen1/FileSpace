@@ -445,55 +445,5 @@ namespace FileSpace.Utils
             stack.Children.Add(CreateInfoTextBlock("请双击打开使用默认应用程序查看"));
             panel.Children.Add(stack);
         }
-
-        public static async Task AddHtmlPreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
-        {
-            try
-            {
-                const int maxDisplayLength = 5000;
-                string content = await File.ReadAllTextAsync(fileInfo.FullName, cancellationToken);
-                
-                if (string.IsNullOrWhiteSpace(content)) return;
-
-                if (content.Length > maxDisplayLength)
-                {
-                    content = content.Substring(0, maxDisplayLength) + "...\n\n[内容过长，已截断]";
-                }
-
-                var textBox = new TextBox
-                {
-                    Text = content,
-                    IsReadOnly = true,
-                    TextWrapping = TextWrapping.Wrap,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    FontFamily = new FontFamily("Consolas, Monaco, \'Courier New\', monospace"),
-                    FontSize = 12,
-                    Background = new SolidColorBrush(Color.FromRgb(45, 45, 45)),
-                    Foreground = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"],
-                    Padding = new Thickness(10),
-                    Margin = new Thickness(0),
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    VerticalContentAlignment = VerticalAlignment.Top,
-                    HorizontalContentAlignment = HorizontalAlignment.Left
-                };
-
-                panel.Children.Add(textBox);
-                
-                // Add note about HTML content
-                var noteBlock = CreateInfoTextBlock("注意: 显示HTML源代码，双击文件在浏览器中查看效果");
-                noteBlock.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
-                noteBlock.FontStyle = FontStyles.Italic;
-                noteBlock.VerticalAlignment = VerticalAlignment.Bottom;
-                noteBlock.Margin = new Thickness(10, 0, 10, 5);
-                panel.Children.Add(noteBlock);
-            }
-            catch (Exception ex)
-            {
-                var errorBlock = CreateInfoTextBlock($"无法预览HTML文件: {ex.Message}");
-                errorBlock.Foreground = Brushes.Red;
-                panel.Children.Add(errorBlock);
-            }
-        }
     }
 }

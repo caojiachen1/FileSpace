@@ -884,7 +884,7 @@ namespace FileSpace.Services
                     break;
 
                 case FilePreviewType.Html:
-                    await PreviewUIHelper.AddHtmlPreviewAsync(panel, fileInfo, cancellationToken);
+                    await PreviewUIHelper.AddTextPreviewAsync(panel, fileInfo, cancellationToken);
                     break;
 
                 case FilePreviewType.Image:
