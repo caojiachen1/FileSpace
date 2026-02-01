@@ -71,8 +71,8 @@ dotnet run
 - ✅ **Multi-File Selection**: Ctrl/Shift multi-selection support
 - ✅ **Batch Operations**: Bulk copy, delete, move operations with progress tracking
 - ✅ **Selection Tools**: Select all (Ctrl+A), invert selection, and clear selection
-- ⏳ **Create New Folder**: Directory creation with input validation
-- ⏳ **File Drag & Drop**: Support drag and drop for move/copy operations
+- ✅ **Create New Folder**: Directory creation with input validation
+- ✅ **File Drag & Drop**: Support drag and drop for move/copy operations
 
 ### 🎯 Multi-Selection & Batch Operations ✅
 - **Multi-File Selection**: Full Ctrl/Shift multi-selection support
@@ -99,14 +99,14 @@ dotnet run
 ### 🎨 UI/UX Enhancements
 
 #### 📋 View Modes
-- ⏳ **Icon View**: Large icon display with customizable sizes
+- ✅ **Icon View**: Large icon display with customizable sizes
 - ✅ **List Details**: Customizable columns (name, size, date, type)
-- ⏳ **Thumbnail View**: Image file thumbnail previews
+- ✅ **Thumbnail View**: Image file thumbnail previews
 - ✅ **Tree View**: Hierarchical folder structure
 
 #### 🖼️ Layout & Interface
-- ⏳ **Resizable Panels**: Drag to adjust panel sizes
-- ⏳ **Layout Persistence**: Remember user layout preferences
+- ✅ **Resizable Panels**: Drag to adjust panel sizes
+- ✅ **Layout Persistence**: Remember user layout preferences
 - ⏳ **Fullscreen Mode**: Hide toolbars for maximum viewing area
 - ✅ **Responsive Design**: Adapt to different window sizes
 
@@ -115,13 +115,13 @@ dotnet run
 #### 🖱️ Context & Interaction
 - ✅ **Right-Click Context Menu**: Comprehensive context operations
 - ✅ **Keyboard Shortcuts**: Standard file manager hotkeys
-- ⏳ **File Properties Dialog**: Detailed file information and editing
+- ✅ **File Properties Dialog**: Detailed file information and editing
 - ✅ **Quick Actions Toolbar**: Customizable quick access buttons
 - ✅ **Explorer Integration**: "View in Explorer" context menu option
 
 #### ⭐ Bookmarks & Navigation
 - ⏳ **Favorite Paths**: Bookmark frequently used directories
-- ⏳ **Quick Access**: Recent folders and files
+- ✅ **Quick Access**: Recent folders and files
 - ⏳ **Workspaces**: Save different working environments
 - ✅ **Breadcrumb Navigation**: Click-to-navigate path bar
 
@@ -142,7 +142,7 @@ dotnet run
 ### 🚀 Performance & Technical
 
 #### ⚡ Performance Optimization
-- ⏳ **Virtual Scrolling**: Handle large directories efficiently
+- ✅ **Virtual Scrolling**: Handle large directories efficiently
 - ✅ **Caching System**: Cache file info and thumbnails
 - ✅ **Background Threading**: Move heavy operations to background
 - ✅ **Memory Management**: Optimize memory usage for large file sets
@@ -233,7 +233,7 @@ The folder analysis window has been completely redesigned with modern aesthetics
 
 Special thanks to the following projects that made FileSpace possible:
 
-- **[Magika-CSharp](https://github.com/mkht/Magika-CSharp)** - File type detection library
+- **[MagikaNet](https://github.com/arthrp/MagikaNet)** - File type detection library
 
 ---
 
