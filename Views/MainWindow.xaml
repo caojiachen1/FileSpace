@@ -1484,10 +1484,12 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="显示更多选项" Click="ShowMoreOptions_Click">
+                                <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="显示更多选项" SubmenuOpened="ShowMoreOptions_SubmenuOpened">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>
+                                    <!-- 占位符，用于显示子菜单箭头 -->
+                                    <MenuItem x:Name="ShowMoreOptionsPlaceholder" Header="加载中..." IsEnabled="False"/>
                                 </MenuItem>
                             </ContextMenu>
                         </ui:DataGrid.ContextMenu>
@@ -1889,10 +1891,12 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem x:Name="ShowMoreOptionsMenuItemIcon" Header="显示更多选项" Click="ShowMoreOptions_Click">
+                                <MenuItem x:Name="ShowMoreOptionsMenuItemIcon" Header="显示更多选项" SubmenuOpened="ShowMoreOptions_SubmenuOpened">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>
+                                    <!-- 占位符，用于显示子菜单箭头 -->
+                                    <MenuItem x:Name="ShowMoreOptionsPlaceholderIcon" Header="加载中..." IsEnabled="False"/>
                                 </MenuItem>
                             </ContextMenu>
                         </ListView.ContextMenu>

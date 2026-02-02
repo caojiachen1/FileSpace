@@ -1016,10 +1016,18 @@ namespace FileSpace.Views
         }
 
         /// <summary>
-        /// "显示更多选项"点击时，显示原生Shell菜单
+        /// 标记是否已经加载过Shell菜单项到子菜单
         /// </summary>
-        private void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
+        private bool _shellMoreOptionsLoaded = false;
+        private List<string>? _lastMoreOptionsPaths = null;
+
+        /// <summary>
+        /// "显示更多选项"子菜单展开时，动态加载Shell菜单项
+        /// </summary>
+        private void ShowMoreOptions_SubmenuOpened(object sender, RoutedEventArgs e)
         {
+            if (sender is not System.Windows.Controls.MenuItem showMoreOptionsMenu) return;
+
             // 获取选中的文件路径
             var selectedPaths = new List<string>();
             if (DataContext is MainViewModel viewModel)
@@ -1036,41 +1044,117 @@ namespace FileSpace.Views
 
             if (selectedPaths.Count == 0) return;
 
+            // 检查是否需要重新加载（路径变化时重新加载）
+            if (_shellMoreOptionsLoaded && _lastMoreOptionsPaths != null && 
+                _lastMoreOptionsPaths.SequenceEqual(selectedPaths))
+            {
+                return;
+            }
+
             try
             {
-                // 关闭当前的WPF右键菜单
-                if (sender is System.Windows.Controls.MenuItem menuItem)
-                {
-                    var contextMenu = menuItem.Parent as ContextMenu;
-                    if (contextMenu != null)
-                    {
-                        contextMenu.IsOpen = false;
-                    }
-                }
+                // 清除之前的菜单项
+                showMoreOptionsMenu.Items.Clear();
 
-                // 延迟显示原生Shell菜单，等待WPF菜单完全关闭
-                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
-                    System.Windows.Threading.DispatcherPriority.Background,
-                    new Action(() =>
+                // 添加加载中提示
+                var loadingItem = new System.Windows.Controls.MenuItem
+                {
+                    Header = "加载中...",
+                    IsEnabled = false
+                };
+                showMoreOptionsMenu.Items.Add(loadingItem);
+
+                // 清除缓存，确保获取最新菜单
+                ShellContextMenuService.Instance.ClearContextMenuCache();
+
+                // 获取Shell菜单项
+                var shellMenuItems = ShellContextMenuService.Instance.GetShellContextMenuItems(selectedPaths, this);
+
+                // 清除加载中提示
+                showMoreOptionsMenu.Items.Clear();
+
+                if (shellMenuItems.Count > 0)
+                {
+                    foreach (var item in shellMenuItems)
                     {
-                        try
+                        // 检查是否是分隔符
+                        if (item.Header?.ToString() == "-")
                         {
-                            // 获取鼠标位置并显示原生Shell菜单（使用扩展标志）
-                            var mousePos = System.Windows.Forms.Control.MousePosition;
-                            ShellContextMenuService.Instance.ShowShellContextMenu(
-                                selectedPaths,
-                                new Point(mousePos.X, mousePos.Y),
-                                this);
+                            showMoreOptionsMenu.Items.Add(new Separator());
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            System.Diagnostics.Debug.WriteLine($"显示Shell菜单失败: {ex.Message}");
+                            // 为菜单项添加刷新事件
+                            AddRefreshClickHandler(item);
+                            showMoreOptionsMenu.Items.Add(item);
                         }
-                    }));
+                    }
+
+                    _shellMoreOptionsLoaded = true;
+                    _lastMoreOptionsPaths = selectedPaths;
+                }
+                else
+                {
+                    var noItemsItem = new System.Windows.Controls.MenuItem
+                    {
+                        Header = "没有可用的选项",
+                        IsEnabled = false
+                    };
+                    showMoreOptionsMenu.Items.Add(noItemsItem);
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"处理显示更多选项失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"加载Shell菜单项失败: {ex.Message}");
+                
+                showMoreOptionsMenu.Items.Clear();
+                var errorItem = new System.Windows.Controls.MenuItem
+                {
+                    Header = "加载失败",
+                    IsEnabled = false
+                };
+                showMoreOptionsMenu.Items.Add(errorItem);
+            }
+        }
+
+        /// <summary>
+        /// 递归为菜单项及其子项添加刷新点击处理
+        /// </summary>
+        private void AddRefreshClickHandler(System.Windows.Controls.MenuItem menuItem)
+        {
+            // 如果有子菜单，递归处理
+            if (menuItem.Items.Count > 0)
+            {
+                foreach (var subItem in menuItem.Items)
+                {
+                    if (subItem is System.Windows.Controls.MenuItem subMenuItem)
+                    {
+                        AddRefreshClickHandler(subMenuItem);
+                    }
+                }
+            }
+            else
+            {
+                // 只有叶子节点才添加刷新处理
+                menuItem.Click += ShellMenuItem_Click;
+            }
+        }
+
+        /// <summary>
+        /// Shell菜单项点击处理（不刷新界面）
+        /// </summary>
+        private void ShellMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            // 清除Shell菜单缓存，为下次右键菜单做准备
+            try
+            {
+                ShellContextMenuService.Instance.ClearContextMenuCache();
+                _shellMoreOptionsLoaded = false;
+                _lastMoreOptionsPaths = null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"清除菜单缓存失败: {ex.Message}");
             }
         }
 
