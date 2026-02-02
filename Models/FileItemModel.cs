@@ -2,6 +2,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Wpf.Ui.Controls;
 using FileSpace.Utils;
 using System.Windows.Media;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using System.Text;
 
 namespace FileSpace.Models
 {
@@ -51,13 +55,87 @@ namespace FileSpace.Models
         private DateTime _modifiedDateTime;
 
         [ObservableProperty]
+        private string? _resolution;
+
+        [ObservableProperty]
+        private string? _duration;
+
+        private bool _isDetailsLoaded;
+
+        [ObservableProperty]
         private bool _isDragOver;
 
         public string SizeString => IsDirectory ? (IsSizeCalculating ? "计算中..." : SizeText) : FileUtils.FormatFileSize(Size);
 
+        public async Task LoadDetailsAsync()
+        {
+            if (_isDetailsLoaded || IsDirectory) return;
+            _isDetailsLoaded = true;
+
+            try
+            {
+                var extension = System.IO.Path.GetExtension(FullPath).ToLower();
+                if (FileUtils.IsImageFile(extension))
+                {
+                    var info = await FilePreviewUtils.GetImageInfoAsync(FullPath, CancellationToken.None);
+                    if (info.HasValue)
+                    {
+                        Resolution = $"{(int)info.Value.Width} x {(int)info.Value.Height}";
+                    }
+                }
+                else if (FileUtils.IsVideoFile(extension) || FileUtils.IsAudioFile(extension))
+                {
+                    await Task.Run(() =>
+                    {
+                        var info = FilePreviewUtils.GetShellMediaInfo(FullPath);
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            if (info.TryGetValue("Duration", out var d)) Duration = d;
+                            if (info.TryGetValue("Width", out var w) && info.TryGetValue("Height", out var h))
+                                Resolution = $"{w} x {h}";
+                        });
+                    });
+                }
+            }
+            catch { }
+        }
+
+        public string ToolTipContent
+        {
+            get
+            {
+                if (!_isDetailsLoaded && !IsDirectory)
+                {
+                    _ = LoadDetailsAsync();
+                }
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"名称: {Name}");
+                sb.AppendLine($"类型: {Type}");
+                if (!IsDirectory)
+                {
+                    sb.AppendLine($"大小: {SizeString} ({Size:N0} 字节)");
+                }
+                if (!string.IsNullOrEmpty(Resolution))
+                {
+                    sb.AppendLine($"分辨率: {Resolution}");
+                }
+                if (!string.IsNullOrEmpty(Duration))
+                {
+                    sb.AppendLine($"时长: {Duration}");
+                }
+                sb.Append($"修改日期: {ModifiedTime}");
+                return sb.ToString();
+            }
+        }
+
+        partial void OnResolutionChanged(string? value) => OnPropertyChanged(nameof(ToolTipContent));
+        partial void OnDurationChanged(string? value) => OnPropertyChanged(nameof(ToolTipContent));
+
         partial void OnSizeChanged(long value)
         {
             OnPropertyChanged(nameof(SizeString));
+            OnPropertyChanged(nameof(ToolTipContent));
         }
 
         partial void OnIsDirectoryChanged(bool value)
@@ -68,6 +146,7 @@ namespace FileSpace.Models
         partial void OnSizeTextChanged(string value)
         {
             OnPropertyChanged(nameof(SizeString));
+            OnPropertyChanged(nameof(ToolTipContent));
         }
 
         partial void OnIsSizeCalculatingChanged(bool value)

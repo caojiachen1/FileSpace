@@ -172,6 +172,9 @@
             <Setter Property="Margin" Value="0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="ToolTip" Value="{Binding ToolTipContent}"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="1000"/>
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="0"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#FF404040"/>
@@ -235,6 +238,31 @@
                     <Setter Property="Opacity" Value="0.4"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ToolTip">
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="Background" Value="#FF2D2D2D"/>
+            <Setter Property="Foreground" Value="#FFDEDEDE"/>
+            <Setter Property="BorderBrush" Value="#FF444444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Placement" Value="Mouse"/>
+            <Setter Property="HorizontalOffset" Value="16"/>
+            <Setter Property="VerticalOffset" Value="16"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
     </ui:FluentWindow.Resources>
@@ -1505,8 +1533,7 @@
                                                            HorizontalAlignment="Left"
                                                            VerticalAlignment="Center"
                                                            FontSize="13"
-                                                           Margin="5,0,0,0"
-                                                           ToolTip="{Binding Name}"/>
+                                                           Margin="5,0,0,0"/>
                                             </StackPanel>
                                             
                                             <!-- Rename mode -->
@@ -1530,8 +1557,7 @@
                                                                HorizontalAlignment="Left"
                                                                VerticalAlignment="Center"
                                                                FontSize="13"
-                                                               Margin="5,0,0,0"
-                                                               ToolTip="{Binding Name}">
+                                                               Margin="5,0,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
                                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -1637,6 +1663,9 @@
                                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                 <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Setter Property="ToolTip" Value="{Binding ToolTipContent}"/>
+                                <Setter Property="ToolTipService.InitialShowDelay" Value="1000"/>
+                                <Setter Property="ToolTipService.BetweenShowDelay" Value="0"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListViewItem">
@@ -1668,7 +1697,7 @@
                         </ListView.ItemContainerStyle>
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <Grid ToolTip="{Binding Name}">
+                                <Grid>
                                     <!-- Large/Medium Icon Layout (vertical: icon on top, name below) -->
                                     <Grid Visibility="{Binding DataContext.IsLargeOrMediumIconView, ElementName=FileIconView, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Grid.RowDefinitions>

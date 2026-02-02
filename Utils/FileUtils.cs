@@ -86,7 +86,16 @@ namespace FileSpace.Utils
         {
             return extension.ToLower() switch
             {
-                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm" => true,
+                ".mp4" or ".avi" or ".mkv" or ".mov" or ".wmv" or ".flv" or ".webm" or ".mpeg" or ".m4v" or ".3gp" => true,
+                _ => false
+            };
+        }
+
+        public static bool IsAudioFile(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".mp3" or ".wav" or ".wma" or ".flac" or ".m4a" or ".ogg" or ".aac" or ".m4r" => true,
                 _ => false
             };
         }
