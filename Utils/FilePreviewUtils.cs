@@ -74,6 +74,8 @@ namespace FileSpace.Utils
 
         public static async Task<(double Width, double Height)?> GetImageInfoAsync(string filePath, CancellationToken cancellationToken)
         {
+            if (!File.Exists(filePath) || new FileInfo(filePath).Length == 0) return null;
+
             return await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();

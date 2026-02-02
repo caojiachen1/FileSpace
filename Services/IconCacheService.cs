@@ -203,6 +203,8 @@ namespace FileSpace.Services
         {
             try
             {
+                if (!File.Exists(path) || new FileInfo(path).Length == 0) return null;
+                
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;

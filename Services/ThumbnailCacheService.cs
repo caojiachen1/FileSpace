@@ -242,7 +242,8 @@ namespace FileSpace.Services
                     }
 
                     // 如果 Shell API 失败，对于图片文件尝试备选方案
-                    if (IsImageFile(filePath))
+                    var fileInfo = new FileInfo(filePath);
+                    if (IsImageFile(filePath) && fileInfo.Exists && fileInfo.Length > 0)
                     {
                         using var stream = File.OpenRead(filePath);
                         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
@@ -281,7 +282,10 @@ namespace FileSpace.Services
                 // 1. 异步读取文件字节
                 byte[] imageBytes = await File.ReadAllBytesAsync(cacheFilePath, cancellationToken);
                 
-                // 2. 在后台线程创建并冻结 BitmapImage，无需切换到 UI 线程
+                if (imageBytes.Length == 0)
+                    return null;
+
+                // 2. 在后台线程创建并冻结 BitmapImage
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;

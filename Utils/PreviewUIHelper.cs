@@ -385,6 +385,12 @@ namespace FileSpace.Utils
 
         public static async Task AddImagePreviewAsync(Panel panel, FileInfo fileInfo, CancellationToken cancellationToken)
         {
+            if (fileInfo.Length == 0)
+            {
+                panel.Children.Add(CreateErrorPanel("无法预览", "图片文件是空的。"));
+                return;
+            }
+
             try
             {
                 var image = await Task.Run(() =>

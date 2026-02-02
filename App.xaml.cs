@@ -5,6 +5,7 @@ using System.Windows.Media;
 using Wpf.Ui;
 using Wpf.Ui.Appearance;
 using FileSpace.Services;
+using FileSpace.Utils;
 
 namespace FileSpace
 {
@@ -41,6 +42,16 @@ namespace FileSpace
             };
 
             ApplicationThemeManager.Apply(theme);
+
+            // Apply Win32 theme for native elements like context menus
+            bool isDark = theme == ApplicationTheme.Dark;
+            Win32ThemeHelper.ApplyWin32Theme(isDark);
+
+            // Update all windows
+            foreach (Window window in Windows)
+            {
+                Win32ThemeHelper.ApplyWindowDarkMode(window, isDark);
+            }
         }
 
         public static void ChangeTheme(string themeName)

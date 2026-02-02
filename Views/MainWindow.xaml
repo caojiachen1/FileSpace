@@ -544,7 +544,7 @@
                 <Grid>
                     <StackPanel Orientation="Horizontal">
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,6,0" Padding="0">
-                            <MenuItem x:Name="NewItemMenu" ToolTip="新建" IsSubmenuOpen="{Binding IsNewItemMenuOpen, Mode=TwoWay}">
+                            <MenuItem x:Name="NewItemMenu" ToolTip="新建" IsSubmenuOpen="{Binding IsNewItemMenuOpen, Mode=TwoWay}" SubmenuOpened="NewItemMenu_SubmenuOpened">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>
@@ -579,6 +579,8 @@
                                         <ui:SymbolIcon Symbol="DocumentAdd24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <Separator x:Name="NewItemSeparator"/>
+                                <!-- Shell新建菜单项将在SubmenuOpened事件中动态添加 -->
                             </MenuItem>
                         </Menu>
 
@@ -1440,7 +1442,7 @@
                                  MouseLeftButtonUp="FileListView_MouseUp"
                                  Visibility="{Binding IsDetailsView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:DataGrid.ContextMenu>
-                            <ContextMenu>
+                            <ContextMenu ContextMenuOpening="FileContextMenu_Opening">
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Open24"/>
@@ -1504,6 +1506,12 @@
                                 <MenuItem Header="分析文件夹" Command="{Binding AnalyzeFolderCommand}" Visibility="{Binding SelectedFile.IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Folder24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="显示更多选项" Click="ShowMoreOptions_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
@@ -1865,7 +1873,7 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                         <ListView.ContextMenu>
-                            <ContextMenu>
+                            <ContextMenu ContextMenuOpening="FileContextMenu_Opening">
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Open24"/>
@@ -1903,6 +1911,12 @@
                                 <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem x:Name="ShowMoreOptionsMenuItemIcon" Header="显示更多选项" Click="ShowMoreOptions_Click">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>

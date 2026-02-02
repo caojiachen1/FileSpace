@@ -142,6 +142,9 @@ namespace FileSpace.Views
 
         private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
         {
+            // 应用初始暗黑模式设置到Win32部分
+            Win32ThemeHelper.ApplyWindowDarkMode(this, SettingsService.Instance.Settings.UISettings.Theme == "Dark");
+
             // 监听GridSplitter的大小变化来保存用户自定义的大小
             var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
             var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
@@ -1000,6 +1003,157 @@ namespace FileSpace.Views
             if (DataContext is MainViewModel viewModel && viewModel.SelectedFile != null)
             {
                 viewModel.FileDoubleClickCommand.Execute(viewModel.SelectedFile);
+            }
+        }
+
+        /// <summary>
+        /// 右键菜单打开时的处理
+        /// </summary>
+        private void FileContextMenu_Opening(object sender, ContextMenuEventArgs e)
+        {
+            // 可以在这里执行一些初始化操作
+            // 例如根据选中的文件类型调整菜单项的可见性
+        }
+
+        /// <summary>
+        /// "显示更多选项"点击时，显示原生Shell菜单
+        /// </summary>
+        private void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
+        {
+            // 获取选中的文件路径
+            var selectedPaths = new List<string>();
+            if (DataContext is MainViewModel viewModel)
+            {
+                if (viewModel.SelectedFiles.Count > 0)
+                {
+                    selectedPaths.AddRange(viewModel.SelectedFiles.Select(f => f.FullPath));
+                }
+                else if (viewModel.SelectedFile != null)
+                {
+                    selectedPaths.Add(viewModel.SelectedFile.FullPath);
+                }
+            }
+
+            if (selectedPaths.Count == 0) return;
+
+            try
+            {
+                // 关闭当前的WPF右键菜单
+                if (sender is System.Windows.Controls.MenuItem menuItem)
+                {
+                    var contextMenu = menuItem.Parent as ContextMenu;
+                    if (contextMenu != null)
+                    {
+                        contextMenu.IsOpen = false;
+                    }
+                }
+
+                // 延迟显示原生Shell菜单，等待WPF菜单完全关闭
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                    System.Windows.Threading.DispatcherPriority.Background,
+                    new Action(() =>
+                    {
+                        try
+                        {
+                            // 获取鼠标位置并显示原生Shell菜单（使用扩展标志）
+                            var mousePos = System.Windows.Forms.Control.MousePosition;
+                            ShellContextMenuService.Instance.ShowShellContextMenu(
+                                selectedPaths,
+                                new Point(mousePos.X, mousePos.Y),
+                                this);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"显示Shell菜单失败: {ex.Message}");
+                        }
+                    }));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"处理显示更多选项失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 标记是否已经加载过Shell新建菜单项
+        /// </summary>
+        private bool _shellNewMenuLoaded = false;
+        private string? _lastNewMenuPath = null;
+
+        /// <summary>
+        /// "新建"菜单打开时，动态加载Shell新建菜单项
+        /// </summary>
+        private void NewItemMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.MenuItem newItemMenu) return;
+            if (DataContext is not MainViewModel viewModel) return;
+
+            var currentPath = viewModel.CurrentPath;
+            
+            // 如果路径没变且已经加载过，不重复加载
+            if (_shellNewMenuLoaded && _lastNewMenuPath == currentPath)
+                return;
+
+            // 移除之前动态添加的项目（保留前面的固定项目：文件夹、文本文档、分隔符）
+            var separator = newItemMenu.Items.OfType<Separator>().FirstOrDefault();
+            if (separator != null)
+            {
+                var separatorIndex = newItemMenu.Items.IndexOf(separator);
+                while (newItemMenu.Items.Count > separatorIndex + 1)
+                {
+                    newItemMenu.Items.RemoveAt(separatorIndex + 1);
+                }
+            }
+
+            // 检查当前路径是否有效
+            if (string.IsNullOrEmpty(currentPath) || 
+                currentPath == MainViewModel.ThisPCPath || 
+                currentPath == MainViewModel.LinuxPath ||
+                !Directory.Exists(currentPath))
+            {
+                return;
+            }
+
+            try
+            {
+                // 获取Shell新建菜单项
+                var shellNewItems = ShellContextMenuService.Instance.GetShellNewMenuItems(currentPath, this);
+                
+                if (shellNewItems.Count > 0)
+                {
+                    foreach (var item in shellNewItems)
+                    {
+                        // 排除已有的文件夹和文本文档选项
+                        var header = item.Header?.ToString() ?? "";
+                        if (header.Contains("文件夹") || header.Contains("Folder") ||
+                            (header.Contains("文本") && header.Contains("文档")))
+                            continue;
+
+                        // 添加刷新事件
+                        item.Click += (s, args) =>
+                        {
+                            // 延迟刷新以等待文件创建完成
+                            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                                System.Windows.Threading.DispatcherPriority.Background,
+                                new Action(() =>
+                                {
+                                    if (DataContext is MainViewModel vm)
+                                    {
+                                        vm.RefreshCommand.Execute(null);
+                                    }
+                                }));
+                        };
+
+                        newItemMenu.Items.Add(item);
+                    }
+                }
+
+                _shellNewMenuLoaded = true;
+                _lastNewMenuPath = currentPath;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载Shell新建菜单失败: {ex.Message}");
             }
         }
 

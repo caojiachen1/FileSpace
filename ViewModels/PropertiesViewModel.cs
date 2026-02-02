@@ -413,6 +413,7 @@ namespace FileSpace.ViewModels
 
         private async Task LoadImageInfo(FileInfo fileInfo)
         {
+            if (fileInfo.Length == 0) return;
             try
             {
                 var imageInfo = await Task.Run(() =>
