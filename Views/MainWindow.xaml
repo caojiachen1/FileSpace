@@ -247,8 +247,8 @@
             <Setter Property="BorderBrush" Value="#FF444444"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Placement" Value="Mouse"/>
-            <Setter Property="HorizontalOffset" Value="16"/>
-            <Setter Property="VerticalOffset" Value="16"/>
+            <Setter Property="HorizontalOffset" Value="12"/>
+            <Setter Property="VerticalOffset" Value="12"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
