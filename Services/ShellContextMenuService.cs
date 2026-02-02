@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Shell32;
 using static Vanara.PInvoke.User32;
@@ -18,6 +20,9 @@ namespace FileSpace.Services
     /// </summary>
     public class ShellContextMenuService : IDisposable
     {
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, uint cchOutBuf, IntPtr ppvReserved);
+
         private static ShellContextMenuService? _instance;
         public static ShellContextMenuService Instance => _instance ??= new ShellContextMenuService();
 
@@ -224,29 +229,46 @@ namespace FileSpace.Services
                         using var extKey = classesRoot.OpenSubKey(ext);
                         if (extKey == null) continue;
 
-                        using var shellNewKey = extKey.OpenSubKey("ShellNew");
+                        string? progId = extKey.GetValue("") as string;
+                        RegistryKey? shellNewKey = extKey.OpenSubKey("ShellNew");
+                        
+                        // 1. 尝试在扩展名下的 progId 子键下找 (Microsoft Office 风格: .docx\Word.Document.12\ShellNew)
+                        if (shellNewKey == null && !string.IsNullOrEmpty(progId))
+                        {
+                            shellNewKey = extKey.OpenSubKey($"{progId}\\ShellNew");
+                        }
+                        
+                        // 2. 尝试在 progId 根键下找 (Zip 风格: CompressedFolder\ShellNew)
+                        if (shellNewKey == null && !string.IsNullOrEmpty(progId))
+                        {
+                            shellNewKey = classesRoot.OpenSubKey($"{progId}\\ShellNew");
+                        }
+
                         if (shellNewKey == null) continue;
 
-                        // 获取文件类型名称
-                        var typeName = GetFileTypeName(extKey, ext);
-                        
-                        // 检查是否有IconResource
-                        var iconResource = shellNewKey.GetValue("IconResource") as string;
-                        
-                        var menuItem = new MenuItem
+                        using (shellNewKey)
                         {
-                            Header = typeName,
-                            Tag = ext,
-                            Icon = GetFileTypeIcon(ext)
-                        };
-                        
-                        // 只添加有图标和名称的项
-                        if (menuItem.Header != null)
-                        {
-                            var extensionCopy = ext; // 捕获变量
-                            var typeNameCopy = typeName;
-                            menuItem.Click += (s, e) => CreateNewFileFromExtension(folderPath, extensionCopy, typeNameCopy);
-                            result.Add(menuItem);
+                            // 检查是否被禁用 (Config=null 表示启用，或者没有 Config 值)
+                            // 某些项可能通过 Config 值来控制显示
+                            
+                            // 获取文件类型名称
+                            var typeName = GetFileTypeName(extKey, ext, progId);
+                            
+                            var menuItem = new MenuItem
+                            {
+                                Header = typeName,
+                                Tag = ext,
+                                Icon = GetFileTypeIcon(ext)
+                            };
+                            
+                            // 只添加有名称的项
+                            if (menuItem.Header != null)
+                            {
+                                var extensionCopy = ext; // 捕获变量
+                                var typeNameCopy = typeName;
+                                menuItem.Click += (s, e) => CreateNewFileFromExtension(folderPath, extensionCopy, typeNameCopy);
+                                result.Add(menuItem);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -273,21 +295,34 @@ namespace FileSpace.Services
         /// <summary>
         /// 获取文件类型名称
         /// </summary>
-        private string GetFileTypeName(Microsoft.Win32.RegistryKey extKey, string extension)
+        private string GetFileTypeName(RegistryKey extKey, string extension, string? progId)
         {
             try
             {
-                var progId = extKey.GetValue("") as string;
+                // 1. 尝试从 progIdKey 获取 FriendlyTypeName (支持资源字符串，如 @shell32.dll,-101)
                 if (!string.IsNullOrEmpty(progId))
                 {
                     using var progIdKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(progId);
                     if (progIdKey != null)
                     {
-                        var friendlyName = progIdKey.GetValue("") as string;
-                        if (!string.IsNullOrEmpty(friendlyName))
-                            return friendlyName;
+                        var name = progIdKey.GetValue("FriendlyTypeName") as string ?? progIdKey.GetValue("") as string;
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            if (name.StartsWith("@"))
+                            {
+                                var sb = new StringBuilder(260);
+                                if (SHLoadIndirectString(name, sb, (uint)sb.Capacity, IntPtr.Zero) == 0)
+                                    return sb.ToString();
+                            }
+                            return name;
+                        }
                     }
                 }
+
+                // 2. 尝试直接从扩展名获取默认值（描述）
+                var extDesc = extKey.GetValue("") as string;
+                if (!string.IsNullOrEmpty(extDesc) && extDesc != progId)
+                    return extDesc;
             }
             catch { }
 
@@ -303,24 +338,28 @@ namespace FileSpace.Services
             {
                 // 使用 SHGetFileInfo 获取图标，SHGFI_USEFILEATTRIBUTES 允许使用不存在的文件
                 var shFileInfo = new SHFILEINFO();
-                var result = SHGetFileInfo("temp" + extension, 
+                var flags = SHGFI.SHGFI_ICON | SHGFI.SHGFI_SMALLICON | SHGFI.SHGFI_USEFILEATTRIBUTES;
+
+                var result = SHGetFileInfo(extension, 
                     System.IO.FileAttributes.Normal, 
                     ref shFileInfo, 
                     (int)Marshal.SizeOf<SHFILEINFO>(),
-                    SHGFI.SHGFI_ICON | SHGFI.SHGFI_SMALLICON | SHGFI.SHGFI_USEFILEATTRIBUTES);
+                    flags);
 
                 if (result != IntPtr.Zero && !shFileInfo.hIcon.IsNull)
                 {
-                    // CreateBitmapSourceFromHIcon 会复制图标数据，所以原始 HICON 可以释放
+                    // CreateBitmapSourceFromHIcon 会复制图标数据
                     var imageSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
                         (IntPtr)shFileInfo.hIcon,
                         Int32Rect.Empty,
                         BitmapSizeOptions.FromEmptyOptions());
                     
+                    imageSource.Freeze(); // 冻结以防跨线程访问问题
+
                     // 必须释放图标句柄
                     DestroyIcon(shFileInfo.hIcon);
 
-                    return new System.Windows.Controls.Image
+                    return new Image
                     {
                         Source = imageSource,
                         Width = 16,
@@ -455,12 +494,27 @@ namespace FileSpace.Services
                     return;
                 }
 
-                // 默认创建空文件
+                // 默认创建空文件 (zip需要特殊处理)
+                if (extension.ToLower() == ".zip")
+                {
+                    byte[] emptyZip = [80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                    File.WriteAllBytes(newPath, emptyZip);
+                    return;
+                }
+
                 File.WriteAllBytes(newPath, Array.Empty<byte>());
             }
             catch
             {
-                File.WriteAllBytes(newPath, Array.Empty<byte>());
+                if (extension.ToLower() == ".zip")
+                {
+                    byte[] emptyZip = [80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                    File.WriteAllBytes(newPath, emptyZip);
+                }
+                else
+                {
+                    File.WriteAllBytes(newPath, Array.Empty<byte>());
+                }
             }
         }
 

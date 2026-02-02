@@ -1123,10 +1123,11 @@ namespace FileSpace.Views
                 {
                     foreach (var item in shellNewItems)
                     {
-                        // 排除已有的文件夹和文本文档选项
+                        // 排除已有的文件夹和文本文档选项 (精确匹配，避免排除如“压缩文件夹”等项)
                         var header = item.Header?.ToString() ?? "";
-                        if (header.Contains("文件夹") || header.Contains("Folder") ||
-                            (header.Contains("文本") && header.Contains("文档")))
+                        if (header == "文件夹" || header == "Folder" || 
+                            header == "文本文档" || header == "Text Document" ||
+                            header == "新建文件夹" || header == "New Folder")
                             continue;
 
                         // 添加刷新事件
