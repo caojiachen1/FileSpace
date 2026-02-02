@@ -544,7 +544,11 @@
                 <Grid>
                     <StackPanel Orientation="Horizontal">
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,6,0" Padding="0">
-                            <MenuItem x:Name="NewItemMenu" ToolTip="新建" IsSubmenuOpen="{Binding IsNewItemMenuOpen, Mode=TwoWay}" SubmenuOpened="NewItemMenu_SubmenuOpened">
+                            <MenuItem x:Name="NewItemMenu" ToolTip="新建" 
+                                      IsEnabled="{Binding CanCreateNew}"
+                                      IsSubmenuOpen="{Binding IsNewItemMenuOpen, Mode=TwoWay}" 
+                                      SubmenuOpened="NewItemMenu_SubmenuOpened"
+                                      Style="{StaticResource IconMenuItemStyle}">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <ui:SymbolIcon Symbol="Add24" FontSize="16" Margin="0,0,4,0"/>

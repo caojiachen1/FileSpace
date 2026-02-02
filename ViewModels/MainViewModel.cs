@@ -81,6 +81,11 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(GoUpCommand))]
         [NotifyCanExecuteChangedFor(nameof(UpCommand))]
+        [NotifyPropertyChangedFor(nameof(CanCreateNew))]
+        [NotifyPropertyChangedFor(nameof(CanPaste))]
+        [NotifyCanExecuteChangedFor(nameof(CreateNewFolderCommand))]
+        [NotifyCanExecuteChangedFor(nameof(CreateNewTextFileCommand))]
+        [NotifyCanExecuteChangedFor(nameof(PasteFilesCommand))]
         private string _currentPath = string.Empty;
 
         [ObservableProperty]
@@ -165,6 +170,11 @@ namespace FileSpace.ViewModels
         [NotifyCanExecuteChangedFor(nameof(CopyFilesCommand))]
         [NotifyCanExecuteChangedFor(nameof(CutFilesCommand))]
         [NotifyCanExecuteChangedFor(nameof(StartRenameCommand))]
+        [NotifyPropertyChangedFor(nameof(CanCreateNew))]
+        [NotifyPropertyChangedFor(nameof(CanPaste))]
+        [NotifyCanExecuteChangedFor(nameof(CreateNewFolderCommand))]
+        [NotifyCanExecuteChangedFor(nameof(CreateNewTextFileCommand))]
+        [NotifyCanExecuteChangedFor(nameof(PasteFilesCommand))]
         private bool _isRenaming;
 
         // Dropdown menu states for UI indicators
@@ -2136,7 +2146,7 @@ namespace FileSpace.ViewModels
             ViewMode = ViewMode == "详细信息" ? "大图标" : "详细信息";
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanCreateNew))]
         private void CreateNewFolder()
         {
             try
@@ -2162,7 +2172,7 @@ namespace FileSpace.ViewModels
             }
         }
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(CanCreateNew))]
         private void CreateNewTextFile()
         {
             try
@@ -3233,7 +3243,8 @@ namespace FileSpace.ViewModels
 
         public bool CanBack => _navigationService.CanBack;
         public bool CanUp => _navigationService.CanUp;
-        public bool CanPaste => ClipboardService.Instance.CanPaste();
+        public bool CanPaste => !IsRenaming && !string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath) && ClipboardService.Instance.CanPaste();
+        public bool CanCreateNew => !IsRenaming && !string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath);
         public bool CanDelete => !IsRenaming && SelectedFiles.Any();
         public bool CanCopy => !IsRenaming && SelectedFiles.Any();
         public bool CanCut => !IsRenaming && SelectedFiles.Any();
