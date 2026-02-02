@@ -1184,38 +1184,9 @@
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
                 <Border.Style>
                     <Style TargetType="Border">
-                        <!-- Default style when both panels are visible -->
+                        <!-- Default style -->
                         <Setter Property="BorderThickness" Value="0,1,0,0"/>
                         <Setter Property="CornerRadius" Value="0"/>
-                        <Style.Triggers>
-                            <!-- Left panel hidden, right panel visible -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
-                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="True"/>
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
-                                <Setter Property="CornerRadius" Value="0"/>
-                            </MultiDataTrigger>
-                            <!-- Left panel visible, right panel hidden -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="True"/>
-                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
-                                <Setter Property="CornerRadius" Value="0"/>
-                            </MultiDataTrigger>
-                            <!-- Both panels hidden (center only) -->
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsLeftPanelVisible}" Value="False"/>
-                                    <Condition Binding="{Binding IsRightPanelVisible}" Value="False"/>
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="BorderThickness" Value="0,0.5,0,0"/>
-                                <Setter Property="CornerRadius" Value="0"/>
-                            </MultiDataTrigger>
-                        </Style.Triggers>
                     </Style>
                 </Border.Style>
                 <Grid>
