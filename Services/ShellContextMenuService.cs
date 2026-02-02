@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -192,6 +193,8 @@ namespace FileSpace.Services
         private IContextMenu? _currentContextMenu;
         private HMENU _currentHMenu;
         private IntPtr _currentHwnd;
+
+        private static DataTemplate? _menuItemHeaderTemplate;
 
         /// <summary>
         /// Shell菜单项数据类，用于存储菜单信息
@@ -479,19 +482,33 @@ namespace FileSpace.Services
                 menuItem.InputGestureText = shortcutText;
             }
 
-            // 获取图标
+            // 为所有菜单项预留图标列（即使没有实际图标）并保持文字垂直居中
             try
             {
+                UIElement? iconElement = null;
                 if (!mii.hbmpItem.IsNull)
                 {
-                    var icon = GetMenuItemIcon(mii.hbmpItem);
-                    if (icon != null)
-                    {
-                        menuItem.Icon = icon;
-                    }
+                    iconElement = GetMenuItemIcon(mii.hbmpItem);
                 }
+
+                var iconHolder = new Border
+                {
+                    Width = 20,
+                    Height = 20,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Background = Brushes.Transparent,
+                    Child = iconElement
+                };
+
+                menuItem.Icon = iconHolder;
             }
             catch { }
+
+            menuItem.VerticalContentAlignment = VerticalAlignment.Center;
+            menuItem.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            menuItem.Padding = new Thickness(16, 2, 16, 2);
+            menuItem.HeaderTemplate = GetShellMenuItemHeaderTemplate();
 
             // 处理子菜单
             if (!mii.hSubMenu.IsNull)
@@ -527,7 +544,7 @@ namespace FileSpace.Services
         /// <summary>
         /// 从HBITMAP获取图标
         /// </summary>
-        private object? GetMenuItemIcon(HBITMAP hBitmap)
+        private UIElement? GetMenuItemIcon(HBITMAP hBitmap)
         {
             try
             {
@@ -559,6 +576,23 @@ namespace FileSpace.Services
             {
                 return null;
             }
+        }
+
+        private static DataTemplate GetShellMenuItemHeaderTemplate()
+        {
+            if (_menuItemHeaderTemplate != null)
+            {
+                return _menuItemHeaderTemplate;
+            }
+
+            var textFactory = new FrameworkElementFactory(typeof(TextBlock));
+            textFactory.SetBinding(TextBlock.TextProperty, new Binding());
+            textFactory.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            textFactory.SetValue(TextBlock.MarginProperty, new Thickness(0));
+            textFactory.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+
+            _menuItemHeaderTemplate = new DataTemplate { VisualTree = textFactory };
+            return _menuItemHeaderTemplate;
         }
 
         /// <summary>
