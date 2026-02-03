@@ -145,6 +145,9 @@ namespace FileSpace.Views
             // 应用初始暗黑模式设置到Win32部分
             Win32ThemeHelper.ApplyWindowDarkMode(this, SettingsService.Instance.Settings.UISettings.Theme == "Dark");
 
+            // 配置“显示更多选项”菜单
+            UpdateShowMoreOptionsConfiguration();
+
             // 监听GridSplitter的大小变化来保存用户自定义的大小
             var leftColumn = FindName("LeftPanelColumn") as ColumnDefinition;
             var rightColumn = FindName("RightPanelColumn") as ColumnDefinition;
@@ -1021,12 +1024,15 @@ namespace FileSpace.Views
         private bool _shellMoreOptionsLoaded = false;
         private List<string>? _lastMoreOptionsPaths = null;
 
-        /// <summary>
-        /// "显示更多选项"子菜单展开时，动态加载Shell菜单项
-        /// </summary>
         private void ShowMoreOptions_SubmenuOpened(object sender, RoutedEventArgs e)
         {
             if (sender is not System.Windows.Controls.MenuItem showMoreOptionsMenu) return;
+
+            // 如果设置了使用原生菜单，则不要在这里处理（原生菜单由 Click 事件处理）
+            if (SettingsService.Instance.Settings.UISettings.UseNativeShellMenu)
+            {
+                return;
+            }
 
             // 获取选中的文件路径
             var selectedPaths = new List<string>();
@@ -1105,15 +1111,83 @@ namespace FileSpace.Views
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载Shell菜单项失败: {ex.Message}");
-                
-                showMoreOptionsMenu.Items.Clear();
-                var errorItem = new System.Windows.Controls.MenuItem
+                System.Diagnostics.Debug.WriteLine($"加载Shell菜单失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// “显示更多选项”点击事件处理（用于原生菜单模式）
+        /// </summary>
+        private void ShowMoreOptions_Click(object sender, RoutedEventArgs e)
+        {
+            if (!SettingsService.Instance.Settings.UISettings.UseNativeShellMenu) return;
+            if (sender is not System.Windows.Controls.MenuItem showMoreOptionsMenu) return;
+
+            // 获取选中的文件路径
+            var selectedPaths = new List<string>();
+            if (DataContext is MainViewModel viewModel)
+            {
+                if (viewModel.SelectedFiles.Count > 0)
                 {
-                    Header = "加载失败",
-                    IsEnabled = false
-                };
-                showMoreOptionsMenu.Items.Add(errorItem);
+                    selectedPaths.AddRange(viewModel.SelectedFiles.Select(f => f.FullPath));
+                }
+                else if (viewModel.SelectedFile != null)
+                {
+                    selectedPaths.Add(viewModel.SelectedFile.FullPath);
+                }
+            }
+
+            if (selectedPaths.Count == 0) return;
+
+            // 查找并关闭当前的 WPF ContextMenu
+            DependencyObject parent = showMoreOptionsMenu;
+            while (parent != null && !(parent is System.Windows.Controls.ContextMenu))
+            {
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+
+            if (parent is System.Windows.Controls.ContextMenu contextMenu)
+            {
+                contextMenu.IsOpen = false;
+            }
+
+            // 获取当前鼠标位置并转换为屏幕坐标
+            var mousePos = Mouse.GetPosition(this);
+            var screenPos = PointToScreen(mousePos);
+
+            // 异步显示原生菜单，避免阻塞导致 WPF 菜单无法正常关闭
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ShellContextMenuService.Instance.ShowShellContextMenu(selectedPaths, screenPos, this);
+            }));
+        }
+
+        /// <summary>
+        /// 根据设置更新“显示更多选项”菜单的配置
+        /// </summary>
+        private void UpdateShowMoreOptionsConfiguration()
+        {
+            var useNative = SettingsService.Instance.Settings.UISettings.UseNativeShellMenu;
+            if (useNative)
+            {
+                // 如果使用原生菜单，清空子项以隐藏箭头，并防止悬停展开
+                ShowMoreOptionsMenuItem.Items.Clear();
+                ShowMoreOptionsMenuItemIcon.Items.Clear();
+            }
+            else
+            {
+                // 如果使用嵌入式菜单，重新添加占位符，以便触发 SubmenuOpened
+                if (ShowMoreOptionsMenuItem.Items.Count == 0)
+                {
+                    ShowMoreOptionsMenuItem.Items.Add(ShowMoreOptionsPlaceholder);
+                }
+                if (ShowMoreOptionsMenuItemIcon.Items.Count == 0)
+                {
+                    ShowMoreOptionsMenuItemIcon.Items.Add(ShowMoreOptionsPlaceholderIcon);
+                }
+                
+                // 重置状态
+                _shellMoreOptionsLoaded = false;
             }
         }
 
@@ -1331,14 +1405,8 @@ namespace FileSpace.Views
                     // Apply theme settings globally
                     SettingsService.Instance.ApplyThemeSettings();
                     
-                    // Refresh file list to apply visibility filters
-                    viewModel.RefreshCommand.Execute(null);
-                    
-                    // Force update DisplayName for all files to reflect extension settings
-                    foreach (var file in viewModel.Files)
-                    {
-                        file.RefreshDisplayName();
-                    }
+                    // 配置“显示更多选项”菜单
+                    UpdateShowMoreOptionsConfiguration();
                 }
             }
         }

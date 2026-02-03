@@ -400,6 +400,11 @@ namespace FileSpace.Services
         public bool ShowToolBar { get; set; } = true;
 
         /// <summary>
+        /// “显示更多选项”是否使用Win32原生菜单
+        /// </summary>
+        public bool UseNativeShellMenu { get; set; } = false;
+
+        /// <summary>
         /// 主题设置
         /// </summary>
         public string Theme { get; set; } = "Dark";

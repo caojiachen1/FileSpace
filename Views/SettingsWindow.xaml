@@ -36,6 +36,8 @@
                                   ToolTip="显示受保护的操作系统文件"/>
                         <CheckBox x:Name="ShowFileExtensionsCheckBox" Content="显示文件扩展名" Margin="0,5"
                                   ToolTip="在文件名中显示文件扩展名"/>
+                        <CheckBox x:Name="UseNativeShellMenuCheckBox" Content="“显示更多选项”使用系统原生菜单" Margin="0,5"
+                                  ToolTip="开启后点击“显示更多选项”将直接弹出 Windows 经典的右键菜单"/>
                         
                         <Separator Margin="0,10"/>
                         

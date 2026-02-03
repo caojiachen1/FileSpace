@@ -1484,7 +1484,9 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="显示更多选项" SubmenuOpened="ShowMoreOptions_SubmenuOpened">
+                                <MenuItem x:Name="ShowMoreOptionsMenuItem" Header="显示更多选项" 
+                                          SubmenuOpened="ShowMoreOptions_SubmenuOpened"
+                                          Click="ShowMoreOptions_Click">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>
@@ -1891,7 +1893,9 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem x:Name="ShowMoreOptionsMenuItemIcon" Header="显示更多选项" SubmenuOpened="ShowMoreOptions_SubmenuOpened">
+                                <MenuItem x:Name="ShowMoreOptionsMenuItemIcon" Header="显示更多选项" 
+                                          SubmenuOpened="ShowMoreOptions_SubmenuOpened"
+                                          Click="ShowMoreOptions_Click">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="MoreHorizontal24"/>
                                     </MenuItem.Icon>

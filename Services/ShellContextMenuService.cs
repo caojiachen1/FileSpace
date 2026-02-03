@@ -124,6 +124,9 @@ namespace FileSpace.Services
                                         var source = HwndSource.FromHwnd(hwnd);
                                         source?.AddHook(WndProc);
 
+                                        // 确保窗口具有焦点，否则菜单可能无法接收输入或点击空白处无法关闭
+                                        SetForegroundWindow(hwnd);
+
                                         // 显示菜单
                                         var cmd = TrackPopupMenuEx(
                                             hMenu,
@@ -131,6 +134,9 @@ namespace FileSpace.Services
                                             (int)positionOnScreen.X,
                                             (int)positionOnScreen.Y,
                                             hwnd);
+
+                                        // 关键修复：发送 WM_NULL 消息以确保菜单消息循环彻底结束并返回焦点
+                                        SendMessage(hwnd, (uint)WindowMessage.WM_NULL, IntPtr.Zero, IntPtr.Zero);
 
                                         source?.RemoveHook(WndProc);
 

@@ -33,6 +33,7 @@ namespace FileSpace.Views
             ShowHiddenFilesCheckBox.IsChecked = settings.UISettings.ShowHiddenFiles;
             ShowSystemFilesCheckBox.IsChecked = settings.UISettings.ShowSystemFiles;
             ShowFileExtensionsCheckBox.IsChecked = settings.UISettings.ShowFileExtensions;
+            UseNativeShellMenuCheckBox.IsChecked = settings.UISettings.UseNativeShellMenu;
             
             // Theme settings
             foreach (ComboBoxItem item in ThemeComboBox.Items)
@@ -98,6 +99,7 @@ namespace FileSpace.Views
             settings.UISettings.ShowHiddenFiles = ShowHiddenFilesCheckBox.IsChecked ?? false;
             settings.UISettings.ShowSystemFiles = ShowSystemFilesCheckBox.IsChecked ?? false;
             settings.UISettings.ShowFileExtensions = ShowFileExtensionsCheckBox.IsChecked ?? true;
+            settings.UISettings.UseNativeShellMenu = UseNativeShellMenuCheckBox.IsChecked ?? false;
             
             // Theme settings
             if (ThemeComboBox.SelectedItem is ComboBoxItem themeItem)
