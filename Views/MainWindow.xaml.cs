@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -1239,7 +1239,7 @@ namespace FileSpace.Views
         private string? _lastNewMenuPath = null;
 
         /// <summary>
-        /// "新建"菜单打开时，动态加载Shell新建菜单项
+        /// "新建"菜单打开时，加载 ShellNew 条目并动态添加到主菜单
         /// </summary>
         private void NewItemMenu_SubmenuOpened(object sender, RoutedEventArgs e)
         {
@@ -1252,7 +1252,7 @@ namespace FileSpace.Views
             if (_shellNewMenuLoaded && _lastNewMenuPath == currentPath)
                 return;
 
-            // 移除之前动态添加的项目（保留前面的固定项目：文件夹、文本文档、分隔符）
+            // 移除之前动态添加的 ShellNew 菜单项（保留文件夹、文本文档、分隔符）
             var separator = newItemMenu.Items.OfType<Separator>().FirstOrDefault();
             if (separator != null)
             {
@@ -1274,37 +1274,43 @@ namespace FileSpace.Views
 
             try
             {
-                // 获取Shell新建菜单项
-                var shellNewItems = ShellContextMenuService.Instance.GetShellNewMenuItems(currentPath, this);
-                
-                if (shellNewItems.Count > 0)
-                {
-                    foreach (var item in shellNewItems)
-                    {
-                        // 排除已有的文件夹和文本文档选项 (精确匹配，避免排除如“压缩文件夹”等项)
-                        var header = item.Header?.ToString() ?? "";
-                        if (header == "文件夹" || header == "Folder" || 
-                            header == "文本文档" || header == "Text Document" ||
-                            header == "新建文件夹" || header == "New Folder")
-                            continue;
+                // 使用 ViewModel 加载 ShellNew 条目
+                viewModel.LoadShellNewEntries();
 
-                        // 添加刷新事件
-                        item.Click += (s, args) =>
+                // 动态添加 ShellNew 条目到主菜单
+                if (viewModel.ShellNewEntries.Count > 0 && separator != null)
+                {
+                    // 显示分隔符
+                    separator.Visibility = Visibility.Visible;
+
+                    // 添加每个 ShellNew 条目
+                    foreach (var entry in viewModel.ShellNewEntries)
+                    {
+                        var menuItem = new System.Windows.Controls.MenuItem
                         {
-                            // 延迟刷新以等待文件创建完成
-                            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
-                                System.Windows.Threading.DispatcherPriority.Background,
-                                new Action(() =>
-                                {
-                                    if (DataContext is MainViewModel vm)
-                                    {
-                                        vm.RefreshCommand.Execute(null);
-                                    }
-                                }));
+                            Header = entry.DisplayName,
+                            Command = viewModel.CreateNewFileCommand,
+                            CommandParameter = entry
                         };
 
-                        newItemMenu.Items.Add(item);
+                        // 设置图标
+                        if (entry.Icon != null)
+                        {
+                            var image = new System.Windows.Controls.Image
+                            {
+                                Source = entry.Icon,
+                                Width = 16,
+                                Height = 16
+                            };
+                            menuItem.Icon = image;
+                        }
+
+                        newItemMenu.Items.Add(menuItem);
                     }
+                }
+                else if (separator != null)
+                {
+                    separator.Visibility = Visibility.Collapsed;
                 }
 
                 _shellNewMenuLoaded = true;
@@ -3777,3 +3783,4 @@ namespace FileSpace.Views
         }
     }
 }
+

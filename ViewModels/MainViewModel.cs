@@ -181,6 +181,10 @@ namespace FileSpace.ViewModels
         [ObservableProperty]
         private bool _isNewItemMenuOpen;
 
+        // ShellNew entries for "New" menu
+        [ObservableProperty]
+        private ObservableCollection<ShellNewEntry> _shellNewEntries = new();
+
         [ObservableProperty]
         private bool _isSortModeMenuOpen;
 
@@ -538,6 +542,7 @@ namespace FileSpace.ViewModels
         private FolderPreviewUpdateService _folderPreviewUpdateService;
         private NavigationService _navigationService;
         private readonly SettingsService _settingsService;
+        private readonly ShellNewService _shellNewService;
 
         // File system watcher for automatic refresh
         private FileSystemWatcher? _fileSystemWatcher;
@@ -550,6 +555,7 @@ namespace FileSpace.ViewModels
         public MainViewModel(TabItemModel? initialTab)
         {
             _settingsService = SettingsService.Instance;
+            _shellNewService = ShellNewService.Instance;
             _navigationUtils = new NavigationUtils(_backHistory);
             _fileOperationEventHandler = new FileOperationEventHandler(this);
             _folderPreviewUpdateService = new FolderPreviewUpdateService();
@@ -2196,6 +2202,74 @@ namespace FileSpace.ViewModels
             {
                 StatusText = $"创建文件失败: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// 创建新文件（根据 ShellNew 条目）
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanCreateNew))]
+        private void CreateNewFile(ShellNewEntry? entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(CurrentPath))
+            {
+                return;
+            }
+
+            try
+            {
+                var createdPath = _shellNewService.CreateNewFile(entry, CurrentPath);
+                if (!string.IsNullOrEmpty(createdPath))
+                {
+                    LoadFiles(); // Refresh the file list
+                    var fileName = Path.GetFileName(createdPath);
+                    StatusText = $"已创建文件: {fileName}";
+                }
+                else
+                {
+                    StatusText = $"创建文件失败";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"创建文件失败: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// 加载 ShellNew 条目
+        /// </summary>
+        public void LoadShellNewEntries()
+        {
+            try
+            {
+                var entries = _shellNewService.GetShellNewEntries();
+                ShellNewEntries.Clear();
+                
+                foreach (var entry in entries)
+                {
+                    // 排除已有的文件夹和文本文档选项（这些有单独的命令按钮）
+                    if (entry.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    
+                    ShellNewEntries.Add(entry);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"加载 ShellNew 条目失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 刷新 ShellNew 条目缓存
+        /// </summary>
+        [RelayCommand]
+        private void RefreshShellNewEntries()
+        {
+            _shellNewService.ClearCache();
+            LoadShellNewEntries();
         }
 
         // Panel toggle commands for VS Code-like experience

@@ -584,7 +584,7 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator x:Name="NewItemSeparator"/>
-                                <!-- Shell新建菜单项将在SubmenuOpened事件中动态添加 -->
+                                <!-- Shell新建菜单项将在代码后台动态添加到主菜单中 -->
                             </MenuItem>
                         </Menu>
 
