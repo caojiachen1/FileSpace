@@ -196,6 +196,12 @@ namespace FileSpace.Views
                 if (FileDataGrid?.ContextMenu != null) FileDataGrid.ContextMenu.ApplyTemplate();
                 if (FileIconView?.ContextMenu != null) FileIconView.ContextMenu.ApplyTemplate();
                 if (QuickAccessListView?.ContextMenu != null) QuickAccessListView.ContextMenu.ApplyTemplate();
+
+                // 预热Shell上下文菜单接口（在后台线程执行，避免阻塞UI）
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    ShellContextMenuService.Instance.WarmupShellInterfaces();
+                });
             }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
             // Hook up scroll position tracking

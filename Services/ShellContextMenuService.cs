@@ -35,6 +35,125 @@ namespace FileSpace.Services
         private ShellContextMenuService() { }
 
         /// <summary>
+        /// 预热Shell COM接口，避免第一次打开右键菜单时卡顿
+        /// </summary>
+        public void WarmupShellInterfaces()
+        {
+            try
+            {
+                // 使用一个已知存在的路径进行预热
+                // 优先使用Windows目录，它总是存在的
+                var warmupPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                if (string.IsNullOrEmpty(warmupPath) || !Directory.Exists(warmupPath))
+                {
+                    warmupPath = Path.GetTempPath();
+                }
+
+                // 找一个子文件夹作为预热目标
+                var systemDir = Path.Combine(warmupPath, "System32");
+                if (Directory.Exists(systemDir))
+                {
+                    warmupPath = systemDir;
+                }
+
+                // 使用 SHGetDesktopFolder 获取桌面文件夹
+                SHGetDesktopFolder(out var desktopFolder);
+                if (desktopFolder == null) return;
+
+                try
+                {
+                    // 获取目标文件夹的父目录
+                    var parentPath = Path.GetDirectoryName(warmupPath);
+                    if (string.IsNullOrEmpty(parentPath))
+                    {
+                        parentPath = warmupPath;
+                    }
+
+                    // 解析父目录
+                    desktopFolder.ParseDisplayName(IntPtr.Zero, null, parentPath, out _, out var parentPidl, 0);
+                    if (parentPidl.IsNull) return;
+
+                    try
+                    {
+                        // 绑定到父文件夹
+                        var hr = desktopFolder.BindToObject(parentPidl, null, typeof(IShellFolder).GUID, out var folderObj);
+                        if (hr.Failed || folderObj == null) return;
+
+                        var parentFolder = (IShellFolder)folderObj;
+
+                        try
+                        {
+                            // 获取子项目的文件名
+                            var fileName = Path.GetFileName(warmupPath);
+                            if (string.IsNullOrEmpty(fileName)) return;
+
+                            // 解析子项目
+                            parentFolder.ParseDisplayName(IntPtr.Zero, null, fileName, out _, out var childPidl, 0);
+                            if (childPidl.IsNull) return;
+
+                            try
+                            {
+                                // 获取 IContextMenu 接口
+                                var pidlArray = new[] { (IntPtr)childPidl };
+                                hr = parentFolder.GetUIObjectOf(IntPtr.Zero, 1, pidlArray,
+                                    typeof(IContextMenu).GUID, 0, out var contextMenuObj);
+
+                                if (hr.Failed || contextMenuObj == null) return;
+
+                                var contextMenu = (IContextMenu)contextMenuObj;
+
+                                try
+                                {
+                                    // 创建临时菜单并查询以初始化接口
+                                    var hMenu = CreatePopupMenu();
+                                    if (!hMenu.IsNull)
+                                    {
+                                        try
+                                        {
+                                            // 这是触发Shell扩展加载的关键调用
+                                            contextMenu.QueryContextMenu(hMenu, 0, 1, 0x7FFF, CMF.CMF_NORMAL);
+                                        }
+                                        finally
+                                        {
+                                            DestroyMenu(hMenu);
+                                        }
+                                    }
+                                }
+                                finally
+                                {
+                                    Marshal.ReleaseComObject(contextMenu);
+                                }
+                            }
+                            finally
+                            {
+                                childPidl.Dispose();
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.ReleaseComObject(parentFolder);
+                        }
+                    }
+                    finally
+                    {
+                        parentPidl.Dispose();
+                    }
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(desktopFolder);
+                }
+
+                System.Diagnostics.Debug.WriteLine("Shell上下文菜单接口预热完成");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Shell接口预热失败: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
         /// 显示Shell原生上下文菜单
         /// </summary>
         /// <param name="paths">文件或文件夹路径列表</param>
