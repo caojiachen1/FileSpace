@@ -3800,7 +3800,8 @@ namespace FileSpace.Views
         {
             var menuItem = new System.Windows.Controls.MenuItem
             {
-                StaysOpenOnClick = true
+                StaysOpenOnClick = true,
+                Style = (Style)FindResource("IconButtonContainerMenuItemStyle")
             };
 
             var stackPanel = new StackPanel
