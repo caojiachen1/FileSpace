@@ -1062,6 +1062,11 @@ namespace FileSpace.Views
                 // 清除之前的菜单项
                 showMoreOptionsMenu.Items.Clear();
 
+                // 添加 Windows 11 风格的图标按钮栏
+                var iconBar = CreateContextMenuIconBar();
+                showMoreOptionsMenu.Items.Add(iconBar);
+                showMoreOptionsMenu.Items.Add(new Separator { Margin = new Thickness(0, 0, 0, 4) });
+
                 // 添加加载中提示
                 var loadingItem = new System.Windows.Controls.MenuItem
                 {
@@ -1076,8 +1081,8 @@ namespace FileSpace.Views
                 // 获取Shell菜单项
                 var shellMenuItems = ShellContextMenuService.Instance.GetShellContextMenuItems(selectedPaths, this);
 
-                // 清除加载中提示
-                showMoreOptionsMenu.Items.Clear();
+                // 移除加载中提示，但保留图标栏和分隔符
+                showMoreOptionsMenu.Items.Remove(loadingItem);
 
                 if (shellMenuItems.Count > 0)
                 {
@@ -3780,6 +3785,80 @@ namespace FileSpace.Views
                     obj = VisualTreeHelper.GetParent(obj);
                 }
             }
+        }
+
+        /// <summary>
+        /// 创建 Windows 11 风格的右键菜单图标按钮栏
+        /// </summary>
+        private System.Windows.Controls.MenuItem CreateContextMenuIconBar()
+        {
+            var menuItem = new System.Windows.Controls.MenuItem
+            {
+                StaysOpenOnClick = true
+            };
+
+            var stackPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0)
+            };
+
+            var viewModel = DataContext as MainViewModel;
+            if (viewModel == null)
+            {
+                menuItem.Header = stackPanel;
+                return menuItem;
+            }
+
+            // 剪切按钮
+            var cutButton = CreateIconButton(Wpf.Ui.Controls.SymbolRegular.Cut24, "剪切", viewModel.CutFilesCommand);
+            stackPanel.Children.Add(cutButton);
+
+            // 复制按钮
+            var copyButton = CreateIconButton(Wpf.Ui.Controls.SymbolRegular.Copy24, "复制", viewModel.CopyFilesCommand);
+            copyButton.Margin = new Thickness(4, 0, 0, 0);
+            stackPanel.Children.Add(copyButton);
+
+            // 粘贴按钮
+            var pasteButton = CreateIconButton(Wpf.Ui.Controls.SymbolRegular.ClipboardPaste24, "粘贴", viewModel.PasteFilesCommand);
+            pasteButton.Margin = new Thickness(4, 0, 0, 0);
+            stackPanel.Children.Add(pasteButton);
+
+            // 重命名按钮
+            var renameButton = CreateIconButton(Wpf.Ui.Controls.SymbolRegular.Rename24, "重命名", viewModel.StartRenameCommand);
+            renameButton.Margin = new Thickness(4, 0, 0, 0);
+            stackPanel.Children.Add(renameButton);
+
+            // 删除按钮
+            var deleteButton = CreateIconButton(Wpf.Ui.Controls.SymbolRegular.Delete24, "删除", viewModel.DeleteFilesCommand);
+            deleteButton.Margin = new Thickness(4, 0, 0, 0);
+            stackPanel.Children.Add(deleteButton);
+
+            menuItem.Header = stackPanel;
+            return menuItem;
+        }
+
+        /// <summary>
+        /// 创建图标按钮
+        /// </summary>
+        private System.Windows.Controls.Button CreateIconButton(Wpf.Ui.Controls.SymbolRegular symbol, string tooltip, ICommand command)
+        {
+            var button = new System.Windows.Controls.Button
+            {
+                Style = (Style)FindResource("ContextMenuIconButtonStyle"),
+                ToolTip = tooltip,
+                Command = command
+            };
+
+            var icon = new Wpf.Ui.Controls.SymbolIcon
+            {
+                Symbol = symbol,
+                FontSize = 16,
+                Foreground = Brushes.White
+            };
+
+            button.Content = icon;
+            return button;
         }
     }
 }

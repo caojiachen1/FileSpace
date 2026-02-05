@@ -240,6 +240,51 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Context Menu Icon Button Style (Windows 11 style) -->
+        <Style x:Key="ContextMenuIconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- MenuItem style for icon button container (no hover background) -->
+        <Style x:Key="IconButtonContainerMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border Background="Transparent" Padding="4">
+                            <ContentPresenter ContentSource="Header"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="ToolTip">
             <Setter Property="Padding" Value="7,4"/>
             <Setter Property="Background" Value="#FF2D2D2D"/>
@@ -1418,6 +1463,43 @@
                                  Visibility="{Binding IsDetailsView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ui:DataGrid.ContextMenu>
                             <ContextMenu ContextMenuOpening="FileContextMenu_Opening">
+                                <!-- Windows 11 Style Icon Command Bar -->
+                                <MenuItem Style="{StaticResource IconButtonContainerMenuItemStyle}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding CutFilesCommand}"
+                                                    ToolTip="剪切">
+                                                <ui:SymbolIcon Symbol="Cut24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding CopyFilesCommand}"
+                                                    ToolTip="复制"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Copy24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding PasteFilesCommand}"
+                                                    ToolTip="粘贴"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding StartRenameCommand}"
+                                                    ToolTip="重命名"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Rename24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding DeleteFilesCommand}"
+                                                    ToolTip="删除"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Delete24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator Margin="0,0,0,2"/>
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Open24"/>
@@ -1427,34 +1509,6 @@
                                 <MenuItem Header="在资源管理器中查看" Command="{Binding OpenInExplorerCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="FolderOpen24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="重命名" Command="{Binding StartRenameCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Edit24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="复制" Command="{Binding CopyFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Copy24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="剪切" Command="{Binding CutFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Cut24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="ClipboardPaste24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="删除" Command="{Binding DeleteFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Delete24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
@@ -1853,6 +1907,43 @@
                         </ListView.ItemTemplate>
                         <ListView.ContextMenu>
                             <ContextMenu ContextMenuOpening="FileContextMenu_Opening">
+                                <!-- Windows 11 Style Icon Command Bar -->
+                                <MenuItem Style="{StaticResource IconButtonContainerMenuItemStyle}">
+                                    <MenuItem.Header>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding CutFilesCommand}"
+                                                    ToolTip="剪切">
+                                                <ui:SymbolIcon Symbol="Cut24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding CopyFilesCommand}"
+                                                    ToolTip="复制"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Copy24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding PasteFilesCommand}"
+                                                    ToolTip="粘贴"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="ClipboardPaste24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding StartRenameCommand}"
+                                                    ToolTip="重命名"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Rename24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                            <Button Style="{StaticResource ContextMenuIconButtonStyle}"
+                                                    Command="{Binding DeleteFilesCommand}"
+                                                    ToolTip="删除"
+                                                    Margin="4,0,0,0">
+                                                <ui:SymbolIcon Symbol="Delete24" FontSize="16" Foreground="White"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </MenuItem.Header>
+                                </MenuItem>
+                                <Separator Margin="0,0,0,2"/>
                                 <MenuItem Header="打开" Click="ContextMenu_Open">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Open24"/>
@@ -1865,31 +1956,29 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
-                                <MenuItem Header="复制" Command="{Binding CopyFilesCommand}">
+                                <MenuItem Command="{Binding CopyFilePathCommand}">
                                     <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Copy24"/>
+                                        <ui:SymbolIcon Symbol="Link24"/>
                                     </MenuItem.Icon>
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Header" Value="复制文件地址"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedFile.IsDirectory}" Value="True">
+                                                    <Setter Property="Header" Value="复制文件夹地址"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
                                 </MenuItem>
-                                <MenuItem Header="剪切" Command="{Binding CutFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Cut24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <MenuItem Header="粘贴" Command="{Binding PasteFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="ClipboardPaste24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
-                                <MenuItem Header="删除" Command="{Binding DeleteFilesCommand}">
-                                    <MenuItem.Icon>
-                                        <ui:SymbolIcon Symbol="Delete24"/>
-                                    </MenuItem.Icon>
-                                </MenuItem>
-                                <Separator/>
                                 <MenuItem Header="属性" Command="{Binding ShowPropertiesCommand}">
                                     <MenuItem.Icon>
                                         <ui:SymbolIcon Symbol="Settings24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="分析文件夹" Command="{Binding AnalyzeFolderCommand}" Visibility="{Binding SelectedFile.IsDirectory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="Folder24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator/>
