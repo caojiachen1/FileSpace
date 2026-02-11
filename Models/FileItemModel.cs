@@ -65,6 +65,21 @@ namespace FileSpace.Models
         [ObservableProperty]
         private bool _isDragOver;
 
+        public void UpdateFrom(FileItemModel other)
+        {
+            Name = other.Name;
+            FullPath = other.FullPath;
+            IsDirectory = other.IsDirectory;
+            Size = other.Size;
+            SizeText = other.SizeText;
+            Icon = other.Icon;
+            IconColor = other.IconColor;
+            Thumbnail = other.Thumbnail;
+            Type = other.Type;
+            ModifiedTime = other.ModifiedTime;
+            ModifiedDateTime = other.ModifiedDateTime;
+        }
+
         public string SizeString => IsDirectory ? (IsSizeCalculating ? "计算中..." : SizeText) : FileUtils.FormatFileSize(Size);
 
         public async Task LoadDetailsAsync()

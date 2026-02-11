@@ -246,6 +246,55 @@ namespace FileSpace.Services
             }
         }
 
+        public async Task<FileItemModel?> CreateFileItemAsync(string fullPath)
+        {
+            try
+            {
+                if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
+                    return null;
+
+                var attributes = File.GetAttributes(fullPath);
+                if (!ShouldShowItem(attributes))
+                    return null;
+
+                bool isDirectory = attributes.HasFlag(FileAttributes.Directory);
+                var dirInfo = new DirectoryInfo(fullPath);
+                var fileInfo = isDirectory ? null : new FileInfo(fullPath);
+
+                var item = new FileItemModel
+                {
+                    Name = Path.GetFileName(fullPath),
+                    FullPath = fullPath,
+                    IsDirectory = isDirectory,
+                    ModifiedDateTime = isDirectory ? dirInfo.LastWriteTime : fileInfo!.LastWriteTime,
+                    ModifiedTime = (isDirectory ? dirInfo.LastWriteTime : fileInfo!.LastWriteTime).ToString("yyyy-MM-dd HH:mm")
+                };
+
+                if (isDirectory)
+                {
+                    item.Icon = SymbolRegular.Folder24;
+                    item.IconColor = "#FFE6A23C";
+                    item.Type = "文件夹";
+                    try { item.Thumbnail = IconCacheService.Instance.GetFolderIcon(); } catch { }
+                }
+                else
+                {
+                    string extension = Path.GetExtension(fullPath);
+                    item.Size = fileInfo!.Length;
+                    item.Icon = GetFileIcon(extension);
+                    item.IconColor = GetFileIconColor(extension);
+                    item.Type = GetFileType(extension);
+                    try { item.Thumbnail = IconCacheService.Instance.GetIcon(fullPath, false); } catch { }
+                }
+
+                return item;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// 检查文件或文件夹是否应该显示
         /// </summary>

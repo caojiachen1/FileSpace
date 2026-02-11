@@ -29,12 +29,14 @@ namespace FileSpace.Services
         {
             if (Application.Current?.Dispatcher == null) return;
 
-            Application.Current.Dispatcher.Invoke(async () =>
+            Application.Current.Dispatcher.Invoke(() =>
             {
                 _mainViewModel.IsFileOperationInProgress = false;
                 _mainViewModel.FileOperationStatus = message;
                 _mainViewModel.StatusText = message;
-                await _mainViewModel.RefreshCommand.ExecuteAsync(null);
+                
+                // 不要重新刷新整个页面，依靠增量更新（FileSystemWatcher）
+                // await _mainViewModel.RefreshCommand.ExecuteAsync(null);
 
                 // Clear clipboard if it was a move operation
                 if (ClipboardService.Instance.ClipboardOperation == ClipboardFileOperation.Move)

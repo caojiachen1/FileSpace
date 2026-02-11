@@ -818,7 +818,30 @@ namespace FileSpace.ViewModels
         /// </summary>
         private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
         {
-            await DebounceFileSystemRefreshAsync(e.FullPath).ConfigureAwait(false);
+            try
+            {
+                // Ensure the event is for the current directory
+                var eventDir = Path.GetDirectoryName(e.FullPath);
+                if (!string.Equals(eventDir, CurrentPath, StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                switch (e.ChangeType)
+                {
+                    case WatcherChangeTypes.Created:
+                        await AddFileItemIncrementalAsync(e.FullPath);
+                        break;
+                    case WatcherChangeTypes.Deleted:
+                        await RemoveFileItemIncrementalAsync(e.FullPath);
+                        break;
+                    case WatcherChangeTypes.Changed:
+                        await UpdateFileItemIncrementalAsync(e.FullPath);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"OnFileSystemChanged error: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -826,62 +849,103 @@ namespace FileSpace.ViewModels
         /// </summary>
         private async void OnFileSystemRenamed(object sender, RenamedEventArgs e)
         {
-            await DebounceFileSystemRefreshAsync(e.FullPath).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 统一的去抖刷新方法
-        /// </summary>
-        private async Task DebounceFileSystemRefreshAsync(string changedPath)
-        {
             try
             {
-                // 取消之前的去抖任务
-                var oldCts = Interlocked.Exchange(ref _watcherDebounceCts, null);
-                oldCts?.Cancel();
-                oldCts?.Dispose();
-
-                var newCts = new CancellationTokenSource();
-                Interlocked.Exchange(ref _watcherDebounceCts, newCts);
-
-                // 等待去抖时间
-                await Task.Delay(FileWatcherDebounceMs, newCts.Token).ConfigureAwait(false);
-
-                // 检查是否仍在相同目录
-                var changedDir = Path.GetDirectoryName(changedPath);
-                if (!string.Equals(changedDir, CurrentPath, StringComparison.OrdinalIgnoreCase))
-                {
+                // Ensure the event is for the current directory
+                var eventDir = Path.GetDirectoryName(e.FullPath);
+                if (!string.Equals(eventDir, CurrentPath, StringComparison.OrdinalIgnoreCase))
                     return;
-                }
 
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    try
-                    {
-                        var mainWindow = Application.Current.MainWindow as MainWindow;
-                        if (mainWindow != null)
-                        {
-                            mainWindow.RefreshFileListWithScrollPreservation();
-                        }
-                        else
-                        {
-                            LoadFiles();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"FileSystemWatcher refresh error: {ex.Message}");
-                    }
-                });
-            }
-            catch (OperationCanceledException)
-            {
-                // 去抖被取消，正常情况
+                await RenameFileItemIncrementalAsync(e.OldFullPath, e.FullPath);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"DebounceFileSystemRefreshAsync error: {ex.Message}");
+                Debug.WriteLine($"OnFileSystemRenamed error: {ex.Message}");
             }
+        }
+
+        private async Task AddFileItemIncrementalAsync(string fullPath)
+        {
+            var item = await FileSystemService.Instance.CreateFileItemAsync(fullPath);
+            if (item != null)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    // Check if already exists to avoid duplicates
+                    if (!Files.Any(f => f.FullPath.Equals(fullPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Files.Add(item);
+                        UpdateStatusTextIncremental();
+                    }
+                });
+            }
+        }
+
+        private async Task RemoveFileItemIncrementalAsync(string fullPath)
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var item = Files.FirstOrDefault(f => f.FullPath.Equals(fullPath, StringComparison.OrdinalIgnoreCase));
+                if (item != null)
+                {
+                    Files.Remove(item);
+                    UpdateStatusTextIncremental();
+                }
+            });
+        }
+
+        private async Task UpdateFileItemIncrementalAsync(string fullPath)
+        {
+            // For Changed events, we might want to debounce to avoid excessive UI updates during writes
+            // But for Metadata changes (size, date), we want it relatively quick
+            var item = await FileSystemService.Instance.CreateFileItemAsync(fullPath);
+            if (item != null)
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var existingItem = Files.FirstOrDefault(f => f.FullPath.Equals(fullPath, StringComparison.OrdinalIgnoreCase));
+                    if (existingItem != null)
+                    {
+                        // 使用 UpdateFrom 保持对象引用，避免丢失 UI 选择状态
+                        existingItem.UpdateFrom(item);
+                    }
+                });
+            }
+        }
+
+        private async Task RenameFileItemIncrementalAsync(string oldPath, string newPath)
+        {
+            var newItem = await FileSystemService.Instance.CreateFileItemAsync(newPath);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var existingItem = Files.FirstOrDefault(f => f.FullPath.Equals(oldPath, StringComparison.OrdinalIgnoreCase));
+                if (existingItem != null)
+                {
+                    if (newItem != null)
+                    {
+                        // 使用 UpdateFrom 保持对象引用
+                        existingItem.UpdateFrom(newItem);
+                    }
+                    else
+                    {
+                        Files.Remove(existingItem);
+                    }
+                }
+                else if (newItem != null)
+                {
+                    // If old item wasn't there, just add new one
+                    if (!Files.Any(f => f.FullPath.Equals(newPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Files.Add(newItem);
+                    }
+                }
+                UpdateStatusTextIncremental();
+            });
+        }
+
+        private void UpdateStatusTextIncremental()
+        {
+            StatusText = $"{Files.Count} 个项目";
         }
 
         partial void OnCurrentPathChanged(string value)
@@ -2153,7 +2217,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand(CanExecute = nameof(CanCreateNew))]
-        private void CreateNewFolder()
+        private async Task CreateNewFolder()
         {
             try
             {
@@ -2169,7 +2233,7 @@ namespace FileSpace.ViewModels
                 }
 
                 Directory.CreateDirectory(newFolderPath);
-                LoadFiles(); // Refresh the file list
+                await AddFileItemIncrementalAsync(newFolderPath);
                 StatusText = $"已创建文件夹: {newFolderName}";
             }
             catch (Exception ex)
@@ -2179,7 +2243,7 @@ namespace FileSpace.ViewModels
         }
 
         [RelayCommand(CanExecute = nameof(CanCreateNew))]
-        private void CreateNewTextFile()
+        private async Task CreateNewTextFile()
         {
             try
             {
@@ -2195,7 +2259,7 @@ namespace FileSpace.ViewModels
                 }
 
                 File.WriteAllText(newFilePath, string.Empty);
-                LoadFiles(); // Refresh the file list
+                await AddFileItemIncrementalAsync(newFilePath);
                 StatusText = $"已创建文件: {newFileName}";
             }
             catch (Exception ex)
@@ -2208,7 +2272,7 @@ namespace FileSpace.ViewModels
         /// 创建新文件（根据 ShellNew 条目）
         /// </summary>
         [RelayCommand(CanExecute = nameof(CanCreateNew))]
-        private void CreateNewFile(ShellNewEntry? entry)
+        private async Task CreateNewFile(ShellNewEntry? entry)
         {
             if (entry == null || string.IsNullOrEmpty(CurrentPath))
             {
@@ -2217,10 +2281,10 @@ namespace FileSpace.ViewModels
 
             try
             {
-                var createdPath = _shellNewService.CreateNewFile(entry, CurrentPath);
+                var createdPath = await Task.Run(() => _shellNewService.CreateNewFile(entry, CurrentPath));
                 if (!string.IsNullOrEmpty(createdPath))
                 {
-                    LoadFiles(); // Refresh the file list
+                    await AddFileItemIncrementalAsync(createdPath);
                     var fileName = Path.GetFileName(createdPath);
                     StatusText = $"已创建文件: {fileName}";
                 }
@@ -2983,8 +3047,8 @@ namespace FileSpace.ViewModels
                 IsFileOperationInProgress = false;
                 FileOperationProgress = 100;
 
-                // Refresh the current directory
-                LoadFiles();
+                // 不要刷新整个页面，依靠增量更新
+                // LoadFiles();
             }
             catch (UnauthorizedAccessException ex)
             {
