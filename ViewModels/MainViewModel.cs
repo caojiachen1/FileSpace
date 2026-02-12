@@ -72,6 +72,8 @@ namespace FileSpace.ViewModels
 
         // 跟踪当前路径变化前的值以及待聚焦的文件夹
         private string _previousPath = string.Empty;
+        private string _pathBeforeEditing = string.Empty;
+        private bool _isCommittingPath = false;
         private string? _pendingReturnFolderPath;
         private bool _alignPendingFolderToBottom;
         
@@ -147,11 +149,22 @@ namespace FileSpace.ViewModels
         {
             if (value)
             {
+                // 保存编辑前的路径，用于取消编辑时恢复或作为命令执行的工作目录
+                _pathBeforeEditing = CurrentPath;
+
                 // Use BeginInvoke to ensure the UI is updated before focusing
                 Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                 {
                     FocusAddressBarRequested?.Invoke(this, EventArgs.Empty);
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            else
+            {
+                // 如果不是通过 Enter 键等逻辑提交的（即没有调用 NavigateToPath 或被手动确认），则恢复
+                if (!_isCommittingPath)
+                {
+                    CurrentPath = _pathBeforeEditing;
+                }
             }
         }
 
@@ -2450,10 +2463,117 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void AddressBarEnter(string? path)
         {
-            if (!string.IsNullOrEmpty(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
-                NavigateToPath(path);
-                IsPathEditing = false; // Exit edit mode after navigation
+                IsPathEditing = false; // 会触发 OnIsPathEditingChanged 并恢复
+                return;
+            }
+
+            _isCommittingPath = true;
+            try
+            {
+                string targetPath = path.Trim();
+
+                // 1. 处理特殊虚拟路径
+                if (targetPath == ThisPCPath || targetPath == LinuxPath)
+                {
+                    NavigateToPath(targetPath);
+                    _pathBeforeEditing = CurrentPath;
+                    IsPathEditing = false;
+                    return;
+                }
+
+                // 2. 检查是否为存在的目录（绝对路径）
+                if (Directory.Exists(targetPath))
+                {
+                    NavigateToPath(targetPath);
+                    _pathBeforeEditing = CurrentPath;
+                    IsPathEditing = false;
+                    return;
+                }
+
+                // 3. 检查相对于当前目录的路径
+                try
+                {
+                    string combinedPath = Path.Combine(_pathBeforeEditing, targetPath);
+                    if (Directory.Exists(combinedPath) || File.Exists(combinedPath))
+                    {
+                        NavigateToPath(targetPath);
+                        _pathBeforeEditing = CurrentPath;
+                        IsPathEditing = false;
+                        return;
+                    }
+                }
+                catch { }
+
+                // 4. 检查是否为存在的文件（绝对路径）
+                if (File.Exists(targetPath))
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = targetPath,
+                            UseShellExecute = true
+                        });
+                        CurrentPath = _pathBeforeEditing; // 恢复地址栏内容
+                        IsPathEditing = false;
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusText = $"无法打开文件: {ex.Message}";
+                        CurrentPath = _pathBeforeEditing;
+                        IsPathEditing = false;
+                        return;
+                    }
+                }
+
+                // 5. 尝试作为命令在当前目录下运行
+                try
+                {
+                    // 使用备份的编辑前路径作为工作目录，确保在跳转过程中工作目录正确
+                    string? workingDir = null;
+                    if (!string.IsNullOrEmpty(_pathBeforeEditing) && 
+                        _pathBeforeEditing != ThisPCPath && 
+                        _pathBeforeEditing != LinuxPath && 
+                        Directory.Exists(_pathBeforeEditing))
+                    {
+                        workingDir = _pathBeforeEditing;
+                    }
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = targetPath,
+                        WorkingDirectory = workingDir,
+                        UseShellExecute = true
+                    });
+                    
+                    StatusText = $"执行命令: {targetPath}";
+                    CurrentPath = _pathBeforeEditing; // 命令执行成功，恢复地址栏为原路径
+                    IsPathEditing = false;
+                }
+                catch (Exception)
+                {
+                    // 如果认为它既不是路径也不是有效的命令
+                    // 调用 NavigateToPath 以便让系统提示错误
+                    NavigateToPath(targetPath);
+                    
+                    // 如果导航失败（CurrentPath 没变或者变成了错误路径），我们根据反馈恢复
+                    if (!Directory.Exists(CurrentPath) && CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                    {
+                        CurrentPath = _pathBeforeEditing;
+                    }
+                    else
+                    {
+                        _pathBeforeEditing = CurrentPath;
+                    }
+                    IsPathEditing = false;
+                }
+            }
+            finally
+            {
+                _isCommittingPath = false;
             }
         }
 
