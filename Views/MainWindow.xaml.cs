@@ -1335,12 +1335,21 @@ namespace FileSpace.Views
                 switch (e.Key)
                 {
                     case Key.Enter:
-                        if (viewModel.SelectedFile != null && !viewModel.IsRenaming)
+                        if (sender == DrivesView || sender == LinuxView)
+                        {
+                            if (viewModel.SelectedDrive != null)
+                            {
+                                viewModel.NavigateToPathCommand.Execute(viewModel.SelectedDrive.DriveLetter);
+                                e.Handled = true;
+                            }
+                        }
+                        else if (viewModel.SelectedFile != null && !viewModel.IsRenaming)
                         {
                             viewModel.FileDoubleClickCommand.Execute(viewModel.SelectedFile);
                             e.Handled = true;
                         }
                         break;
+
                     case Key.Escape:
                         if (viewModel.IsRenaming)
                         {
@@ -1350,12 +1359,57 @@ namespace FileSpace.Views
                         else
                         {
                             // Clear selection on Escape when not renaming
-                            var fileDataGrid = FindName("FileDataGrid") as Wpf.Ui.Controls.DataGrid;
-                            if (fileDataGrid != null)
+                            if (sender is System.Windows.Controls.Primitives.Selector selector)
                             {
-                                fileDataGrid.SelectedItems.Clear();
+                                selector.SelectedIndex = -1;
                                 viewModel.SelectedFiles.Clear();
                                 e.Handled = true;
+                            }
+                        }
+                        break;
+
+                    case Key.Home:
+                    case Key.End:
+                    case Key.PageUp:
+                    case Key.PageDown:
+                        if (sender is System.Windows.Controls.Primitives.Selector selectorNav)
+                        {
+                            int count = selectorNav.Items.Count;
+                            if (count > 0)
+                            {
+                                int newIndex = selectorNav.SelectedIndex;
+                                switch (e.Key)
+                                {
+                                    case Key.Home:
+                                        newIndex = 0;
+                                        break;
+                                    case Key.End:
+                                        newIndex = count - 1;
+                                        break;
+                                    case Key.PageUp:
+                                        newIndex = Math.Max(0, selectorNav.SelectedIndex - 10);
+                                        break;
+                                    case Key.PageDown:
+                                        newIndex = Math.Min(count - 1, selectorNav.SelectedIndex + 10);
+                                        break;
+                                }
+
+                                if (newIndex != selectorNav.SelectedIndex || (e.Key == Key.Home && selectorNav.SelectedIndex != 0) || (e.Key == Key.End && selectorNav.SelectedIndex != count - 1))
+                                {
+                                    selectorNav.SelectedIndex = newIndex;
+                                    
+                                    // Handle scrolling into view
+                                    if (selectorNav is System.Windows.Controls.ListBox lb)
+                                    {
+                                        lb.ScrollIntoView(lb.SelectedItem);
+                                    }
+                                    else if (selectorNav is System.Windows.Controls.DataGrid dg)
+                                    {
+                                        dg.ScrollIntoView(dg.SelectedItem);
+                                    }
+                                    
+                                    e.Handled = true;
+                                }
                             }
                         }
                         break;

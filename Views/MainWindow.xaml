@@ -1259,6 +1259,7 @@
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               MouseDoubleClick="DrivesView_MouseDoubleClick"
                               MouseDown="DrivesView_MouseDown"
+                              KeyDown="FileListView_KeyDown"
                               Visibility="{Binding IsThisPCView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1344,6 +1345,7 @@
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               MouseDoubleClick="LinuxView_MouseDoubleClick"
                               MouseDown="LinuxView_MouseDown"
+                              KeyDown="FileListView_KeyDown"
                               Visibility="{Binding IsLinuxView, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <ListView.ItemsPanel>
                             <ItemsPanelTemplate>
