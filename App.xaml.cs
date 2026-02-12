@@ -22,6 +22,13 @@ namespace FileSpace
             
             // Apply saved theme settings
             ApplySettingsFromConfiguration();
+
+            // Preload the Magika AI model to avoid the first preview lag caused by model initialization
+            _ = Task.Run(async () => {
+                try {
+                    await MagikaDetector.GetFilePreviewTypeAsync("dummy.txt", CancellationToken.None);
+                } catch { }
+            });
         }
 
         private void ApplySettingsFromConfiguration()

@@ -746,8 +746,15 @@ namespace FileSpace.Services
                 case FilePreviewType.Video:
                     try
                     {
-                        var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
-                        var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+                        var mediaInfo = await Task.Run(() => 
+                        {
+                            var dirs = ImageMetadataReader.ReadMetadata(fileInfo.FullName);
+                            var shell = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+                            return new { Directories = dirs, ShellInfo = shell };
+                        }, cancellationToken);
+
+                        var directories = mediaInfo.Directories;
+                        var shellInfo = mediaInfo.ShellInfo;
                         
                         // 时长
                         var duration = shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null;
@@ -816,8 +823,15 @@ namespace FileSpace.Services
                 case FilePreviewType.Audio:
                     try
                     {
-                        var directories = await Task.Run(() => ImageMetadataReader.ReadMetadata(fileInfo.FullName));
-                        var shellInfo = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+                        var mediaInfo = await Task.Run(() => 
+                        {
+                            var dirs = ImageMetadataReader.ReadMetadata(fileInfo.FullName);
+                            var shell = FilePreviewUtils.GetShellMediaInfo(fileInfo.FullName);
+                            return new { Directories = dirs, ShellInfo = shell };
+                        }, cancellationToken);
+
+                        var directories = mediaInfo.Directories;
+                        var shellInfo = mediaInfo.ShellInfo;
 
                         // 时长
                         var duration = shellInfo.ContainsKey("Duration") ? shellInfo["Duration"] : null;
@@ -862,8 +876,16 @@ namespace FileSpace.Services
                 case FilePreviewType.Csv:
                     try
                     {
-                        var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
-                        panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总行数", $"{lines.Length:N0}"));
+                        // 只有文件较小时才计算总行数，避免大文件卡顿
+                        if (fileInfo.Length < 10 * 1024 * 1024) // 10MB
+                        {
+                            var lines = await File.ReadAllLinesAsync(fileInfo.FullName, cancellationToken);
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总行数", $"{lines.Length:N0}"));
+                        }
+                        else
+                        {
+                            panel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("总行数", "文件过大，未计算"));
+                        }
                     }
                     catch { }
                     break;

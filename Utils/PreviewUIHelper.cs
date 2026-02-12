@@ -393,43 +393,43 @@ namespace FileSpace.Utils
 
             try
             {
-                var image = await Task.Run(() =>
+                var bitmap = await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    return Application.Current.Dispatcher.Invoke(() =>
+                    // Create and load image in background thread, then freeze it for UI thread use
+                    var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(fileInfo.FullName);
+                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    
+                    // For large images, reduce decode size to improve performance
+                    if (fileInfo.Length > 5 * 1024 * 1024) // 5MB
                     {
-                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(fileInfo.FullName);
-                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                        
-                        // Reduce decode size for large images to improve performance
-                        if (fileInfo.Length > 5 * 1024 * 1024) // 5MB
-                        {
-                            bitmap.DecodePixelWidth = 600; // Smaller preview for large images
-                        }
-                        else
-                        {
-                            bitmap.DecodePixelWidth = 800;
-                        }
-                        
-                        bitmap.EndInit();
-                        bitmap.Freeze();
+                        bitmap.DecodePixelWidth = 600;
+                    }
+                    else
+                    {
+                        bitmap.DecodePixelWidth = 800;
+                    }
+                    
+                    bitmap.EndInit();
+                    bitmap.Freeze(); // Key: safe across threads after freezing
 
-                        return new Image
-                        {
-                            Source = bitmap,
-                            Stretch = Stretch.Uniform,
-                            StretchDirection = StretchDirection.DownOnly,
-                            MaxHeight = 400
-                        };
-                    });
+                    return bitmap;
                 }, cancellationToken);
+
+                var image = new Image
+                {
+                    Source = bitmap,
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = StretchDirection.DownOnly,
+                    MaxHeight = 400
+                };
 
                 panel.Children.Add(image);
                 
-                // Add performance info for large images
+                // If it's a large image, add a hint
                 if (fileInfo.Length > 10 * 1024 * 1024)
                 {
                     var perfBlock = CreateInfoTextBlock("🔄 大图片已优化显示以提高性能");
