@@ -757,6 +757,20 @@
                                         <ui:SymbolIcon Symbol="Timer24"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="按创建日期排序" Command="{Binding SetSortModeCommand}" CommandParameter="CreationDate">
+                                    <MenuItem.Style>
+                                        <Style TargetType="MenuItem">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SortMode}" Value="CreationDate">
+                                                    <Setter Property="IsChecked" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </MenuItem.Style>
+                                    <MenuItem.Icon>
+                                        <ui:SymbolIcon Symbol="CalendarClock24"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <Separator/>
                                 <MenuItem Header="升序" Command="{Binding SetSortModeCommand}" CommandParameter="Ascending">
                                     <MenuItem.Style>
@@ -1659,6 +1673,7 @@
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Header="类型" Width="150" MinWidth="90" Binding="{Binding Type}" SortMemberPath="Type" ElementStyle="{StaticResource FileDataGridTextElementStyle}"/>
                             <DataGridTextColumn Header="修改时间" Width="150" MinWidth="90" Binding="{Binding ModifiedTime}" SortMemberPath="ModifiedTime" ElementStyle="{StaticResource FileDataGridTextElementStyle}"/>
+                            <DataGridTextColumn Header="创建时间" Width="150" MinWidth="90" Binding="{Binding CreationTime}" SortMemberPath="CreationTime" ElementStyle="{StaticResource FileDataGridTextElementStyle}"/>
                             <DataGridTextColumn Header="大小" Width="100" MinWidth="90" Binding="{Binding SizeString}" SortMemberPath="Size" ElementStyle="{StaticResource FileDataGridRightAlignedTextElementStyle}"/>
                         </ui:DataGrid.Columns>
                     </ui:DataGrid>

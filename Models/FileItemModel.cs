@@ -55,6 +55,12 @@ namespace FileSpace.Models
         private DateTime _modifiedDateTime;
 
         [ObservableProperty]
+        private string _creationTime = string.Empty;
+
+        [ObservableProperty]
+        private DateTime _creationDateTime;
+
+        [ObservableProperty]
         private string? _resolution;
 
         [ObservableProperty]
@@ -78,6 +84,8 @@ namespace FileSpace.Models
             Type = other.Type;
             ModifiedTime = other.ModifiedTime;
             ModifiedDateTime = other.ModifiedDateTime;
+            CreationTime = other.CreationTime;
+            CreationDateTime = other.CreationDateTime;
         }
 
         public string SizeString => IsDirectory ? (IsSizeCalculating ? "计算中..." : SizeText) : FileUtils.FormatFileSize(Size);

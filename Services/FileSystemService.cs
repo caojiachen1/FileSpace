@@ -86,6 +86,7 @@ namespace FileSpace.Services
                             bool isDirectory = (attributes & FileAttributes.Directory) != 0;
                             string fullPath = Path.Combine(currentPath, fileName);
                             DateTime lastWrite = Win32Api.ToDateTime(findData.ftLastWriteTime);
+                            DateTime creationTime = Win32Api.ToDateTime(findData.ftCreationTime);
                             
                             var item = new FileItemModel
                             {
@@ -93,7 +94,9 @@ namespace FileSpace.Services
                                 FullPath = fullPath,
                                 IsDirectory = isDirectory,
                                 ModifiedDateTime = lastWrite,
-                                ModifiedTime = lastWrite.ToString("yyyy-MM-dd HH:mm")
+                                ModifiedTime = lastWrite.ToString("yyyy-MM-dd HH:mm"),
+                                CreationDateTime = creationTime,
+                                CreationTime = creationTime.ToString("yyyy-MM-dd HH:mm")
                             };
 
                             if (isDirectory)

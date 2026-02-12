@@ -1653,6 +1653,19 @@ namespace FileSpace.ViewModels
                         int dateCompare = b.ModifiedDateTime.CompareTo(a.ModifiedDateTime);
                         return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
                     },
+                "CreationDate" => sortAscending
+                    ? static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int dateCompare = a.CreationDateTime.CompareTo(b.CreationDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(a.Name, b.Name);
+                    }
+                    : static (a, b) => {
+                        int dirDiff = (b.IsDirectory ? 1 : 0) - (a.IsDirectory ? 1 : 0);
+                        if (dirDiff != 0) return dirDiff;
+                        int dateCompare = b.CreationDateTime.CompareTo(a.CreationDateTime);
+                        return dateCompare != 0 ? dateCompare : Win32Api.StrCmpLogicalW(b.Name, a.Name);
+                    },
                 _ => static (a, b) => 0
             };
 
@@ -2957,6 +2970,7 @@ namespace FileSpace.ViewModels
                 "Size" => "大小",
                 "Type" => "类型",
                 "Date" => "修改日期",
+                "CreationDate" => "创建日期",
                 _ => mode
             };
             StatusText = $"排序方式: {modeName} ({direction})";

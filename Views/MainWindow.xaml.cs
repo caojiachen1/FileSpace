@@ -564,6 +564,8 @@ namespace FileSpace.Views
                     "Type" => "Type",
                     "ModifiedTime" => "Date",
                     "ModifiedDateTime" => "Date",
+                    "CreationTime" => "CreationDate",
+                    "CreationDateTime" => "CreationDate",
                     _ => column.SortMemberPath
                 };
 
@@ -776,6 +778,8 @@ namespace FileSpace.Views
                 "Type" => "Type",
                 "ModifiedTime" => "Date",
                 "ModifiedDateTime" => "Date",
+                "CreationTime" => "CreationDate",
+                "CreationDateTime" => "CreationDate",
                 _ => sortMemberPath
             };
 
