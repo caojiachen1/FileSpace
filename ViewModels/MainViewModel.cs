@@ -878,6 +878,9 @@ namespace FileSpace.ViewModels
                         UpdateStatusTextIncremental();
                     }
                 });
+
+                // 异步加载新文件的缩略图
+                _ = LoadThumbnailForItemAsync(item);
             }
         }
 
@@ -908,6 +911,9 @@ namespace FileSpace.ViewModels
                     {
                         // 使用 UpdateFrom 保持对象引用，避免丢失 UI 选择状态
                         existingItem.UpdateFrom(item);
+
+                        // 如果内容变化可能需要刷新缩略图
+                        _ = LoadThumbnailForItemAsync(existingItem);
                     }
                 });
             }
@@ -925,6 +931,9 @@ namespace FileSpace.ViewModels
                     {
                         // 使用 UpdateFrom 保持对象引用
                         existingItem.UpdateFrom(newItem);
+                        
+                        // 重命名后也要（尝试）更新缩略图，特别是从无扩展名变为有扩展名等情况
+                        _ = LoadThumbnailForItemAsync(existingItem);
                     }
                     else
                     {
@@ -937,6 +946,7 @@ namespace FileSpace.ViewModels
                     if (!Files.Any(f => f.FullPath.Equals(newPath, StringComparison.OrdinalIgnoreCase)))
                     {
                         Files.Add(newItem);
+                        _ = LoadThumbnailForItemAsync(newItem);
                     }
                 }
                 UpdateStatusTextIncremental();
@@ -1781,6 +1791,48 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading thumbnails: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 为单个文件项加载缩略图（用于增量更新）
+        /// </summary>
+        private async Task LoadThumbnailForItemAsync(FileItemModel item)
+        {
+            if (item == null) return;
+
+            try
+            {
+                // 跳过已经加载的缩略图
+                double targetSize = IconSize;
+                if (targetSize <= 16) targetSize = 32;
+                if (item.Thumbnail != null && item.LoadedThumbnailSize >= targetSize) return;
+
+                ImageSource? thumbnail = null;
+                bool isDetailsView = ViewMode == "详细信息";
+
+                if (isDetailsView && item.IsDirectory)
+                {
+                    thumbnail = IconCacheService.Instance.GetFolderIcon();
+                }
+                else
+                {
+                    int targetSizeInt = (int)targetSize;
+                    thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(item.FullPath, targetSizeInt).ConfigureAwait(false);
+                }
+
+                if (thumbnail != null)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        item.Thumbnail = thumbnail;
+                        item.LoadedThumbnailSize = targetSize;
+                    }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading single thumbnail for {item.FullPath}: {ex.Message}");
             }
         }
 
