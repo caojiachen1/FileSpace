@@ -850,6 +850,12 @@ namespace FileSpace.ViewModels
                         await UpdateFileItemIncrementalAsync(e.FullPath);
                         break;
                 }
+
+                // Invalidate folder size cache
+                BackgroundFolderSizeCalculator.Instance.InvalidateCache(CurrentPath);
+
+                // Refresh preview to show updated folder information
+                _ = ShowPreviewAsync();
             }
             catch (Exception ex)
             {
@@ -870,6 +876,12 @@ namespace FileSpace.ViewModels
                     return;
 
                 await RenameFileItemIncrementalAsync(e.OldFullPath, e.FullPath);
+
+                // Invalidate folder size cache
+                BackgroundFolderSizeCalculator.Instance.InvalidateCache(CurrentPath);
+
+                // Refresh preview to show updated folder information
+                _ = ShowPreviewAsync();
             }
             catch (Exception ex)
             {
@@ -2313,6 +2325,12 @@ namespace FileSpace.ViewModels
                 Directory.CreateDirectory(newFolderPath);
                 await AddFileItemIncrementalAsync(newFolderPath);
                 StatusText = $"已创建文件夹: {newFolderName}";
+
+                // Invalidate folder size cache for the current folder
+                BackgroundFolderSizeCalculator.Instance.InvalidateCache(CurrentPath);
+                
+                // Refresh preview to show updated folder information
+                _ = ShowPreviewAsync();
             }
             catch (Exception ex)
             {
@@ -2339,6 +2357,12 @@ namespace FileSpace.ViewModels
                 File.WriteAllText(newFilePath, string.Empty);
                 await AddFileItemIncrementalAsync(newFilePath);
                 StatusText = $"已创建文件: {newFileName}";
+
+                // Invalidate folder size cache for the current folder
+                BackgroundFolderSizeCalculator.Instance.InvalidateCache(CurrentPath);
+                
+                // Refresh preview to show updated folder information
+                _ = ShowPreviewAsync();
             }
             catch (Exception ex)
             {
@@ -2687,6 +2711,8 @@ namespace FileSpace.ViewModels
                 {
                     await FileOperationsService.Instance.MoveFilesAsync(sourceFiles, destinationFolder, token);
                 }
+
+                _ = ShowPreviewAsync();
             }
             catch (OperationCanceledException)
             {
@@ -2696,6 +2722,10 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 StatusText = $"粘贴失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+            finally
+            {
                 IsFileOperationInProgress = false;
             }
         }
@@ -2954,6 +2984,8 @@ namespace FileSpace.ViewModels
                 var token = CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token;
                 var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
                 await FileOperationsService.Instance.DeleteFilesPermanentlyAsync(filesToDelete, token);
+
+                _ = ShowPreviewAsync();
             }
             catch (OperationCanceledException)
             {
@@ -2963,6 +2995,10 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 StatusText = $"删除失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+            finally
+            {
                 IsFileOperationInProgress = false;
             }
         }
@@ -2988,6 +3024,8 @@ namespace FileSpace.ViewModels
                 var token = CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token;
                 var filesToDelete = SelectedFiles.Select(f => f.FullPath).ToList();
                 await FileOperationsService.Instance.DeleteFilesToRecycleBinAsync(filesToDelete, token);
+
+                _ = ShowPreviewAsync();
             }
             catch (OperationCanceledException)
             {
@@ -2997,6 +3035,10 @@ namespace FileSpace.ViewModels
             catch (Exception ex)
             {
                 StatusText = $"删除失败: {ex.Message}";
+                IsFileOperationInProgress = false;
+            }
+            finally
+            {
                 IsFileOperationInProgress = false;
             }
         }
@@ -3232,6 +3274,16 @@ namespace FileSpace.ViewModels
                 StatusText = $"重命名成功: {newName}";
                 IsFileOperationInProgress = false;
                 FileOperationProgress = 100;
+
+                // Invalidate folder size cache for the parent folder
+                var parent = Path.GetDirectoryName(oldPath);
+                if (!string.IsNullOrEmpty(parent))
+                {
+                    BackgroundFolderSizeCalculator.Instance.InvalidateCache(parent);
+                }
+
+                // Refresh preview to show updated information (e.g. new name)
+                _ = ShowPreviewAsync();
 
                 // 不要刷新整个页面，依靠增量更新
                 // LoadFiles();

@@ -139,6 +139,23 @@ namespace FileSpace.Services
                 }
 
                 OperationCompleted?.Invoke(this, $"{operation} 操作完成: {completedFiles} 个项目");
+
+                // Invalidate folder size cache for destination
+                BackgroundFolderSizeCalculator.Instance.InvalidateCache(destinationDirectory);
+                
+                // For Move, also invalidate source folders
+                if (operation == FileOperation.Move)
+                {
+                    var sourceFolders = sourcePaths.Select(p => Path.GetDirectoryName(p)).Distinct();
+                    foreach (var folder in sourceFolders)
+                    {
+                        if (!string.IsNullOrEmpty(folder))
+                        {
+                            BackgroundFolderSizeCalculator.Instance.InvalidateCache(folder);
+                        }
+                    }
+                }
+
                 return true;
             }
             catch (OperationCanceledException)
@@ -483,6 +500,17 @@ namespace FileSpace.Services
                 }, cancellationToken);
 
                 OperationCompleted?.Invoke(this, $"已删除 {completedFiles} 个项目到回收站");
+                
+                // Invalidate folder size cache for parent folders
+                var parentFolders = paths.Select(p => Path.GetDirectoryName(p)).Distinct();
+                foreach (var folder in parentFolders)
+                {
+                    if (!string.IsNullOrEmpty(folder))
+                    {
+                        BackgroundFolderSizeCalculator.Instance.InvalidateCache(folder);
+                    }
+                }
+
                 return true;
             }
             catch (OperationCanceledException)
@@ -547,6 +575,17 @@ namespace FileSpace.Services
                 }, cancellationToken);
 
                 OperationCompleted?.Invoke(this, $"已永久删除 {completedFiles} 个项目");
+
+                // Invalidate folder size cache for parent folders
+                var parentFolders = paths.Select(p => Path.GetDirectoryName(p)).Distinct();
+                foreach (var folder in parentFolders)
+                {
+                    if (!string.IsNullOrEmpty(folder))
+                    {
+                        BackgroundFolderSizeCalculator.Instance.InvalidateCache(folder);
+                    }
+                }
+
                 return true;
             }
             catch (OperationCanceledException)

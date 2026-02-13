@@ -82,6 +82,33 @@ namespace FileSpace.Services
             }
         }
 
+        public void InvalidateCache(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath)) return;
+            
+            try
+            {
+                var normalizedPath = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar);
+                _sizeCache.TryRemove(normalizedPath, out _);
+                
+                // Also invalidate parent folders as their size also changed
+                var parent = Path.GetDirectoryName(normalizedPath);
+                while (!string.IsNullOrEmpty(parent))
+                {
+                    var normalizedParent = Path.GetFullPath(parent).TrimEnd(Path.DirectorySeparatorChar);
+                    _sizeCache.TryRemove(normalizedParent, out _);
+                    
+                    var nextParent = Path.GetDirectoryName(normalizedParent);
+                    if (nextParent == parent) break; // Root reached
+                    parent = nextParent;
+                }
+            }
+            catch
+            {
+                // Ignore path normalization errors
+            }
+        }
+
         private async Task ProcessCalculationQueueAsync()
         {
             await foreach (var request in _calculationQueue.Reader.ReadAllAsync())
