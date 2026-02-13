@@ -2953,6 +2953,34 @@ namespace FileSpace.ViewModels
 
             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
             
+            // Special Case: Dropping onto Recycle Bin (Virtual Path)
+            if (targetPath == RecycleBinPath || targetPath.StartsWith(RecycleBinPath + "\\"))
+            {
+                try
+                {
+                    IsFileOperationInProgress = true;
+                    FileOperationStatus = "正在移至回收站...";
+                    FileOperationProgress = 0;
+                    await FileOperationsService.Instance.DeleteFilesToRecycleBinAsync(sourcePaths, CreateOrResetCancellationTokenSource(ref _fileOperationCancellationTokenSource).Token);
+                    
+                    if (IsRecycleBinView)
+                    {
+                        await Refresh();
+                    }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    StatusText = "移至回收站失败: " + ex.Message;
+                    return;
+                }
+                finally
+                {
+                    IsFileOperationInProgress = false;
+                    FileOperationStatus = string.Empty;
+                }
+            }
+
             // Determine operation: Use forced operation if provided, otherwise default to same-drive logic
             FileOperation operation;
             if (forceOperation.HasValue)

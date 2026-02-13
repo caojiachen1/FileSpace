@@ -208,6 +208,25 @@ namespace FileSpace.Views
             HookScrollPositionTracking();
         }
 
+        private DragDropEffects AdjustRecycleBinEffect(DragDropEffects effect, string? targetPath)
+        {
+            // 检查目标是否是回收站
+            bool isRecycleBin = targetPath == MainViewModel.RecycleBinPath ||
+                               (targetPath != null && targetPath.StartsWith(MainViewModel.RecycleBinPath + "\\"));
+
+            if (isRecycleBin)
+            {
+                // 如果是回收站，默认效果应该是移动（即删除），而不是复制
+                // 只有在明确是 Copy 且不仅是 Copy (即 AllowedEffects 包含 Move) 时转换
+                if (effect == DragDropEffects.Copy)
+                {
+                    return DragDropEffects.Move;
+                }
+            }
+
+            return effect;
+        }
+
         /// <summary>
         /// Hooks up scroll position tracking for file list controls
         /// </summary>
@@ -2043,7 +2062,7 @@ namespace FileSpace.Views
                                 _lastDragOverQuickAccessItem = targetItem;
                             }
                             tooltipText = targetItem.Name;
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.Path);
                         }
                         RemoveInsertionAdorner();
                     }
@@ -2252,7 +2271,7 @@ namespace FileSpace.Views
                                 }
                                 catch { }
 
-                                var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                                var effect = AdjustRecycleBinEffect(ShellDragDropUtils.DetermineDropEffect(e, isSameDrive), targetItem.Path);
                                 var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
                                 ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetItem.Path, operation));
                             }
@@ -2551,7 +2570,8 @@ namespace FileSpace.Views
                             isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
                         }
                         
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
+
                         targetName = targetItem.Name;
                     }
                     else
@@ -2581,7 +2601,7 @@ namespace FileSpace.Views
                             }
                             else
                             {
-                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                                e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                             }
                         }
                         else
@@ -2618,7 +2638,7 @@ namespace FileSpace.Views
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                         }
                     }
                     else
@@ -2674,11 +2694,11 @@ namespace FileSpace.Views
                             var targetDrive = Path.GetPathRoot(targetItem.FullPath);
                             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
 
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, true), targetItem.FullPath);
                         }
 
                         targetName = targetItem.Name;
@@ -2709,7 +2729,7 @@ namespace FileSpace.Views
                             }
                             else
                             {
-                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                                e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                             }
                         }
                         else
@@ -2746,7 +2766,7 @@ namespace FileSpace.Views
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                         }
                     }
                     else
@@ -2820,7 +2840,7 @@ namespace FileSpace.Views
                     }
                     catch { }
 
-                    var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                    var effect = AdjustRecycleBinEffect(ShellDragDropUtils.DetermineDropEffect(e, isSameDrive), targetPath);
                     var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
                     ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetPath, operation));
                 }
@@ -2831,18 +2851,30 @@ namespace FileSpace.Views
         {
             var menu = new System.Windows.Controls.ContextMenu();
 
+            string currentTargetPath = targetPath ?? string.Empty;
+            bool isRecycleBinTarget = currentTargetPath == MainViewModel.RecycleBinPath || currentTargetPath.StartsWith(MainViewModel.RecycleBinPath + "\\");
+
             var copyItem = new System.Windows.Controls.MenuItem { Header = "复制到此处", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Copy24) };
-            copyItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Copy));
+            copyItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, currentTargetPath, FileOperation.Copy));
 
             var moveItem = new System.Windows.Controls.MenuItem { Header = "移动到此处", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.ArrowRight24) };
-            moveItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Move));
+            moveItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, currentTargetPath, FileOperation.Move));
 
             var linkItem = new System.Windows.Controls.MenuItem { Header = "在当前位置创建快捷方式", Icon = new Wpf.Ui.Controls.SymbolIcon(Wpf.Ui.Controls.SymbolRegular.Link24) };
-            linkItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, targetPath, FileOperation.Link));
+            linkItem.Click += (s, ev) => ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, currentTargetPath, FileOperation.Link));
 
-            menu.Items.Add(copyItem);
+            if (!isRecycleBinTarget)
+            {
+                menu.Items.Add(copyItem);
+            }
+            
             menu.Items.Add(moveItem);
-            menu.Items.Add(linkItem);
+            
+            if (!isRecycleBinTarget)
+            {
+                menu.Items.Add(linkItem);
+            }
+            
             menu.Items.Add(new System.Windows.Controls.Separator());
 
             var cancelItem = new System.Windows.Controls.MenuItem { Header = "取消" };
@@ -3021,7 +3053,8 @@ namespace FileSpace.Views
                             isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
                         }
                         
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
+
                         targetName = targetItem.Name;
                     }
                     else
@@ -3050,7 +3083,7 @@ namespace FileSpace.Views
                             }
                             else
                             {
-                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                                e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                             }
                         }
                         else
@@ -3087,7 +3120,7 @@ namespace FileSpace.Views
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                         }
                     }
                     else
@@ -3143,11 +3176,11 @@ namespace FileSpace.Views
                             var targetDrive = Path.GetPathRoot(targetItem.FullPath);
                             bool isSameDrive = string.Equals(sourceDrive, targetDrive, StringComparison.OrdinalIgnoreCase);
 
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, true), targetItem.FullPath);
                         }
 
                         targetName = targetItem.Name;
@@ -3178,7 +3211,7 @@ namespace FileSpace.Views
                             }
                             else
                             {
-                                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                                e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                             }
                         }
                         else
@@ -3195,7 +3228,7 @@ namespace FileSpace.Views
                         _lastDragOverFileItem = null;
                     }
 
-                    // 外部文件拖拽到空白区域
+                    // 外部 file 拖拽到空白区域
                     var droppedPaths = ShellDragDropUtils.GetDroppedFilePaths(e.Data);
                     if (droppedPaths != null && droppedPaths.Length > 0)
                     {
@@ -3215,7 +3248,7 @@ namespace FileSpace.Views
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), ViewModel.CurrentPath);
                         }
                     }
                     else
@@ -3287,7 +3320,7 @@ namespace FileSpace.Views
                     }
                     catch { }
 
-                    var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                    var effect = AdjustRecycleBinEffect(ShellDragDropUtils.DetermineDropEffect(e, isSameDrive), targetPath);
                     var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
                     ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetPath, operation));
                 }
@@ -3347,7 +3380,7 @@ namespace FileSpace.Views
                             _lastDragOverDirectoryItem = targetItem;
                         }
 
-                        e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                        e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
                         targetName = targetItem.Name;
                     }
                 }
@@ -3420,11 +3453,11 @@ namespace FileSpace.Views
                         // Determine if this is a copy or move based on source/destination drives
                         if (droppedPaths != null && droppedPaths.Length > 0)
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, isSameDrive), targetItem.FullPath);
                         }
                         else
                         {
-                            e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, true);
+                            e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, true), targetItem.FullPath);
                         }
 
                         targetName = targetItem.Name;
@@ -3490,7 +3523,7 @@ namespace FileSpace.Views
                             }
                             catch { }
 
-                            var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                            var effect = AdjustRecycleBinEffect(ShellDragDropUtils.DetermineDropEffect(e, isSameDrive), targetItem.FullPath);
                             var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
                             ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(droppedPaths, targetItem.FullPath, operation));
                         }
@@ -3736,7 +3769,7 @@ namespace FileSpace.Views
                 bool sameDrive = !string.IsNullOrEmpty(sDrive) && !string.IsNullOrEmpty(tDrive) &&
                                    string.Equals(sDrive, tDrive, StringComparison.OrdinalIgnoreCase);
                 
-                e.Effects = ShellDragDropUtils.ResolveDropEffect(e, e.Data, sameDrive);
+                e.Effects = AdjustRecycleBinEffect(ShellDragDropUtils.ResolveDropEffect(e, e.Data, sameDrive), item.Path);
 
                 // 使用 RootGrid 计算位置，避免下拉菜单 Popup 导致的坐标偏移问题
                 UpdateDragTooltip(RootGrid, item.Name, e.GetPosition(RootGrid), e.Effects, false);
@@ -3798,7 +3831,7 @@ namespace FileSpace.Views
                         }
                         catch { }
 
-                        var effect = ShellDragDropUtils.DetermineDropEffect(e, isSameDrive);
+                        var effect = AdjustRecycleBinEffect(ShellDragDropUtils.DetermineDropEffect(e, isSameDrive), item.Path);
                         var operation = ShellDragDropUtils.GetOperationFromEffect(effect);
                         ViewModel.ProcessPathsDropToPathCommand.Execute(new Tuple<IEnumerable<string>, string, FileOperation?>(sourcePaths, item.Path, operation));
                     }
