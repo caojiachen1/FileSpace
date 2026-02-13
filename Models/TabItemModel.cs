@@ -98,6 +98,10 @@ namespace FileSpace.Models
             {
                 Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 32, 32);
             }
+            else if (Path == "回收站")
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+            }
             else if (Path == "Linux")
             {
                 Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32)

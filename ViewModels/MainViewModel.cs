@@ -681,6 +681,17 @@ namespace FileSpace.ViewModels
                 found = true;
             }
 
+            // Update in Tabs
+            foreach (var tab in Tabs.Where(t => t.Path == RecycleBinPath))
+            {
+                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+                if (newThumbnail != null)
+                {
+                    tab.Thumbnail = newThumbnail;
+                }
+                found = true;
+            }
+
             if (!found)
             {
                 // If the item wasn't found in DirectoryTree or QuickAccessItems yet, reset the last state
