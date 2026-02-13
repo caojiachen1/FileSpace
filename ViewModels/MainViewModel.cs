@@ -654,6 +654,8 @@ namespace FileSpace.ViewModels
 
         public void UpdateRecycleBinIcon(bool isEmpty)
         {
+            bool found = false;
+
             // Update in sidebar (DirectoryTree)
             var recycleBinItem = DirectoryTree.FirstOrDefault(i => i.FullPath == RecycleBinPath);
             if (recycleBinItem != null)
@@ -664,6 +666,26 @@ namespace FileSpace.ViewModels
                 {
                     recycleBinItem.Thumbnail = newThumbnail;
                 }
+                found = true;
+            }
+
+            // Update in Quick Access if present
+            var qaItem = QuickAccessItems.FirstOrDefault(i => i.Path == RecycleBinPath);
+            if (qaItem != null)
+            {
+                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+                if (newThumbnail != null)
+                {
+                    qaItem.Thumbnail = newThumbnail;
+                }
+                found = true;
+            }
+
+            if (!found)
+            {
+                // If the item wasn't found in DirectoryTree or QuickAccessItems yet, reset the last state
+                // so that the next monitoring tick will try again.
+                _lastRecycleBinEmptyState = null;
             }
         }
 
@@ -1493,6 +1515,9 @@ namespace FileSpace.ViewModels
                 CurrentPath = startPath;
                 
                 StatusText = statusMessage;
+
+                // 加载完成后立即触发一次回收站状态检查
+                TriggerRecycleBinUpdate();
             }
             catch (Exception ex)
             {
