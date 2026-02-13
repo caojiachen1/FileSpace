@@ -109,6 +109,17 @@ namespace FileSpace.Utils
         [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHEmptyRecycleBinW")]
         public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SHQUERYRBINFO
+        {
+            public int cbSize;
+            public long i64Size;
+            public long i64NumItems;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHQueryRecycleBinW")]
+        public static extern int SHQueryRecycleBin(string? pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
+
         public const uint SHERB_NOCONFIRMATION = 0x00000001;
         public const uint SHERB_NOPROGRESSUI = 0x00000002;
         public const uint SHERB_NOSOUND = 0x00000004;

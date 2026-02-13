@@ -614,6 +614,77 @@ namespace FileSpace.ViewModels
                 CutFilesCommand.NotifyCanExecuteChanged();
                 StartRenameCommand.NotifyCanExecuteChanged();
             };
+
+            // Start monitoring Recycle Bin state for icon updates
+            StartRecycleBinMonitoring();
+        }
+
+        private bool? _lastRecycleBinEmptyState;
+        private CancellationTokenSource? _recycleBinMonitorCts;
+
+        private void StartRecycleBinMonitoring()
+        {
+            _recycleBinMonitorCts = new CancellationTokenSource();
+            _ = MonitorRecycleBinAsync(_recycleBinMonitorCts.Token);
+        }
+
+        private async Task MonitorRecycleBinAsync(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    bool isEmpty = await RecycleBinService.Instance.IsEmptyAsync();
+                    if (_lastRecycleBinEmptyState == null || _lastRecycleBinEmptyState != isEmpty)
+                    {
+                        await Application.Current.Dispatcher.InvokeAsync(() => 
+                        {
+                            UpdateRecycleBinIcon(isEmpty);
+                        });
+                        _lastRecycleBinEmptyState = isEmpty;
+                    }
+                }
+                catch
+                {
+                    // Ignore monitoring errors
+                }
+                await Task.Delay(2000, token); // Periodically check every 2 seconds
+            }
+        }
+
+        public void UpdateRecycleBinIcon(bool isEmpty)
+        {
+            // Update in sidebar (DirectoryTree)
+            var recycleBinItem = DirectoryTree.FirstOrDefault(i => i.FullPath == RecycleBinPath);
+            if (recycleBinItem != null)
+            {
+                // Refresh thumbnail from system - this will get the current empty/full icon
+                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+                if (newThumbnail != null)
+                {
+                    recycleBinItem.Thumbnail = newThumbnail;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 强制立即更新回收站图标状态
+        /// </summary>
+        public void TriggerRecycleBinUpdate()
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    bool isEmpty = await RecycleBinService.Instance.IsEmptyAsync();
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        UpdateRecycleBinIcon(isEmpty);
+                        _lastRecycleBinEmptyState = isEmpty;
+                    });
+                }
+                catch { }
+            });
         }
 
         /// <summary>
@@ -3483,6 +3554,9 @@ namespace FileSpace.ViewModels
                 StatusText = "正在清空回收站...";
                 bool success = await RecycleBinService.Instance.EmptyRecycleBinAsync();
                 StatusText = success ? "回收站已清空" : "清空回收站失败";
+                
+                // Force immediate icon update
+                TriggerRecycleBinUpdate();
                 LoadFiles();
             }
             catch (Exception ex)
@@ -3499,6 +3573,9 @@ namespace FileSpace.ViewModels
                 StatusText = "正在还原回收站项目...";
                 bool success = await RecycleBinService.Instance.RestoreAllItemsAsync();
                 StatusText = success ? "已还原回收站中的所有项目" : "还原失败";
+                
+                // Force immediate icon update
+                TriggerRecycleBinUpdate();
                 LoadFiles();
             }
             catch (Exception ex)

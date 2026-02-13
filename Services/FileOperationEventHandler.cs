@@ -43,6 +43,9 @@ namespace FileSpace.Services
                 {
                     ClipboardService.Instance.ClearClipboard();
                 }
+
+                // 触发回收站状态更新，以防由于删除操作改变了回收站状态
+                _mainViewModel.TriggerRecycleBinUpdate();
             });
         }
 

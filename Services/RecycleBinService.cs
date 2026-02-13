@@ -184,6 +184,24 @@ namespace FileSpace.Services
             }, cancellationToken);
         }
 
+        public async Task<bool> IsEmptyAsync()
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    var info = new Win32Api.SHQUERYRBINFO();
+                    info.cbSize = Marshal.SizeOf(typeof(Win32Api.SHQUERYRBINFO));
+                    int hr = Win32Api.SHQueryRecycleBin(null, ref info);
+                    return hr == 0 && info.i64NumItems == 0;
+                }
+                catch
+                {
+                    return true; // Default to empty if error
+                }
+            });
+        }
+
         public async Task<bool> EmptyRecycleBinAsync()
         {
             return await Task.Run(() =>
