@@ -123,10 +123,31 @@ namespace FileSpace.Models
             }
             else if (FullPath == "Linux")
             {
-                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32)
-                         ?? ThumbnailUtils.GetThumbnail("shell:::{62112AA6-DB4A-462E-A713-7D10A86D864C}", 32, 32)
-                         ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
-                         ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
+                // Try to use the custom SVG icon
+                try
+                {
+                    string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Icons", "NewTux.svg");
+                    if (File.Exists(iconPath))
+                    {
+                        var settings = new SharpVectors.Renderers.Wpf.WpfDrawingSettings();
+                        var reader = new SharpVectors.Converters.FileSvgReader(settings);
+                        var drawing = reader.Read(iconPath);
+                        if (drawing != null)
+                        {
+                            var drawingImage = new System.Windows.Media.DrawingImage(drawing);
+                            drawingImage.Freeze();
+                            Thumbnail = drawingImage;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fallback to shell icon if SVG loading fails
+                    Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{B2B4A134-2191-443E-9669-07D2C043C0E5}", 32, 32)
+                             ?? ThumbnailUtils.GetThumbnail("shell:::{62112AA6-DB4A-462E-A713-7D10A86D864C}", 32, 32)
+                             ?? ThumbnailUtils.GetThumbnail("shell:LinuxFolder", 32, 32)
+                             ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
+                }
             }
             else if ((FullPath.Length <= 3 && FullPath.EndsWith(":\\")) || FullPath.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
             {

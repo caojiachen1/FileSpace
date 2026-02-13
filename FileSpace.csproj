@@ -9,7 +9,7 @@
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <PublishTrimmed>false</PublishTrimmed>
-    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <ApplicationIcon>Assets/Icons/logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -25,6 +25,7 @@
     <PackageReference Include="MagikaNet" Version="2.0.0" />
     <PackageReference Include="MetadataExtractor" Version="2.9.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
     <PackageReference Include="WPF-UI" Version="4.2.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.1" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
@@ -33,7 +34,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="logo.ico" />
+    <None Update="Assets\Icons\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Resource Include="Assets\Icons\**" />
+    <Content Include="Assets\Icons\logo.ico" />
   </ItemGroup>
 
 </Project>
