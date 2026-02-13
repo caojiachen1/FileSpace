@@ -155,5 +155,45 @@ namespace FileSpace.Utils
 
             return null;
         }
+
+        public static BitmapSource? GetRecycleBinIcon(bool isEmpty, int width, int height)
+        {
+            try
+            {
+                var info = new Win32Api.SHSTOCKICONINFO
+                {
+                    cbSize = (uint)Marshal.SizeOf<Win32Api.SHSTOCKICONINFO>(),
+                    szPath = string.Empty
+                };
+
+                var siid = isEmpty ? Win32Api.SHSTOCKICONID.SIID_RECYCLER : Win32Api.SHSTOCKICONID.SIID_RECYCLERFULL;
+                var flags = Win32Api.SHGSI.SHGSI_ICON | Win32Api.SHGSI.SHGSI_SMALLICON;
+
+                int hr = Win32Api.SHGetStockIconInfo(siid, flags, ref info);
+                if (hr == 0 && info.hIcon != IntPtr.Zero)
+                {
+                    try
+                    {
+                        var bitmap = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                            info.hIcon,
+                            Int32Rect.Empty,
+                            BitmapSizeOptions.FromWidthAndHeight(width, height));
+
+                        bitmap.Freeze();
+                        return bitmap;
+                    }
+                    finally
+                    {
+                        Win32Api.DestroyIcon(info.hIcon);
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore stock icon retrieval errors
+            }
+
+            return null;
+        }
     }
 }

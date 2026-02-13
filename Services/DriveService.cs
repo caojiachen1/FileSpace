@@ -70,6 +70,16 @@ namespace FileSpace.Services
                 directoryTree.Add(thisPCItem);
 
                 // Create Recycle Bin node
+                bool isRecycleBinEmpty = false;
+                try
+                {
+                    isRecycleBinEmpty = await RecycleBinService.Instance.IsEmptyAsync();
+                }
+                catch
+                {
+                    // Ignore failures retrieving state
+                }
+
                 var recycleBinItem = new DirectoryItemModel(MainViewModel.RecycleBinPath)
                 {
                     Name = MainViewModel.RecycleBinPath,
@@ -77,7 +87,10 @@ namespace FileSpace.Services
                     IconColor = "#FF9E9E9E",
                     HasSubDirectories = false
                 };
-                recycleBinItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+
+                var recycleIcon = ThumbnailUtils.GetRecycleBinIcon(isRecycleBinEmpty, 32, 32)
+                                  ?? ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+                recycleBinItem.Thumbnail = recycleIcon;
                 directoryTree.Add(recycleBinItem);
                 
                 // Create Linux node

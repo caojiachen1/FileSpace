@@ -120,9 +120,40 @@ namespace FileSpace.Utils
         [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHQueryRecycleBinW")]
         public static extern int SHQueryRecycleBin(string? pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
 
+        [DllImport("shell32.dll", SetLastError = true)]
+        public static extern int SHGetStockIconInfo(SHSTOCKICONID siid, SHGSI uFlags, ref SHSTOCKICONINFO psii);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool DestroyIcon(IntPtr hIcon);
+
         public const uint SHERB_NOCONFIRMATION = 0x00000001;
         public const uint SHERB_NOPROGRESSUI = 0x00000002;
         public const uint SHERB_NOSOUND = 0x00000004;
+
+        public enum SHSTOCKICONID : uint
+        {
+            SIID_RECYCLER = 31,
+            SIID_RECYCLERFULL = 32
+        }
+
+        [Flags]
+        public enum SHGSI : uint
+        {
+            SHGSI_ICON = 0x000000100,
+            SHGSI_SMALLICON = 0x000000001
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct SHSTOCKICONINFO
+        {
+            public uint cbSize;
+            public IntPtr hIcon;
+            public int iSysImageIndex;
+            public int iIcon;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = MAX_PATH)]
+            public string szPath;
+        }
 
         [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
         public static extern int StrCmpLogicalW(string psz1, string psz2);

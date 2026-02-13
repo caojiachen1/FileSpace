@@ -656,46 +656,34 @@ namespace FileSpace.ViewModels
         {
             bool found = false;
 
-            // Update in sidebar (DirectoryTree)
-            var recycleBinItem = DirectoryTree.FirstOrDefault(i => i.FullPath == RecycleBinPath);
-            if (recycleBinItem != null)
-            {
-                // Refresh thumbnail from system - this will get the current empty/full icon
-                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
-                if (newThumbnail != null)
-                {
-                    recycleBinItem.Thumbnail = newThumbnail;
-                }
-                found = true;
-            }
+            var recycleIcon = ThumbnailUtils.GetRecycleBinIcon(isEmpty, 32, 32)
+                              ?? ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
 
-            // Update in Quick Access if present
-            var qaItem = QuickAccessItems.FirstOrDefault(i => i.Path == RecycleBinPath);
-            if (qaItem != null)
+            if (recycleIcon != null)
             {
-                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
-                if (newThumbnail != null)
+                var recycleBinItem = DirectoryTree.FirstOrDefault(i => i.FullPath == RecycleBinPath);
+                if (recycleBinItem != null)
                 {
-                    qaItem.Thumbnail = newThumbnail;
+                    recycleBinItem.Thumbnail = recycleIcon;
+                    found = true;
                 }
-                found = true;
-            }
 
-            // Update in Tabs
-            foreach (var tab in Tabs.Where(t => t.Path == RecycleBinPath))
-            {
-                var newThumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
-                if (newThumbnail != null)
+                var qaItem = QuickAccessItems.FirstOrDefault(i => i.Path == RecycleBinPath);
+                if (qaItem != null)
                 {
-                    tab.Thumbnail = newThumbnail;
+                    qaItem.Thumbnail = recycleIcon;
+                    found = true;
                 }
-                found = true;
+
+                foreach (var tab in Tabs.Where(t => t.Path == RecycleBinPath))
+                {
+                    tab.Thumbnail = recycleIcon;
+                    found = true;
+                }
             }
 
             if (!found)
             {
-                // If the item wasn't found in DirectoryTree or QuickAccessItems yet, reset the last state
-                // so that the next monitoring tick will try again.
                 _lastRecycleBinEmptyState = null;
             }
         }
