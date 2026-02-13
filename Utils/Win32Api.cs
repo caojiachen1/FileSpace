@@ -106,6 +106,13 @@ namespace FileSpace.Utils
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         public static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
 
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHEmptyRecycleBinW")]
+        public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? pszRootPath, uint dwFlags);
+
+        public const uint SHERB_NOCONFIRMATION = 0x00000001;
+        public const uint SHERB_NOPROGRESSUI = 0x00000002;
+        public const uint SHERB_NOSOUND = 0x00000004;
+
         [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
         public static extern int StrCmpLogicalW(string psz1, string psz2);
 

@@ -25,7 +25,7 @@ namespace FileSpace.Services
             if (string.IsNullOrEmpty(path)) return;
 
             // Allow navigation to special virtual paths
-            if (path == MainViewModel.ThisPCPath || path == MainViewModel.LinuxPath)
+            if (path == MainViewModel.ThisPCPath || path == MainViewModel.LinuxPath || path == MainViewModel.RecycleBinPath)
             {
                 _viewModel.CurrentPath = path;
                 return;
@@ -67,7 +67,9 @@ namespace FileSpace.Services
 
         public void Up()
         {
-            if (_viewModel.CurrentPath == MainViewModel.ThisPCPath || _viewModel.CurrentPath == MainViewModel.LinuxPath) 
+            if (_viewModel.CurrentPath == MainViewModel.ThisPCPath ||
+                _viewModel.CurrentPath == MainViewModel.LinuxPath ||
+                _viewModel.CurrentPath == MainViewModel.RecycleBinPath)
                 return;
 
             var parentPath = NavigationUtils.GoUp(_viewModel.CurrentPath);

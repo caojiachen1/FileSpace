@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FileSpace.Models;
 using FileSpace.Utils;
+using FileSpace.ViewModels;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
@@ -67,6 +68,17 @@ namespace FileSpace.Services
                 thisPCItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", 32, 32);
 
                 directoryTree.Add(thisPCItem);
+
+                // Create Recycle Bin node
+                var recycleBinItem = new DirectoryItemModel(MainViewModel.RecycleBinPath)
+                {
+                    Name = MainViewModel.RecycleBinPath,
+                    Icon = SymbolRegular.Delete24,
+                    IconColor = "#FF9E9E9E",
+                    HasSubDirectories = false
+                };
+                recycleBinItem.Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+                directoryTree.Add(recycleBinItem);
                 
                 // Create Linux node
                 if (WslService.Instance.IsWslInstalled())

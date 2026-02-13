@@ -484,6 +484,11 @@ namespace FileSpace.Services
 
         private async Task<StackPanel> GenerateFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
+            if (!File.Exists(file.FullPath))
+            {
+                return await GenerateMissingFilePreviewAsync(file, cancellationToken);
+            }
+
             var fileInfo = new FileInfo(file.FullPath);
             
             // Empty files shouldn\'t show a text preview
@@ -506,6 +511,32 @@ namespace FileSpace.Services
             }
 
             return await GenerateFileInfoAndPreviewAsync(file, fileType, cancellationToken);
+        }
+
+        private async Task<StackPanel> GenerateMissingFilePreviewAsync(FileItemModel file, CancellationToken cancellationToken)
+        {
+            var panel = new StackPanel { Margin = new Thickness(0) };
+
+            var previewContainer = CreatePreviewContainer(CreatePreviewVisual(file));
+            panel.Children.Add(previewContainer);
+
+            var detailsPanel = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+            panel.Children.Add(detailsPanel);
+
+            var warningBlock = PreviewUIHelper.CreateInfoTextBlock("⚠️ 原文件已不在原位置（可能位于回收站虚拟路径）");
+            warningBlock.Foreground = Brushes.Orange;
+            warningBlock.FontWeight = FontWeights.Bold;
+            warningBlock.Margin = new Thickness(0, 0, 0, 10);
+            detailsPanel.Children.Add(warningBlock);
+
+            detailsPanel.Children.Add(CreateNamePanel(CreateSmallPreviewIcon(file), file.Name));
+            detailsPanel.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", file.Type));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("大小", file.Size > 0 ? FileUtils.FormatFileSize(file.Size) : "未知"));
+            detailsPanel.Children.Add(PreviewUIHelper.CreatePropertyValueRow("删除时间", string.IsNullOrWhiteSpace(file.ModifiedTime) ? "未知" : file.ModifiedTime));
+
+            await Task.CompletedTask;
+            return panel;
         }
 
         private async Task<StackPanel> GenerateFileInfoOnlyAsync(FileItemModel file, FilePreviewType fileType, string reason, CancellationToken cancellationToken)
@@ -929,6 +960,30 @@ namespace FileSpace.Services
 
         private async Task<StackPanel> GenerateDirectoryPreviewAsync(FileItemModel file, CancellationToken cancellationToken)
         {
+            if (!System.IO.Directory.Exists(file.FullPath))
+            {
+                var panelMissing = new StackPanel { Margin = new Thickness(0) };
+                var previewMissing = CreatePreviewContainer(CreatePreviewVisual(file));
+                panelMissing.Children.Add(previewMissing);
+
+                var detailsMissing = new StackPanel { Margin = new Thickness(15, 15, 15, 20) };
+                panelMissing.Children.Add(detailsMissing);
+
+                var warning = PreviewUIHelper.CreateInfoTextBlock("⚠️ 文件夹已不在原位置（可能位于回收站虚拟路径）");
+                warning.Foreground = Brushes.Orange;
+                warning.FontWeight = FontWeights.Bold;
+                warning.Margin = new Thickness(0, 0, 0, 10);
+                detailsMissing.Children.Add(warning);
+
+                detailsMissing.Children.Add(CreateNamePanel(CreateSmallPreviewIcon(file), file.Name));
+                detailsMissing.Children.Add(PreviewUIHelper.CreateSectionHeader("详细信息"));
+                detailsMissing.Children.Add(PreviewUIHelper.CreatePropertyValueRow("类型", "文件夹"));
+                detailsMissing.Children.Add(PreviewUIHelper.CreatePropertyValueRow("删除时间", string.IsNullOrWhiteSpace(file.ModifiedTime) ? "未知" : file.ModifiedTime));
+
+                await Task.CompletedTask;
+                return panelMissing;
+            }
+
             var dirInfo = new DirectoryInfo(file.FullPath);
             var panel = new StackPanel { Margin = new Thickness(0) };
 

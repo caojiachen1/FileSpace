@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using FileSpace.Services;
 using FileSpace.Utils;
+using FileSpace.ViewModels;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Models
@@ -149,6 +150,10 @@ namespace FileSpace.Models
                              ?? ThumbnailUtils.GetThumbnail("\\\\wsl$", 32, 32);
                 }
             }
+            else if (FullPath == MainViewModel.RecycleBinPath)
+            {
+                Thumbnail = ThumbnailUtils.GetThumbnail("shell:::{645FF040-5081-101B-9F08-00AA002F954E}", 32, 32);
+            }
             else if ((FullPath.Length <= 3 && FullPath.EndsWith(":\\")) || FullPath.StartsWith("\\\\wsl", StringComparison.OrdinalIgnoreCase))
             {
                 // 对于磁盘和 WSL 发行版，保留使用 ThumbnailUtils 直接获取原生图标
@@ -175,6 +180,12 @@ namespace FileSpace.Models
                 if (FullPath == "此电脑" || FullPath == "Linux")
                 {
                     HasSubDirectories = true;
+                    return;
+                }
+
+                if (FullPath == MainViewModel.RecycleBinPath)
+                {
+                    HasSubDirectories = false;
                     return;
                 }
 
@@ -255,6 +266,15 @@ namespace FileSpace.Models
                         {
                             SubDirectories.Add(new DirectoryItemModel(root));
                         }
+                    });
+                }
+                else if (FullPath == MainViewModel.RecycleBinPath)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        HasLoadedChildren = true;
+                        IsLoadingChildren = false;
+                        HasSubDirectories = false;
                     });
                 }
                 else if (FullPath == "Linux")

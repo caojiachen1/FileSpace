@@ -48,8 +48,8 @@ namespace FileSpace.Utils
             ScaleUp = 0x100
         }
 
-        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
-        private static extern void SHCreateItemFromParsingName(
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]
+        private static extern int SHCreateItemFromParsingName(
             [In, MarshalAs(UnmanagedType.LPWStr)] string pszPath,
             [In] IntPtr pbc,
             [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid,
@@ -66,9 +66,18 @@ namespace FileSpace.Utils
         /// </summary>
         public static BitmapSource? GetFolderIcon(string folderPath, int width, int height)
         {
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                return null;
+            }
+
             try
             {
-                SHCreateItemFromParsingName(folderPath, IntPtr.Zero, IShellItemImageFactoryGuid, out var factory);
+                int createHr = SHCreateItemFromParsingName(folderPath, IntPtr.Zero, IShellItemImageFactoryGuid, out var factory);
+                if (createHr != 0 || factory == null)
+                {
+                    return null;
+                }
                 
                 var size = new SIZE(width, height);
                 // 使用 IconOnly 标志获取纯图标，而不是缩略图
@@ -103,9 +112,18 @@ namespace FileSpace.Utils
 
         public static BitmapSource? GetThumbnail(string filePath, int width, int height)
         {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return null;
+            }
+
             try
             {
-                SHCreateItemFromParsingName(filePath, IntPtr.Zero, IShellItemImageFactoryGuid, out var factory);
+                int createHr = SHCreateItemFromParsingName(filePath, IntPtr.Zero, IShellItemImageFactoryGuid, out var factory);
+                if (createHr != 0 || factory == null)
+                {
+                    return null;
+                }
                 
                 var size = new SIZE(width, height);
                 // SIIGBF.BiggerSizeOk

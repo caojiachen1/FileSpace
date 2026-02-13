@@ -872,6 +872,30 @@
                             </MenuItem>
                         </Menu>
 
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0"
+                              Visibility="{Binding IsRecycleBinView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <MenuItem Command="{Binding RestoreAllRecycleBinItemsCommand}" ToolTip="还原所有项目" Style="{StaticResource IconMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="ArrowUndo24" FontSize="16" Margin="0,0,4,0"/>
+                                        <TextBlock Text="还原所有项目" FontSize="13" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
+
+                        <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Padding="0"
+                              Visibility="{Binding IsRecycleBinView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <MenuItem Command="{Binding EmptyRecycleBinCommand}" ToolTip="清空回收站" Style="{StaticResource IconMenuItemStyle}">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <ui:SymbolIcon Symbol="Delete24" FontSize="16" Margin="0,0,4,0"/>
+                                        <TextBlock Text="清空回收站" FontSize="13" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
+                        </Menu>
+
                         <Menu VerticalAlignment="Center" Background="Transparent" BorderThickness="0" Margin="0,0,0,0" Padding="0" Height="45" Width="45">
                             <MenuItem x:Name="MoreToolsMenu" ToolTip="更多" IsSubmenuOpen="{Binding IsMoreToolsMenuOpen, Mode=TwoWay}">
                                 <MenuItem.Header>

@@ -6,6 +6,7 @@ using System.Threading.Channels;
 using System.Windows.Media;
 using FileSpace.Models;
 using FileSpace.Utils;
+using FileSpace.ViewModels;
 using Wpf.Ui.Controls;
 
 namespace FileSpace.Services
@@ -186,6 +187,11 @@ namespace FileSpace.Services
                         {
                             subDirs.Add(new BreadcrumbItem(name, distroPath, SymbolRegular.Server24));
                         }
+                        return subDirs;
+                    }
+
+                    if (path == MainViewModel.RecycleBinPath)
+                    {
                         return subDirs;
                     }
 
@@ -372,6 +378,7 @@ namespace FileSpace.Services
             {
                 if (path == "此电脑") return true; 
                 if (path == "Linux") return true;
+                if (path == MainViewModel.RecycleBinPath) return false;
 
                 if (!Directory.Exists(path)) return false;
 

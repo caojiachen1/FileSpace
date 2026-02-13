@@ -16,14 +16,14 @@ namespace FileSpace.Utils
         
         public static bool CanGoUp(string currentPath)
         {
-            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux")
+            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux" || currentPath == "回收站")
                 return false;
             return true; 
         }
 
         public static string? GoUp(string currentPath)
         {
-            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux")
+            if (string.IsNullOrEmpty(currentPath) || currentPath == "此电脑" || currentPath == "Linux" || currentPath == "回收站")
                 return null;
 
             try

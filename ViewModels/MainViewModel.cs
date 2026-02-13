@@ -79,12 +79,16 @@ namespace FileSpace.ViewModels
         
         public const string ThisPCPath = "此电脑";
         public const string LinuxPath = "Linux";
+        public const string RecycleBinPath = "回收站";
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(GoUpCommand))]
         [NotifyCanExecuteChangedFor(nameof(UpCommand))]
         [NotifyPropertyChangedFor(nameof(CanCreateNew))]
         [NotifyPropertyChangedFor(nameof(CanPaste))]
+        [NotifyPropertyChangedFor(nameof(IsRecycleBinView))]
+        [NotifyCanExecuteChangedFor(nameof(EmptyRecycleBinCommand))]
+        [NotifyCanExecuteChangedFor(nameof(RestoreAllRecycleBinItemsCommand))]
         [NotifyCanExecuteChangedFor(nameof(CreateNewFolderCommand))]
         [NotifyCanExecuteChangedFor(nameof(CreateNewTextFileCommand))]
         [NotifyCanExecuteChangedFor(nameof(PasteFilesCommand))]
@@ -111,6 +115,7 @@ namespace FileSpace.ViewModels
         private bool _isLinuxView;
 
         public bool IsFilesView => !IsThisPCView && !IsLinuxView;
+        public bool IsRecycleBinView => CurrentPath == RecycleBinPath;
 
         [ObservableProperty]
         private FileItemModel? _selectedFile;
@@ -310,7 +315,7 @@ namespace FileSpace.ViewModels
             OnPropertyChanged(nameof(IconColumns));
 
             // 保存用户手动修改或自动加载的视图模式到 SQLite
-            bool isSpecialView = CurrentPath == ThisPCPath || CurrentPath == LinuxPath;
+            bool isSpecialView = CurrentPath == ThisPCPath || CurrentPath == LinuxPath || CurrentPath == RecycleBinPath;
             if (!_isViewModeLoading && !isSpecialView && !string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath))
             {
                 FolderViewService.Instance.SetViewMode(CurrentPath, value);
@@ -748,7 +753,7 @@ namespace FileSpace.ViewModels
             if (QuickAccessItems.Any(i => i.Path == path)) return;
 
             // 检查是否在排除列表中（如：此电脑、回收站等特殊的系统路径通常不作为最近访问）
-            if (path == "此电脑" || path == "Recycle Bin") return;
+            if (path == ThisPCPath || path == RecycleBinPath || path == "Recycle Bin") return;
 
             var name = Path.GetFileName(path);
             if (string.IsNullOrEmpty(name)) name = path;
@@ -1049,7 +1054,7 @@ namespace FileSpace.ViewModels
                 var token = CreateOrResetCancellationTokenSource(ref _loadFilesCancellationTokenSource).Token;
 
                 // 特殊视图（此电脑、Linux）直接加载
-                bool isSpecialView = path == ThisPCPath || path == LinuxPath;
+                bool isSpecialView = path == ThisPCPath || path == LinuxPath || path == RecycleBinPath;
                 if (isSpecialView)
                 {
                     SortMode = "Name";
@@ -1231,6 +1236,25 @@ namespace FileSpace.ViewModels
                 return;
             }
 
+            if (CurrentPath == RecycleBinPath)
+            {
+                try
+                {
+                    StatusText = "正在搜索回收站...";
+                    var recycleItems = await RecycleBinService.Instance.GetRecycleBinItemsAsync();
+                    var filtered = recycleItems.Where(f => f.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)).ToList();
+                    var sortedResults = await Task.Run(() => SortList(filtered));
+                    Files.ReplaceAll(sortedResults);
+                    StatusText = $"在回收站中找到 {filtered.Count} 个匹配项";
+                    _ = LoadThumbnailsAsync();
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"搜索失败: {ex.Message}";
+                }
+                return;
+            }
+
             try
             {
                 var allFiles = new List<FileItemModel>();
@@ -1292,6 +1316,12 @@ namespace FileSpace.ViewModels
             if (path == ThisPCPath)
             {
                 BreadcrumbItems.Add(new BreadcrumbItem("此电脑", ThisPCPath));
+                return;
+            }
+
+            if (path == RecycleBinPath)
+            {
+                BreadcrumbItems.Add(new BreadcrumbItem("回收站", RecycleBinPath));
                 return;
             }
 
@@ -1494,6 +1524,25 @@ namespace FileSpace.ViewModels
                     return;
                 }
 
+                if (CurrentPath == RecycleBinPath)
+                {
+                    IsThisPCView = false;
+                    IsLinuxView = false;
+                    StatusText = "正在加载回收站...";
+
+                    var recycleItems = await RecycleBinService.Instance.GetRecycleBinItemsAsync(token);
+                    var sortedRecycleItems = recycleItems.Count > 0
+                        ? await Task.Run(() => SortListOptimized(recycleItems), token)
+                        : recycleItems;
+
+                    Files.ReplaceAll(sortedRecycleItems);
+                    StatusText = $"回收站中有 {sortedRecycleItems.Count} 个项目";
+
+                    NotifyScrollReset();
+                    _ = LoadThumbnailsAsync();
+                    return;
+                }
+
                 IsThisPCView = false;
                 IsLinuxView = false;
                 
@@ -1545,7 +1594,7 @@ namespace FileSpace.ViewModels
                 }
 
                 // 自动检查图片文件夹：如果全是图片且未设置过视图模式，默认使用超大图标
-                if (allLoadedFiles.Count > 0 && CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                if (allLoadedFiles.Count > 0 && CurrentPath != ThisPCPath && CurrentPath != LinuxPath && CurrentPath != RecycleBinPath)
                 {
                     if (FolderViewService.Instance.GetViewMode(CurrentPath) == null)
                     {
@@ -1956,6 +2005,13 @@ namespace FileSpace.ViewModels
 
         private async Task ShowPreviewAsync()
         {
+            if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                var operation = Application.Current.Dispatcher.InvokeAsync(() => ShowPreviewAsync());
+                await operation.Task.Unwrap();
+                return;
+            }
+
             // Check if auto preview is enabled
             var settings = _settingsService.Settings.PreviewSettings;
             if (!settings.AutoPreview)
@@ -2111,6 +2167,11 @@ namespace FileSpace.ViewModels
             if (file.IsDirectory)
             {
                 return "文件夹信息";
+            }
+
+            if (!File.Exists(file.FullPath))
+            {
+                return "回收站项目";
             }
             
             var extension = Path.GetExtension(file.FullPath).ToLower();
@@ -2478,7 +2539,7 @@ namespace FileSpace.ViewModels
         {
             if (directory == null) return;
             
-            if (directory.FullPath == ThisPCPath || directory.FullPath == LinuxPath || Directory.Exists(directory.FullPath))
+            if (directory.FullPath == ThisPCPath || directory.FullPath == LinuxPath || directory.FullPath == RecycleBinPath || Directory.Exists(directory.FullPath))
             {
                 NavigateToPath(directory.FullPath);
             }
@@ -2499,7 +2560,7 @@ namespace FileSpace.ViewModels
                 string targetPath = path.Trim();
 
                 // 1. 处理特殊虚拟路径
-                if (targetPath == ThisPCPath || targetPath == LinuxPath)
+                if (targetPath == ThisPCPath || targetPath == LinuxPath || targetPath == RecycleBinPath)
                 {
                     NavigateToPath(targetPath);
                     _pathBeforeEditing = CurrentPath;
@@ -2561,6 +2622,7 @@ namespace FileSpace.ViewModels
                     if (!string.IsNullOrEmpty(_pathBeforeEditing) && 
                         _pathBeforeEditing != ThisPCPath && 
                         _pathBeforeEditing != LinuxPath && 
+                        _pathBeforeEditing != RecycleBinPath &&
                         Directory.Exists(_pathBeforeEditing))
                     {
                         workingDir = _pathBeforeEditing;
@@ -2584,7 +2646,7 @@ namespace FileSpace.ViewModels
                     NavigateToPath(targetPath);
                     
                     // 如果导航失败（CurrentPath 没变或者变成了错误路径），我们根据反馈恢复
-                    if (!Directory.Exists(CurrentPath) && CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                    if (!Directory.Exists(CurrentPath) && CurrentPath != ThisPCPath && CurrentPath != LinuxPath && CurrentPath != RecycleBinPath)
                     {
                         CurrentPath = _pathBeforeEditing;
                     }
@@ -3056,7 +3118,7 @@ namespace FileSpace.ViewModels
             if (string.IsNullOrEmpty(targetPath))
             {
                 if (!string.IsNullOrEmpty(CurrentPath) && Directory.Exists(CurrentPath) && 
-                    CurrentPath != ThisPCPath && CurrentPath != LinuxPath)
+                    CurrentPath != ThisPCPath && CurrentPath != LinuxPath && CurrentPath != RecycleBinPath)
                 {
                     targetPath = CurrentPath;
                 }
@@ -3083,7 +3145,7 @@ namespace FileSpace.ViewModels
                 ApplySorting();
                 
                 // 保存该文件夹的排序设置
-                if (!IsThisPCView && !IsLinuxView)
+                if (!IsThisPCView && !IsLinuxView && !IsRecycleBinView)
                 {
                     FolderViewService.Instance.SetSortSettings(CurrentPath, SortMode, SortAscending);
                 }
@@ -3120,7 +3182,7 @@ namespace FileSpace.ViewModels
             ApplySorting();
             
             // 保存该文件夹的排序设置
-            if (!IsThisPCView && !IsLinuxView)
+            if (!IsThisPCView && !IsLinuxView && !IsRecycleBinView)
             {
                 FolderViewService.Instance.SetSortSettings(CurrentPath, SortMode, SortAscending);
             }
@@ -3377,6 +3439,40 @@ namespace FileSpace.ViewModels
                 {
                     StatusText = $"无法分析文件夹: {ex.Message}";
                 }
+            }
+        }
+
+        private bool CanManageRecycleBin() => IsRecycleBinView;
+
+        [RelayCommand(CanExecute = nameof(CanManageRecycleBin))]
+        private async Task EmptyRecycleBin()
+        {
+            try
+            {
+                StatusText = "正在清空回收站...";
+                bool success = await RecycleBinService.Instance.EmptyRecycleBinAsync();
+                StatusText = success ? "回收站已清空" : "清空回收站失败";
+                LoadFiles();
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"清空回收站失败: {ex.Message}";
+            }
+        }
+
+        [RelayCommand(CanExecute = nameof(CanManageRecycleBin))]
+        private async Task RestoreAllRecycleBinItems()
+        {
+            try
+            {
+                StatusText = "正在还原回收站项目...";
+                bool success = await RecycleBinService.Instance.RestoreAllItemsAsync();
+                StatusText = success ? "已还原回收站中的所有项目" : "还原失败";
+                LoadFiles();
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"还原失败: {ex.Message}";
             }
         }
 
