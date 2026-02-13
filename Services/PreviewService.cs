@@ -1041,29 +1041,33 @@ namespace FileSpace.Services
                 (folderPath.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) || 
                  folderPath.Equals(driveRoot.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
             {
-                try
+                // DriveInfo doesn't support paths that are not drive letters (like UNC/WSL)
+                if (!driveRoot.StartsWith(@"\\"))
                 {
-                    var drive = new DriveInfo(driveRoot!);
-                    if (drive.IsReady)
+                    try
                     {
-                        if (sizeRow?.Children.Count > 1)
-                            (sizeRow.Children[1] as TextBlock)?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
-                        
-                        // Re-purpose rows for drive information
-                        var fileCountLabel = fileCountRow?.Children[0] as TextBlock;
-                        var fileCountValue = fileCountRow?.Children.Count > 1 ? fileCountRow.Children[1] as TextBlock : null;
-                        if (fileCountLabel != null) fileCountLabel.Text = "可用空间";
-                        if (fileCountValue != null) fileCountValue.Text = FileUtils.FormatFileSize(drive.AvailableFreeSpace);
+                        var drive = new DriveInfo(driveRoot!);
+                        if (drive.IsReady)
+                        {
+                            if (sizeRow?.Children.Count > 1)
+                                (sizeRow.Children[1] as TextBlock)?.SetValue(TextBlock.TextProperty, FileUtils.FormatFileSize(drive.TotalSize));
+                            
+                            // Re-purpose rows for drive information
+                            var fileCountLabel = fileCountRow?.Children[0] as TextBlock;
+                            var fileCountValue = fileCountRow?.Children.Count > 1 ? fileCountRow.Children[1] as TextBlock : null;
+                            if (fileCountLabel != null) fileCountLabel.Text = "可用空间";
+                            if (fileCountValue != null) fileCountValue.Text = FileUtils.FormatFileSize(drive.AvailableFreeSpace);
 
-                        var dirCountLabel = dirCountRow?.Children[0] as TextBlock;
-                        var dirCountValue = dirCountRow?.Children.Count > 1 ? dirCountRow.Children[1] as TextBlock : null;
-                        if (dirCountLabel != null) dirCountLabel.Text = "已用空间";
-                        if (dirCountValue != null) dirCountValue.Text = FileUtils.FormatFileSize(drive.TotalSize - drive.AvailableFreeSpace);
-                        
-                        return;
+                            var dirCountLabel = dirCountRow?.Children[0] as TextBlock;
+                            var dirCountValue = dirCountRow?.Children.Count > 1 ? dirCountRow.Children[1] as TextBlock : null;
+                            if (dirCountLabel != null) dirCountLabel.Text = "已用空间";
+                            if (dirCountValue != null) dirCountValue.Text = FileUtils.FormatFileSize(drive.TotalSize - drive.AvailableFreeSpace);
+                            
+                            return;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
             }
 
             var backgroundCalculator = BackgroundFolderSizeCalculator.Instance;

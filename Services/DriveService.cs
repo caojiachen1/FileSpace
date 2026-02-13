@@ -158,6 +158,9 @@ namespace FileSpace.Services
                 var root = Path.GetPathRoot(path);
                 if (string.IsNullOrEmpty(root)) return null;
 
+                // DriveInfo doesn't support paths that are not drive letters (like UNC/WSL)
+                if (root.StartsWith(@"\\")) return null;
+
                 var drive = new DriveInfo(root);
                 if (!drive.IsReady) return null;
 

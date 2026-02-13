@@ -2058,16 +2058,26 @@ namespace FileSpace.ViewModels
                         return;
                     }
 
-                    // Check if current path is a drive root
+                    // Check if current path is a drive root or a Linux distro root
                     var driveRoot = Path.GetPathRoot(CurrentPath);
                     if (!string.IsNullOrEmpty(CurrentPath) && 
                         (CurrentPath.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) || 
                          CurrentPath.Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
                     {
+                        // 1. Check in regular drives
                         driveToPreview = Drives.FirstOrDefault(d => 
                             d.DriveLetter.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) ||
                             d.DriveLetter.TrimEnd('\\').Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase));
+                        
+                        // 2. Check in Linux distros
+                        if (driveToPreview == null)
+                        {
+                            driveToPreview = LinuxDistros.FirstOrDefault(d => 
+                                d.DriveLetter.Equals(driveRoot, StringComparison.OrdinalIgnoreCase) ||
+                                d.DriveLetter.TrimEnd('\\').Equals(driveRoot?.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase));
+                        }
                             
+                        // 3. Last resort - try GetDriveItemByPath (now safe for UNC)
                         if (driveToPreview == null)
                         {
                             driveToPreview = DriveService.Instance.GetDriveItemByPath(CurrentPath);
