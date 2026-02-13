@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Collections.Generic;
 using Vanara.Windows.Shell;
 
@@ -12,6 +13,11 @@ namespace FileSpace.Utils
 {
     public static class FilePreviewUtils
     {
+        private const int MaxImageInfoRetryCount = 6;
+        private const int InitialRetryDelayMs = 120;
+        private const int ErrorSharingViolation = 32;
+        private const int ErrorLockViolation = 33;
+
         public static FilePreviewType DetermineFileType(string extension)
         {
             return extension.ToLower() switch
@@ -76,26 +82,41 @@ namespace FileSpace.Utils
         {
             if (!File.Exists(filePath) || new FileInfo(filePath).Length == 0) return null;
 
-            return await Task.Run(() =>
+            for (int attempt = 0; attempt <= MaxImageInfoRetryCount; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                return Application.Current.Dispatcher.Invoke(() =>
+
+                try
                 {
-                    try
+                    using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                    if (decoder.Frames.Count == 0)
                     {
-                        var bitmap = new System.Windows.Media.Imaging.BitmapImage();
-                        bitmap.BeginInit();
-                        bitmap.UriSource = new Uri(filePath);
-                        bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                        bitmap.EndInit();
-                        return (bitmap.Width, bitmap.Height);
+                        return null;
                     }
-                    catch
-                    {
-                        return ((double, double)?)null;
-                    }
-                });
-            }, cancellationToken);
+
+                    var frame = decoder.Frames[0];
+                    return (frame.Width, frame.Height);
+                }
+                catch (IOException ex) when (IsTransientFileLock(ex) && attempt < MaxImageInfoRetryCount)
+                {
+                    var delay = InitialRetryDelayMs * (attempt + 1);
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsTransientFileLock(IOException ex)
+        {
+            var nativeCode = ex.HResult & 0xFFFF;
+            return nativeCode == ErrorSharingViolation || nativeCode == ErrorLockViolation;
         }
 
         public static Dictionary<string, string> GetShellMediaInfo(string filePath)

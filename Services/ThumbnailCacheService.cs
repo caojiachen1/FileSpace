@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media.Imaging;
@@ -14,10 +15,17 @@ namespace FileSpace.Services
     /// </summary>
     public class ThumbnailCacheService
     {
+        private const int MaxTransientRetryCount = 6;
+        private const int InitialRetryDelayMs = 120;
+        private const int ErrorSharingViolation = 32;
+        private const int ErrorLockViolation = 33;
+        private const int WicUnknownImageFormat = unchecked((int)0x88982F07);
+
         private static readonly Lazy<ThumbnailCacheService> _instance = new(() => new ThumbnailCacheService());
         public static ThumbnailCacheService Instance => _instance.Value;
 
         private readonly ConcurrentDictionary<string, WeakReference> _memoryCache;
+        private readonly ConcurrentDictionary<string, SemaphoreSlim> _diskCacheWriteLocks;
         private readonly string _cacheDirectory;
         private readonly object _cleanupLock = new();
         private readonly Timer _cleanupTimer;
@@ -31,6 +39,7 @@ namespace FileSpace.Services
         private ThumbnailCacheService()
         {
             _memoryCache = new ConcurrentDictionary<string, WeakReference>();
+            _diskCacheWriteLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
             
             // 创建缓存目录
             var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FileSpace");
@@ -228,46 +237,126 @@ namespace FileSpace.Services
 
         private async Task<ImageSource?> GenerateThumbnailAsync(string filePath, int thumbnailSize, CancellationToken cancellationToken)
         {
-            return await Task.Run(() =>
+            bool shouldRetry = IsImageFile(filePath);
+
+            for (int attempt = 0; attempt <= MaxTransientRetryCount; attempt++)
             {
-                try
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var (thumbnail, isTransientError) = await Task.Run(() =>
                 {
-                    // 使用 ThumbnailUtils 获取所有类型文件的缩略图或图标
-                    var thumbnail = ThumbnailUtils.GetThumbnail(filePath, thumbnailSize, thumbnailSize);
-                    if (thumbnail != null)
+                    return TryGenerateThumbnailOnce(filePath, thumbnailSize);
+                }, cancellationToken).ConfigureAwait(false);
+
+                if (thumbnail != null)
+                {
+                    return thumbnail;
+                }
+
+                if (!shouldRetry || !isTransientError || attempt >= MaxTransientRetryCount)
+                {
+                    break;
+                }
+
+                var delay = InitialRetryDelayMs * (attempt + 1);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+
+            return null;
+        }
+
+        private static (ImageSource? Thumbnail, bool IsTransientError) TryGenerateThumbnailOnce(string filePath, int thumbnailSize)
+        {
+            try
+            {
+                var extension = Path.GetExtension(filePath);
+                var isImageFile = FileUtils.IsImageFile(extension);
+
+                if (!isImageFile)
+                {
+                    // 非图片文件允许回退为系统图标
+                    var shellImage = ThumbnailUtils.GetThumbnail(filePath, thumbnailSize, thumbnailSize);
+                    if (shellImage != null)
                     {
-                        if (thumbnail.CanFreeze)
-                            thumbnail.Freeze();
-                        return thumbnail as ImageSource;
+                        if (shellImage.CanFreeze)
+                            shellImage.Freeze();
+                        return (shellImage as ImageSource, false);
                     }
 
-                    // 如果 Shell API 失败，对于图片文件尝试备选方案
-                    var fileInfo = new FileInfo(filePath);
-                    if (IsImageFile(filePath) && fileInfo.Exists && fileInfo.Length > 0)
-                    {
-                        using var stream = File.OpenRead(filePath);
-                        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation, BitmapCacheOption.None);
-                        
-                        if (decoder.Frames.Count == 0)
-                            return null;
-
-                        var frame = decoder.Frames[0];
-                        
-                        var scaleX = (double)thumbnailSize / frame.PixelWidth;
-                        var scaleY = (double)thumbnailSize / frame.PixelHeight;
-                        var scale = Math.Min(scaleX, scaleY);
-
-                        var scaledBitmap = new TransformedBitmap(frame, new ScaleTransform(scale, scale));
-                        scaledBitmap.Freeze();
-                        return scaledBitmap as ImageSource;
-                    }
+                    return (null, false);
                 }
-                catch (Exception ex)
+
+                // 使用 ThumbnailUtils 获取所有类型文件的缩略图或图标
+                // 图片文件优先解码原图，避免把系统图标误当成缩略图
+                var fileInfo = new FileInfo(filePath);
+                if (fileInfo.Exists && fileInfo.Length > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"GenerateThumbnailAsync Error: {ex.Message}");
+                    // 文件头可能尚未写完整，过小内容先视为瞬时状态
+                    if (fileInfo.Length < 64)
+                    {
+                        return (null, true);
+                    }
+
+                    using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+
+                    if (decoder.Frames.Count == 0)
+                        return (null, false);
+
+                    var frame = decoder.Frames[0];
+                    if (frame.PixelWidth <= 0 || frame.PixelHeight <= 0)
+                        return (null, false);
+
+                    var scaleX = (double)thumbnailSize / frame.PixelWidth;
+                    var scaleY = (double)thumbnailSize / frame.PixelHeight;
+                    var scale = Math.Min(scaleX, scaleY);
+
+                    var scaledBitmap = new TransformedBitmap(frame, new ScaleTransform(scale, scale));
+                    scaledBitmap.Freeze();
+                    return (scaledBitmap as ImageSource, false);
                 }
-                return null;
-            }, cancellationToken);
+
+                // 对图片文件仅接受真正缩略图，禁止图标回退
+                var shellThumbnail = ThumbnailUtils.GetThumbnail(filePath, thumbnailSize, thumbnailSize, thumbnailOnly: true);
+                if (shellThumbnail != null)
+                {
+                    if (shellThumbnail.CanFreeze)
+                        shellThumbnail.Freeze();
+                    return (shellThumbnail as ImageSource, false);
+                }
+
+                return (null, false);
+            }
+            catch (IOException ex) when (IsTransientFileLock(ex))
+            {
+                return (null, true);
+            }
+            catch (FileFormatException)
+            {
+                // 新文件写入过程中常见：头部不完整导致格式暂不可识别
+                return (null, true);
+            }
+            catch (COMException ex) when (IsTransientImageDecodeError(ex))
+            {
+                // WIC 暂时无法识别格式（常见于写入尚未完成）
+                return (null, true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GenerateThumbnailAsync Error: {ex.Message}");
+                return (null, false);
+            }
+        }
+
+        private static bool IsTransientFileLock(IOException ex)
+        {
+            var nativeCode = ex.HResult & 0xFFFF;
+            return nativeCode == ErrorSharingViolation || nativeCode == ErrorLockViolation;
+        }
+
+        private static bool IsTransientImageDecodeError(COMException ex)
+        {
+            return ex.HResult == WicUnknownImageFormat;
         }
 
         private async Task<ImageSource?> LoadFromDiskCacheAsync(string cacheKey, CancellationToken cancellationToken)
@@ -279,8 +368,14 @@ namespace FileSpace.Services
 
             try
             {
-                // 1. 异步读取文件字节
-                byte[] imageBytes = await File.ReadAllBytesAsync(cacheFilePath, cancellationToken);
+                // 1. 以共享读写方式读取，避免阻塞并发写入
+                byte[] imageBytes;
+                using (var fileStream = new FileStream(cacheFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096, useAsync: true))
+                {
+                    using var memoryStream = new MemoryStream();
+                    await fileStream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+                    imageBytes = memoryStream.ToArray();
+                }
                 
                 if (imageBytes.Length == 0)
                     return null;
@@ -316,22 +411,54 @@ namespace FileSpace.Services
                 return;
 
             var cacheFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.png");
+            var keyLock = _diskCacheWriteLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+
+            await keyLock.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
-                await Task.Run(() =>
+                for (int attempt = 0; attempt <= MaxTransientRetryCount; attempt++)
                 {
-                    using var fileStream = File.Create(cacheFilePath);
-                    // 使用 PngBitmapEncoder 以保留透明通道，解决图标背景黑/白块问题
-                    var encoder = new PngBitmapEncoder();
-                    encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
-                    encoder.Save(fileStream);
-                }, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var tempFilePath = Path.Combine(_cacheDirectory, $"{cacheKey}.{Guid.NewGuid():N}.tmp");
+                    try
+                    {
+                        await Task.Run(() =>
+                        {
+                            using var fileStream = new FileStream(tempFilePath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                            // 使用 PngBitmapEncoder 以保留透明通道，解决图标背景黑/白块问题
+                            var encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+                            encoder.Save(fileStream);
+                            fileStream.Flush(true);
+                        }, cancellationToken).ConfigureAwait(false);
+
+                        // 同目录内移动是原子操作，可避免读到半写入文件
+                        File.Move(tempFilePath, cacheFilePath, true);
+                        return;
+                    }
+                    catch (IOException ex) when (IsTransientFileLock(ex) && attempt < MaxTransientRetryCount)
+                    {
+                        try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); } catch { }
+                        var delay = InitialRetryDelayMs * (attempt + 1);
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        try { if (File.Exists(tempFilePath)) File.Delete(tempFilePath); } catch { }
+                        break;
+                    }
+                }
             }
             catch
             {
                 // 保存失败，删除可能的部分文件
                 try { File.Delete(cacheFilePath); } catch { }
+            }
+            finally
+            {
+                keyLock.Release();
             }
         }
 

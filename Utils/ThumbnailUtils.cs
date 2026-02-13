@@ -110,7 +110,7 @@ namespace FileSpace.Utils
             return null;
         }
 
-        public static BitmapSource? GetThumbnail(string filePath, int width, int height)
+        public static BitmapSource? GetThumbnail(string filePath, int width, int height, bool thumbnailOnly = false)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -126,9 +126,8 @@ namespace FileSpace.Utils
                 }
                 
                 var size = new SIZE(width, height);
-                // SIIGBF.BiggerSizeOk
-                // Previously used SIIGBF.ThumbnailOnly, but user wants system icons for all files now
-                int hr = factory.GetImage(size, SIIGBF.BiggerSizeOk, out var hBitmap);
+                var flags = SIIGBF.BiggerSizeOk | (thumbnailOnly ? SIIGBF.ThumbnailOnly : 0);
+                int hr = factory.GetImage(size, flags, out var hBitmap);
 
                 if (hr == 0 && hBitmap != IntPtr.Zero)
                 {

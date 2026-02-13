@@ -942,6 +942,9 @@ namespace FileSpace.ViewModels
                         // 使用 UpdateFrom 保持对象引用，避免丢失 UI 选择状态
                         existingItem.UpdateFrom(item);
 
+                        // 文件内容变化后强制允许再次加载缩略图（防止首次被占用后卡在图标）
+                        existingItem.LoadedThumbnailSize = 0;
+
                         // 如果内容变化可能需要刷新缩略图
                         _ = LoadThumbnailForItemAsync(existingItem);
                     }
@@ -961,6 +964,7 @@ namespace FileSpace.ViewModels
                     {
                         // 使用 UpdateFrom 保持对象引用
                         existingItem.UpdateFrom(newItem);
+                        existingItem.LoadedThumbnailSize = 0;
                         
                         // 重命名后也要（尝试）更新缩略图，特别是从无扩展名变为有扩展名等情况
                         _ = LoadThumbnailForItemAsync(existingItem);
@@ -1905,7 +1909,24 @@ namespace FileSpace.ViewModels
                 else
                 {
                     int targetSizeInt = (int)targetSize;
-                    thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(item.FullPath, targetSizeInt).ConfigureAwait(false);
+                    bool isImageFile = !item.IsDirectory && FileUtils.IsImageFile(Path.GetExtension(item.FullPath));
+                    const int maxRetryCount = 2;
+
+                    for (int attempt = 0; attempt <= maxRetryCount; attempt++)
+                    {
+                        thumbnail = await ThumbnailCacheService.Instance.GetThumbnailAsync(item.FullPath, targetSizeInt).ConfigureAwait(false);
+                        if (thumbnail != null)
+                        {
+                            break;
+                        }
+
+                        if (!isImageFile || attempt >= maxRetryCount)
+                        {
+                            break;
+                        }
+
+                        await Task.Delay(250 * (attempt + 1)).ConfigureAwait(false);
+                    }
                 }
 
                 if (thumbnail != null)
