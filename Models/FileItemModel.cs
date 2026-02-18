@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using Wpf.Ui.Controls;
 using FileSpace.Utils;
 using System.Windows.Media;
@@ -12,6 +12,8 @@ namespace FileSpace.Models
     public partial class FileItemModel : ObservableObject
     {
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DisplayName))]
+        [NotifyPropertyChangedFor(nameof(ToolTipContent))]
         private string _name = string.Empty;
 
         [ObservableProperty]
