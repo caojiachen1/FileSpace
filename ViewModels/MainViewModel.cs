@@ -3422,12 +3422,12 @@ namespace FileSpace.ViewModels
         [RelayCommand]
         private void ConfirmRename()
         {
-            if (RenamingFile != null && !string.IsNullOrWhiteSpace(NewFileName))
+            if (RenamingFile != null)
             {
-                string trimmedName = NewFileName.Trim();
+                string trimmedName = NewFileName?.Trim() ?? string.Empty;
                 
-                // 如果文件名没有变化，直接取消重命名模式而不报错
-                if (trimmedName == RenamingFile.Name)
+                // 如果输入为空，或者文件名没有变化，直接取消重命名模式
+                if (string.IsNullOrWhiteSpace(trimmedName) || trimmedName == RenamingFile.Name)
                 {
                     CancelRename();
                     return;
