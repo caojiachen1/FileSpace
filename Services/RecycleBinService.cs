@@ -42,7 +42,8 @@ namespace FileSpace.Services
                     {
                         return result;
                     }
-                    int count = items?.Count ?? 0;
+                    var nonNullItems = items;
+                    int count = nonNullItems.Count;
 
                     for (int i = 0; i < count; i++)
                     {
@@ -51,7 +52,7 @@ namespace FileSpace.Services
                         dynamic? item = null;
                         try
                         {
-                            item = items.Item(i);
+                            item = nonNullItems.Item(i);
                             if (item == null)
                             {
                                 continue;
@@ -142,12 +143,13 @@ namespace FileSpace.Services
                     {
                         return false;
                     }
-                    int count = items?.Count ?? 0;
+                    var nonNullItems = items;
+                    int count = nonNullItems.Count;
 
                     for (int i = 0; i < count; i++)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var item = items.Item(i);
+                        var item = nonNullItems.Item(i);
                         if (item != null)
                         {
                             snapshots.Add(item);
@@ -246,7 +248,12 @@ namespace FileSpace.Services
             try
             {
                 var verbs = item.Verbs();
-                int count = verbs?.Count ?? 0;
+                if (verbs == null)
+                {
+                    return false;
+                }
+
+                int count = verbs.Count;
                 for (int i = 0; i < count; i++)
                 {
                     dynamic? verb = verbs.Item(i);
